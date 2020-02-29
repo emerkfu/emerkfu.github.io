@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Join ruozedata.... | Emerk&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="欢迎来到若泽数据，感谢大家对我们的支持 SparkRun workloads 100x faster. Apache Spark achieves high performance for both batch and streaming data, using a state-of-the-art DAG scheduler, a query optimizer, and a physical">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Join ruozedata....">
+<meta property="og:url" content="https://emerkfu.github.io/2015/07/11/spark/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="欢迎来到若泽数据，感谢大家对我们的支持 SparkRun workloads 100x faster. Apache Spark achieves high performance for both batch and streaming data, using a state-of-the-art DAG scheduler, a query optimizer, and a physical">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu.github.io/2015/07/11/spark/logistic-regression.png">
+<meta property="article:published_time" content="2015-07-11T04:00:00.000Z">
+<meta property="article:modified_time" content="2020-02-29T18:48:52.124Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="ruozedata">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu.github.io/2015/07/11/spark/logistic-regression.png">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Emerk&#39;s blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">emerkfu.github.io</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://emerkfu.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-spark" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2015/07/11/spark/" class="article-date">
+  <time class="dt-published" datetime="2015-07-11T04:00:00.000Z" itemprop="datePublished">2015-07-11</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Join ruozedata....
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h3 id="欢迎来到若泽数据，感谢大家对我们的支持"><a href="#欢迎来到若泽数据，感谢大家对我们的支持" class="headerlink" title="欢迎来到若泽数据，感谢大家对我们的支持"></a>欢迎来到若泽数据，感谢大家对我们的支持</h3><hr>
+<h4 id="Spark"><a href="#Spark" class="headerlink" title="Spark"></a>Spark</h4><p>Run workloads 100x faster.</p>
+<p>Apache Spark achieves high performance for both batch and streaming data, using a state-of-the-art DAG scheduler, a query optimizer, and a physical execution engine.</p>
+<a id="more"></a>
+<h4 id="Spark-web"><a href="#Spark-web" class="headerlink" title="Spark web"></a>Spark web</h4><p><a href="http://spark.apache.org" target="_blank" rel="noopener">spark官网</a></p>
+<h4 id="Spark-demo-code"><a href="#Spark-demo-code" class="headerlink" title="Spark demo code"></a>Spark demo code</h4><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line"><span class="keyword">val</span> counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2015/07/11/spark/logistic-regression.png" alt></p>
+<ul>
+<li>spark core</li>
+<li>spark streaming</li>
+<li>spark sql </li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://emerkfu.github.io/2015/07/11/spark/" data-id="ck7818q7s0001ocv7cgum2vgf" data-title="Join ruozedata...." class="article-share-link">Share</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/ruozedata/" rel="tag">ruozedata</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/01/04/hello-world/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Hello World
+        
+      </div>
+    </a>
+  
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/ruozedata/" rel="tag">ruozedata</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/ruozedata/" style="font-size: 10px;">ruozedata</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">一月 2020</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/07/">七月 2015</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/01/04/hello-world/">Hello World</a>
+          </li>
+        
+          <li>
+            <a href="/2015/07/11/spark/">Join ruozedata....</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2020 EmerkFu<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
