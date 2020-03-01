@@ -1,25 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>CentOS ***....</title>
-    <url>/2020/01/01/CentOS/</url>
-    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
-<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
-<ul>
-<li>CentOS …</li>
-<li>CentOS …</li>
-<li>CentOS … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>CentOS</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Azkaban ***....</title>
     <url>/2020/01/01/Azkaban/</url>
     <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
@@ -36,6 +17,25 @@
 ]]></content>
       <tags>
         <tag>Azkaban</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>CentOS ***....</title>
+    <url>/2020/01/01/CentOS/</url>
+    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
+<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
+<ul>
+<li>CentOS …</li>
+<li>CentOS …</li>
+<li>CentOS … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>CentOS</tag>
       </tags>
   </entry>
   <entry>
@@ -115,25 +115,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Spark文档 ***....</title>
-    <url>/2020/01/01/Spark%E6%96%87%E6%A1%A3/</url>
-    <content><![CDATA[<h3 id="Spark文档-…"><a href="#Spark文档-…" class="headerlink" title="Spark文档 …."></a>Spark文档 ….</h3><hr>
-<h4 id="Spark文档"><a href="#Spark文档" class="headerlink" title="Spark文档"></a>Spark文档</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Spark文档-web"><a href="#Spark文档-web" class="headerlink" title="Spark文档 web"></a>Spark文档 web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Spark文档-demo-code"><a href="#Spark文档-demo-code" class="headerlink" title="Spark文档 demo code"></a>Spark文档 demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Spark文档-img"><a href="#Spark文档-img" class="headerlink" title="Spark文档 img"></a>Spark文档 img</h4><p><img src="/2020/01/01/Spark%E6%96%87%E6%A1%A3/logistic-regression.png" alt></p>
-<ul>
-<li>Spark文档 …</li>
-<li>Spark文档 …</li>
-<li>Spark文档 … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Spark</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Scala ***....</title>
     <url>/2020/01/01/Scala/</url>
     <content><![CDATA[<h3 id="Scala-…"><a href="#Scala-…" class="headerlink" title="Scala …."></a>Scala ….</h3><hr>
@@ -150,6 +131,25 @@
 ]]></content>
       <tags>
         <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark文档 ***....</title>
+    <url>/2020/01/01/Spark%E6%96%87%E6%A1%A3/</url>
+    <content><![CDATA[<h3 id="Spark文档-…"><a href="#Spark文档-…" class="headerlink" title="Spark文档 …."></a>Spark文档 ….</h3><hr>
+<h4 id="Spark文档"><a href="#Spark文档" class="headerlink" title="Spark文档"></a>Spark文档</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Spark文档-web"><a href="#Spark文档-web" class="headerlink" title="Spark文档 web"></a>Spark文档 web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Spark文档-demo-code"><a href="#Spark文档-demo-code" class="headerlink" title="Spark文档 demo code"></a>Spark文档 demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark文档-img"><a href="#Spark文档-img" class="headerlink" title="Spark文档 img"></a>Spark文档 img</h4><p><img src="/2020/01/01/Spark%E6%96%87%E6%A1%A3/logistic-regression.png" alt></p>
+<ul>
+<li>Spark文档 …</li>
+<li>Spark文档 …</li>
+<li>Spark文档 … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Spark</tag>
       </tags>
   </entry>
   <entry>
