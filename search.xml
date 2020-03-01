@@ -1,8 +1,312 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Azkaban ***....</title>
+    <url>/2020/01/01/Azkaban/</url>
+    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
+<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
+<ul>
+<li>Azkaban …</li>
+<li>Azkaban …</li>
+<li>Azkaban … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Azkaban</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume ***....</title>
+    <url>/2020/01/01/Flume/</url>
+    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
+<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
+<ul>
+<li>Flume …</li>
+<li>Flume …</li>
+<li>Flume … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>CentOS ***....</title>
+    <url>/2020/01/01/CentOS/</url>
+    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
+<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
+<ul>
+<li>CentOS …</li>
+<li>CentOS …</li>
+<li>CentOS … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>CentOS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop ***....</title>
+    <url>/2020/01/01/Hadoop/</url>
+    <content><![CDATA[<h3 id="Hadoop-…"><a href="#Hadoop-…" class="headerlink" title="Hadoop …."></a>Hadoop ….</h3><hr>
+<h4 id="Hadoop"><a href="#Hadoop" class="headerlink" title="Hadoop"></a>Hadoop</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Hadoop-web"><a href="#Hadoop-web" class="headerlink" title="Hadoop web"></a>Hadoop web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Hadoop-demo-code"><a href="#Hadoop-demo-code" class="headerlink" title="Hadoop demo code"></a>Hadoop demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Hadoop-img"><a href="#Hadoop-img" class="headerlink" title="Hadoop img"></a>Hadoop img</h4><p><img src="/2020/01/01/Hadoop/logistic-regression.png" alt></p>
+<ul>
+<li>Hadoop …</li>
+<li>Hadoop …</li>
+<li>Hadoop … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive ***....</title>
+    <url>/2020/01/01/Hive/</url>
+    <content><![CDATA[<h3 id="Hive-…"><a href="#Hive-…" class="headerlink" title="Hive …."></a>Hive ….</h3><hr>
+<h4 id="Hive"><a href="#Hive" class="headerlink" title="Hive"></a>Hive</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Hive-web"><a href="#Hive-web" class="headerlink" title="Hive web"></a>Hive web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Hive-demo-code"><a href="#Hive-demo-code" class="headerlink" title="Hive demo code"></a>Hive demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Hive-img"><a href="#Hive-img" class="headerlink" title="Hive img"></a>Hive img</h4><p><img src="/2020/01/01/Hive/logistic-regression.png" alt></p>
+<ul>
+<li>Hive …</li>
+<li>Hive …</li>
+<li>Hive … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MySQL ***....</title>
+    <url>/2020/01/01/MySQL/</url>
+    <content><![CDATA[<h3 id="MySQL-…"><a href="#MySQL-…" class="headerlink" title="MySQL …."></a>MySQL ….</h3><hr>
+<h4 id="MySQL"><a href="#MySQL" class="headerlink" title="MySQL"></a>MySQL</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="MySQL-web"><a href="#MySQL-web" class="headerlink" title="MySQL web"></a>MySQL web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="MySQL-demo-code"><a href="#MySQL-demo-code" class="headerlink" title="MySQL demo code"></a>MySQL demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="MySQL-img"><a href="#MySQL-img" class="headerlink" title="MySQL img"></a>MySQL img</h4><p><img src="/2020/01/01/MySQL/logistic-regression.png" alt></p>
+<ul>
+<li>MySQL …</li>
+<li>MySQL …</li>
+<li>MySQL … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>MySQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Scala ***....</title>
+    <url>/2020/01/01/Scala/</url>
+    <content><![CDATA[<h3 id="Scala-…"><a href="#Scala-…" class="headerlink" title="Scala …."></a>Scala ….</h3><hr>
+<h4 id="Scala"><a href="#Scala" class="headerlink" title="Scala"></a>Scala</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Scala-web"><a href="#Scala-web" class="headerlink" title="Scala web"></a>Scala web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Scala-demo-code"><a href="#Scala-demo-code" class="headerlink" title="Scala demo code"></a>Scala demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Scala-img"><a href="#Scala-img" class="headerlink" title="Scala img"></a>Scala img</h4><p><img src="/2020/01/01/Scala/logistic-regression.png" alt></p>
+<ul>
+<li>Scala …</li>
+<li>Scala …</li>
+<li>Scala … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark文档 ***....</title>
+    <url>/2020/01/01/Spark%E6%96%87%E6%A1%A3/</url>
+    <content><![CDATA[<h3 id="Spark文档-…"><a href="#Spark文档-…" class="headerlink" title="Spark文档 …."></a>Spark文档 ….</h3><hr>
+<h4 id="Spark文档"><a href="#Spark文档" class="headerlink" title="Spark文档"></a>Spark文档</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Spark文档-web"><a href="#Spark文档-web" class="headerlink" title="Spark文档 web"></a>Spark文档 web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Spark文档-demo-code"><a href="#Spark文档-demo-code" class="headerlink" title="Spark文档 demo code"></a>Spark文档 demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark文档-img"><a href="#Spark文档-img" class="headerlink" title="Spark文档 img"></a>Spark文档 img</h4><p><img src="/2020/01/01/Spark%E6%96%87%E6%A1%A3/logistic-regression.png" alt></p>
+<ul>
+<li>Spark文档 …</li>
+<li>Spark文档 …</li>
+<li>Spark文档 … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Spark文档</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Azkaban ***....</title>
+    <url>/2020/01/01/demo/Azkaban/</url>
+    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
+<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/demo/Azkaban/logistic-regression.png" alt></p>
+<ul>
+<li>Azkaban …</li>
+<li>Azkaban …</li>
+<li>Azkaban … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>CentOS ***....</title>
+    <url>/2020/01/01/demo/CentOS/</url>
+    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
+<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/demo/CentOS/logistic-regression.png" alt></p>
+<ul>
+<li>CentOS …</li>
+<li>CentOS …</li>
+<li>CentOS … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop ***....</title>
+    <url>/2020/01/01/demo/Hadoop/</url>
+    <content><![CDATA[<h3 id="Hadoop-…"><a href="#Hadoop-…" class="headerlink" title="Hadoop …."></a>Hadoop ….</h3><hr>
+<h4 id="Hadoop"><a href="#Hadoop" class="headerlink" title="Hadoop"></a>Hadoop</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Hadoop-web"><a href="#Hadoop-web" class="headerlink" title="Hadoop web"></a>Hadoop web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Hadoop-demo-code"><a href="#Hadoop-demo-code" class="headerlink" title="Hadoop demo code"></a>Hadoop demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Hadoop-img"><a href="#Hadoop-img" class="headerlink" title="Hadoop img"></a>Hadoop img</h4><p><img src="/2020/01/01/demo/Hadoop/logistic-regression.png" alt></p>
+<ul>
+<li>Hadoop …</li>
+<li>Hadoop …</li>
+<li>Hadoop … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume ***....</title>
+    <url>/2020/01/01/demo/Flume/</url>
+    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
+<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/demo/Flume/logistic-regression.png" alt></p>
+<ul>
+<li>Flume …</li>
+<li>Flume …</li>
+<li>Flume … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive ***....</title>
+    <url>/2020/01/01/demo/Hive/</url>
+    <content><![CDATA[<h3 id="Hive-…"><a href="#Hive-…" class="headerlink" title="Hive …."></a>Hive ….</h3><hr>
+<h4 id="Hive"><a href="#Hive" class="headerlink" title="Hive"></a>Hive</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Hive-web"><a href="#Hive-web" class="headerlink" title="Hive web"></a>Hive web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Hive-demo-code"><a href="#Hive-demo-code" class="headerlink" title="Hive demo code"></a>Hive demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Hive-img"><a href="#Hive-img" class="headerlink" title="Hive img"></a>Hive img</h4><p><img src="/2020/01/01/demo/Hive/logistic-regression.png" alt></p>
+<ul>
+<li>Hive …</li>
+<li>Hive …</li>
+<li>Hive … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MySQL ***....</title>
+    <url>/2020/01/01/demo/MySQL/</url>
+    <content><![CDATA[<h3 id="MySQL-…"><a href="#MySQL-…" class="headerlink" title="MySQL …."></a>MySQL ….</h3><hr>
+<h4 id="MySQL"><a href="#MySQL" class="headerlink" title="MySQL"></a>MySQL</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="MySQL-web"><a href="#MySQL-web" class="headerlink" title="MySQL web"></a>MySQL web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="MySQL-demo-code"><a href="#MySQL-demo-code" class="headerlink" title="MySQL demo code"></a>MySQL demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="MySQL-img"><a href="#MySQL-img" class="headerlink" title="MySQL img"></a>MySQL img</h4><p><img src="/2020/01/01/demo/MySQL/logistic-regression.png" alt></p>
+<ul>
+<li>MySQL …</li>
+<li>MySQL …</li>
+<li>MySQL … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Scala ***....</title>
+    <url>/2020/01/01/demo/Scala/</url>
+    <content><![CDATA[<h3 id="Scala-…"><a href="#Scala-…" class="headerlink" title="Scala …."></a>Scala ….</h3><hr>
+<h4 id="Scala"><a href="#Scala" class="headerlink" title="Scala"></a>Scala</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Scala-web"><a href="#Scala-web" class="headerlink" title="Scala web"></a>Scala web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Scala-demo-code"><a href="#Scala-demo-code" class="headerlink" title="Scala demo code"></a>Scala demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Scala-img"><a href="#Scala-img" class="headerlink" title="Scala img"></a>Scala img</h4><p><img src="/2020/01/01/demo/Scala/logistic-regression.png" alt></p>
+<ul>
+<li>Scala …</li>
+<li>Scala …</li>
+<li>Scala … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark文档 ***....</title>
+    <url>/2020/01/01/demo/Spark%E6%96%87%E6%A1%A3/</url>
+    <content><![CDATA[<h3 id="Spark文档-…"><a href="#Spark文档-…" class="headerlink" title="Spark文档 …."></a>Spark文档 ….</h3><hr>
+<h4 id="Spark文档"><a href="#Spark文档" class="headerlink" title="Spark文档"></a>Spark文档</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Spark文档-web"><a href="#Spark文档-web" class="headerlink" title="Spark文档 web"></a>Spark文档 web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Spark文档-demo-code"><a href="#Spark文档-demo-code" class="headerlink" title="Spark文档 demo code"></a>Spark文档 demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark文档-img"><a href="#Spark文档-img" class="headerlink" title="Spark文档 img"></a>Spark文档 img</h4><p><img src="/2020/01/01/demo/Spark%E6%96%87%E6%A1%A3/logistic-regression.png" alt></p>
+<ul>
+<li>Spark文档 …</li>
+<li>Spark文档 …</li>
+<li>Spark文档 … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>demo</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hello World</title>
-    <url>/2020/01/04/hello-world/</url>
+    <url>/2018/01/01/hello-world/</url>
     <content><![CDATA[<p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
 <a id="more"></a>
 <h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
@@ -36,7 +340,7 @@
 </ul>
 ]]></content>
       <tags>
-        <tag>ruozedata</tag>
+        <tag>Spark</tag>
       </tags>
   </entry>
 </search>
