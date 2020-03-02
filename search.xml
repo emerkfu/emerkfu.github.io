@@ -109,7 +109,7 @@
 <figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">import</span> scala.collection.mutable.<span class="type">Queue</span></span><br><span class="line">scala&gt; <span class="keyword">val</span> q1 = <span class="keyword">new</span> <span class="type">Queue</span>[<span class="type">Int</span>]</span><br></pre></td></tr></table></figure>
 <h5 id="放入数据："><a href="#放入数据：" class="headerlink" title="放入数据："></a>放入数据：</h5><h6 id="单个数据"><a href="#单个数据" class="headerlink" title="单个数据"></a>单个数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1 += <span class="number">10</span></span><br><span class="line">res0: q1<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Queue</span>(<span class="number">10</span>)</span><br></pre></td></tr></table></figure>
 <h6 id="集合数据"><a href="#集合数据" class="headerlink" title="集合数据"></a>集合数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1 ++= <span class="type">List</span>(<span class="number">2</span>,<span class="number">4</span>,<span class="number">6</span>)</span><br><span class="line">res1: q1<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Queue</span>(<span class="number">10</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
-<h6 id="多个数据"><a href="#多个数据" class="headerlink" title="多个数据"></a>多个数据</h6><p>scala&gt; q1.enqueue(2,6)<br>scala&gt; scala.collection.mutable.Queue[Int] = Queue(10, 2, 4, 6, 2, 6)</p>
+<h6 id="多个数据"><a href="#多个数据" class="headerlink" title="多个数据"></a>多个数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.enqueue(<span class="number">2</span>,<span class="number">6</span>)</span><br><span class="line">scala&gt; scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">10</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
 <h5 id="取数据："><a href="#取数据：" class="headerlink" title="取数据："></a>取数据：</h5><h6 id="只读取数据，不删除数据"><a href="#只读取数据，不删除数据" class="headerlink" title="只读取数据，不删除数据"></a>只读取数据，不删除数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.head</span><br><span class="line">res5: <span class="type">Int</span> = <span class="number">10</span></span><br></pre></td></tr></table></figure>
 <h6 id="读取数据后，删除数据"><a href="#读取数据后，删除数据" class="headerlink" title="读取数据后，删除数据"></a>读取数据后，删除数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.dequeue</span><br><span class="line">res6: <span class="type">Int</span> = <span class="number">10</span></span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res7: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
 <h6 id="读取最后一位数据"><a href="#读取最后一位数据" class="headerlink" title="读取最后一位数据"></a>读取最后一位数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.last</span><br><span class="line">res8: <span class="type">Int</span> = <span class="number">6</span></span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res9: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
@@ -196,22 +196,22 @@
       </tags>
   </entry>
   <entry>
-    <title>Scala ***....</title>
-    <url>/2020/01/01/Scala/</url>
-    <content><![CDATA[<h3 id="Scala-…"><a href="#Scala-…" class="headerlink" title="Scala …."></a>Scala ….</h3><hr>
-<h4 id="Scala"><a href="#Scala" class="headerlink" title="Scala"></a>Scala</h4><p>这里是首页显示的描述内容</p>
+    <title>MySQL ***....</title>
+    <url>/2020/01/01/MySQL/</url>
+    <content><![CDATA[<h3 id="MySQL-…"><a href="#MySQL-…" class="headerlink" title="MySQL …."></a>MySQL ….</h3><hr>
+<h4 id="MySQL"><a href="#MySQL" class="headerlink" title="MySQL"></a>MySQL</h4><p>这里是首页显示的描述内容</p>
 <a id="more"></a>
-<h4 id="Scala-web"><a href="#Scala-web" class="headerlink" title="Scala web"></a>Scala web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Scala-demo-code"><a href="#Scala-demo-code" class="headerlink" title="Scala demo code"></a>Scala demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Scala-img"><a href="#Scala-img" class="headerlink" title="Scala img"></a>Scala img</h4><p><img src="/2020/01/01/Scala/logistic-regression.png" alt></p>
+<h4 id="MySQL-web"><a href="#MySQL-web" class="headerlink" title="MySQL web"></a>MySQL web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="MySQL-demo-code"><a href="#MySQL-demo-code" class="headerlink" title="MySQL demo code"></a>MySQL demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="MySQL-img"><a href="#MySQL-img" class="headerlink" title="MySQL img"></a>MySQL img</h4><p><img src="/2020/01/01/MySQL/logistic-regression.png" alt></p>
 <ul>
-<li>Scala …</li>
-<li>Scala …</li>
-<li>Scala … </li>
+<li>MySQL …</li>
+<li>MySQL …</li>
+<li>MySQL … </li>
 </ul>
 ]]></content>
       <tags>
-        <tag>Scala</tag>
+        <tag>MySQL</tag>
       </tags>
   </entry>
   <entry>
@@ -234,22 +234,22 @@
       </tags>
   </entry>
   <entry>
-    <title>MySQL ***....</title>
-    <url>/2020/01/01/MySQL/</url>
-    <content><![CDATA[<h3 id="MySQL-…"><a href="#MySQL-…" class="headerlink" title="MySQL …."></a>MySQL ….</h3><hr>
-<h4 id="MySQL"><a href="#MySQL" class="headerlink" title="MySQL"></a>MySQL</h4><p>这里是首页显示的描述内容</p>
+    <title>Scala ***....</title>
+    <url>/2020/01/01/Scala/</url>
+    <content><![CDATA[<h3 id="Scala-…"><a href="#Scala-…" class="headerlink" title="Scala …."></a>Scala ….</h3><hr>
+<h4 id="Scala"><a href="#Scala" class="headerlink" title="Scala"></a>Scala</h4><p>这里是首页显示的描述内容</p>
 <a id="more"></a>
-<h4 id="MySQL-web"><a href="#MySQL-web" class="headerlink" title="MySQL web"></a>MySQL web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="MySQL-demo-code"><a href="#MySQL-demo-code" class="headerlink" title="MySQL demo code"></a>MySQL demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="MySQL-img"><a href="#MySQL-img" class="headerlink" title="MySQL img"></a>MySQL img</h4><p><img src="/2020/01/01/MySQL/logistic-regression.png" alt></p>
+<h4 id="Scala-web"><a href="#Scala-web" class="headerlink" title="Scala web"></a>Scala web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Scala-demo-code"><a href="#Scala-demo-code" class="headerlink" title="Scala demo code"></a>Scala demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Scala-img"><a href="#Scala-img" class="headerlink" title="Scala img"></a>Scala img</h4><p><img src="/2020/01/01/Scala/logistic-regression.png" alt></p>
 <ul>
-<li>MySQL …</li>
-<li>MySQL …</li>
-<li>MySQL … </li>
+<li>Scala …</li>
+<li>Scala …</li>
+<li>Scala … </li>
 </ul>
 ]]></content>
       <tags>
-        <tag>MySQL</tag>
+        <tag>Scala</tag>
       </tags>
   </entry>
   <entry>
