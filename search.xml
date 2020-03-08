@@ -1,6 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Hue 部署</title>
+    <url>/2020/03/09/Hue_%E9%83%A8%E7%BD%B2/</url>
+    <content><![CDATA[<h3 id="Hue-部署"><a href="#Hue-部署" class="headerlink" title="Hue 部署"></a>Hue 部署</h3><hr>
+<h4 id="hue-3-9-0-cdh5-16-2-的部署"><a href="#hue-3-9-0-cdh5-16-2-的部署" class="headerlink" title="hue-3.9.0-cdh5.16.2 的部署"></a>hue-3.9.0-cdh5.16.2 的部署</h4><p>本文主要包括以下内容：</p>
+<ol>
+<li>hue-3.9.0-cdh5.16.2 的部署流程</li>
+<li>部署过称重遇到的问题的解决方法<a id="more"></a>
+
+
+</li>
+</ol>
+<h4 id="hue-下载-web-cdh5-3-9-0-5-16-2下载地址"><a href="#hue-下载-web-cdh5-3-9-0-5-16-2下载地址" class="headerlink" title="hue 下载 web cdh5-3.9.0_5.16.2下载地址"></a>hue 下载 web <a href="https://github.com/cloudera/hue/tree/cdh5-3.9.0_5.16.2" target="_blank" rel="noopener">cdh5-3.9.0_5.16.2下载地址</a></h4><h4 id="hue-依赖安装"><a href="#hue-依赖安装" class="headerlink" title="hue 依赖安装"></a>hue 依赖安装</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum install krb5-devel cyrus-sasl-gssapi cyrus-sasl-devel libxml2-devel libxslt-devel</span><br><span class="line">sudo yum install mysql mysql-devel openldap-devel python-devel</span><br><span class="line">sudo yum install libffi-devel gmp mpfr gmp-devel</span><br><span class="line">sudo python-simplejson sqlite-devel</span><br><span class="line">sudo yum install libffi-devel libffi openssl-devel openssl openldap-devel mysql-devel gmp-devel gmp gcc-c++ rsync</span><br></pre></td></tr></table></figure>
+<h4 id="hue-中文界面"><a href="#hue-中文界面" class="headerlink" title="hue 中文界面"></a>hue 中文界面</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vi 此处为你的hue路径/desktop/core/src/desktop/settings.py</span><br><span class="line">LANGUAGE_CODE = 'zh_CN'</span><br><span class="line"><span class="meta">#</span><span class="bash">LANGUAGE_CODE = <span class="string">'en-us'</span></span></span><br><span class="line">LANGUAGES = [</span><br><span class="line">('en-us', _('English')),</span><br><span class="line">('zh_CN', _('Simplified Chinese')),</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
+<h4 id="hue-编译"><a href="#hue-编译" class="headerlink" title="hue 编译"></a>hue 编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo make apps</span><br></pre></td></tr></table></figure>
+
+<h4 id="hue-编译-可能出现的问题"><a href="#hue-编译-可能出现的问题" class="headerlink" title="hue 编译 可能出现的问题"></a>hue 编译 可能出现的问题</h4><h5 id="1-mysql-community-devel问题"><a href="#1-mysql-community-devel问题" class="headerlink" title="1.mysql-community-devel问题"></a>1.mysql-community-devel问题</h5><h6 id="需要注意mysql-community-devel的问题要找到对应的版本安装"><a href="#需要注意mysql-community-devel的问题要找到对应的版本安装" class="headerlink" title="需要注意mysql-community-devel的问题要找到对应的版本安装"></a>需要注意mysql-community-devel的问题要找到对应的版本安装</h6><p><a href="https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-community-devel-5.7.29-1.el7.x86_64.rpm" target="_blank" rel="noopener">mysql-community-devel-5.7.29-1.el7.x86_64.rpm官方下载地址</a></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo rpm -ivh mysql-community-devel-5.7.29-1.el7.x86_64.rpm</span><br></pre></td></tr></table></figure>
+
+<h5 id="2-must-have-python-development-packages-for-2-6-or-2-7…问题"><a href="#2-must-have-python-development-packages-for-2-6-or-2-7…问题" class="headerlink" title="2.must have python development packages for 2.6 or 2.7…问题"></a>2.must have python development packages for 2.6 or 2.7…问题</h5><h6 id="64位安装python-devel-x86-64"><a href="#64位安装python-devel-x86-64" class="headerlink" title="64位安装python-devel.x86_64"></a>64位安装python-devel.x86_64</h6><h6 id="32位安装python-devel-i686"><a href="#32位安装python-devel-i686" class="headerlink" title="32位安装python-devel.i686"></a>32位安装python-devel.i686</h6><h6 id="我这里安装-python-devel-x86-64"><a href="#我这里安装-python-devel-x86-64" class="headerlink" title="我这里安装:python-devel.x86_64"></a>我这里安装:python-devel.x86_64</h6><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum install python-devel.x86_64 ####</span><br></pre></td></tr></table></figure>
+
+<h4 id="hue-编译完成后，权限赋予"><a href="#hue-编译完成后，权限赋予" class="headerlink" title="hue 编译完成后，权限赋予"></a>hue 编译完成后，权限赋予</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo chmod 777 hue/desktop/</span><br><span class="line">sudo chmod 766 hue/desktop/desktop.db</span><br></pre></td></tr></table></figure>
+
+<h4 id="hue-编译完成后，配置环境变量"><a href="#hue-编译完成后，配置环境变量" class="headerlink" title="hue 编译完成后，配置环境变量"></a>hue 编译完成后，配置环境变量</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HUE_HOME=此处为你的hue路径/hue</span><br><span class="line">export PATH=$HUE_HOME/build/env/bin:$PATH</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .***</span><br></pre></td></tr></table></figure>
+
+<h4 id="hue-修改hue-ini文件"><a href="#hue-修改hue-ini文件" class="headerlink" title="hue 修改hue.ini文件"></a>hue 修改hue.ini文件</h4><h5 id="hue-ini文件文件路径："><a href="#hue-ini文件文件路径：" class="headerlink" title="hue.ini文件文件路径："></a>hue.ini文件文件路径：</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd 此处为你的hue路径/conf</span><br></pre></td></tr></table></figure>
+<h5 id="修改hue-ini文件内容"><a href="#修改hue-ini文件内容" class="headerlink" title="修改hue.ini文件内容"></a>修改hue.ini文件内容</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> Webserver listens on this address and port</span></span><br><span class="line"> http_host=你的host</span><br><span class="line"> http_port=8888</span><br><span class="line"><span class="meta">#</span><span class="bash"> Time zone name</span></span><br><span class="line"> time_zone=Asia/Shanghai</span><br></pre></td></tr></table></figure>
+
+<h4 id="hue-启动"><a href="#hue-启动" class="headerlink" title="hue 启动"></a>hue 启动</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">nohup supervisor &amp;</span><br></pre></td></tr></table></figure>
+
+<h4 id="hue-登录"><a href="#hue-登录" class="headerlink" title="hue 登录"></a>hue 登录</h4><h5 id="你设置的host-8888"><a href="#你设置的host-8888" class="headerlink" title="你设置的host:8888"></a>你设置的host:8888</h5><h5 id="第一次登陆需要设置用户名密码"><a href="#第一次登陆需要设置用户名密码" class="headerlink" title="第一次登陆需要设置用户名密码"></a>第一次登陆需要设置用户名密码</h5><h3 id="至此-hue部署结束…"><a href="#至此-hue部署结束…" class="headerlink" title="至此 hue部署结束…"></a>至此 hue部署结束…</h3>]]></content>
+      <tags>
+        <tag>Hue</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Scala 模式匹配</title>
     <url>/2020/03/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
     <content><![CDATA[<h3 id="Scala-模式匹配"><a href="#Scala-模式匹配" class="headerlink" title="Scala 模式匹配"></a>Scala 模式匹配</h3><p>类似于java的switch case<br>可以匹配内容、集合、类型…</p>
@@ -177,6 +214,25 @@
       </tags>
   </entry>
   <entry>
+    <title>Hive ***....</title>
+    <url>/2020/01/01/Hive/</url>
+    <content><![CDATA[<h3 id="Hive-…"><a href="#Hive-…" class="headerlink" title="Hive …."></a>Hive ….</h3><hr>
+<h4 id="Hive"><a href="#Hive" class="headerlink" title="Hive"></a>Hive</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Hive-web"><a href="#Hive-web" class="headerlink" title="Hive web"></a>Hive web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Hive-demo-code"><a href="#Hive-demo-code" class="headerlink" title="Hive demo code"></a>Hive demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Hive-img"><a href="#Hive-img" class="headerlink" title="Hive img"></a>Hive img</h4><p><img src="/2020/01/01/Hive/logistic-regression.png" alt></p>
+<ul>
+<li>Hive …</li>
+<li>Hive …</li>
+<li>Hive … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hadoop ***....</title>
     <url>/2020/01/01/Hadoop/</url>
     <content><![CDATA[<h3 id="Hadoop-…"><a href="#Hadoop-…" class="headerlink" title="Hadoop …."></a>Hadoop ….</h3><hr>
@@ -212,25 +268,6 @@
 ]]></content>
       <tags>
         <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive ***....</title>
-    <url>/2020/01/01/Hive/</url>
-    <content><![CDATA[<h3 id="Hive-…"><a href="#Hive-…" class="headerlink" title="Hive …."></a>Hive ….</h3><hr>
-<h4 id="Hive"><a href="#Hive" class="headerlink" title="Hive"></a>Hive</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Hive-web"><a href="#Hive-web" class="headerlink" title="Hive web"></a>Hive web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Hive-demo-code"><a href="#Hive-demo-code" class="headerlink" title="Hive demo code"></a>Hive demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Hive-img"><a href="#Hive-img" class="headerlink" title="Hive img"></a>Hive img</h4><p><img src="/2020/01/01/Hive/logistic-regression.png" alt></p>
-<ul>
-<li>Hive …</li>
-<li>Hive …</li>
-<li>Hive … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Hive</tag>
       </tags>
   </entry>
   <entry>
