@@ -12,7 +12,7 @@
 
 </li>
 </ol>
-<h4 id="hue-下载-web-cdh5-3-9-0-5-16-2下载地址"><a href="#hue-下载-web-cdh5-3-9-0-5-16-2下载地址" class="headerlink" title="hue 下载 web cdh5-3.9.0_5.16.2下载地址"></a>hue 下载 web <a href="https://github.com/cloudera/hue/tree/cdh5-3.9.0_5.16.2" target="_blank" rel="noopener">cdh5-3.9.0_5.16.2下载地址</a></h4><h4 id="hue-依赖安装"><a href="#hue-依赖安装" class="headerlink" title="hue 依赖安装"></a>hue 依赖安装</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum install krb5-devel cyrus-sasl-gssapi cyrus-sasl-devel libxml2-devel libxslt-devel</span><br><span class="line">sudo yum install mysql mysql-devel openldap-devel python-devel</span><br><span class="line">sudo yum install libffi-devel gmp mpfr gmp-devel</span><br><span class="line">sudo python-simplejson sqlite-devel</span><br><span class="line">sudo yum install libffi-devel libffi openssl-devel openssl openldap-devel mysql-devel gmp-devel gmp gcc-c++ rsync</span><br></pre></td></tr></table></figure>
+<h4 id="hue-下载-web-cdh5-3-9-0-5-16-2下载地址"><a href="#hue-下载-web-cdh5-3-9-0-5-16-2下载地址" class="headerlink" title="hue 下载 web cdh5-3.9.0_5.16.2下载地址"></a>hue 下载 web <a href="https://github.com/cloudera/hue/tree/cdh5-3.9.0_5.16.2" target="_blank" rel="noopener">cdh5-3.9.0_5.16.2下载地址</a></h4><h4 id="hue-依赖安装"><a href="#hue-依赖安装" class="headerlink" title="hue 依赖安装"></a>hue 依赖安装</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum install krb5-devel cyrus-sasl-gssapi cyrus-sasl-devel libxml2-devel libxslt-devel</span><br><span class="line"></span><br><span class="line">sudo yum install mysql mysql-devel openldap-devel python-devel</span><br><span class="line"></span><br><span class="line">sudo yum install libffi-devel gmp mpfr gmp-devel</span><br><span class="line"></span><br><span class="line">sudo python-simplejson sqlite-devel</span><br><span class="line"></span><br><span class="line">sudo yum install libffi-devel libffi openssl-devel openssl openldap-devel mysql-devel gmp-devel gmp gcc-c++ rsync</span><br></pre></td></tr></table></figure>
 <h4 id="hue-中文界面"><a href="#hue-中文界面" class="headerlink" title="hue 中文界面"></a>hue 中文界面</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vi 此处为你的hue路径/desktop/core/src/desktop/settings.py</span><br><span class="line">LANGUAGE_CODE = 'zh_CN'</span><br><span class="line"><span class="meta">#</span><span class="bash">LANGUAGE_CODE = <span class="string">'en-us'</span></span></span><br><span class="line">LANGUAGES = [</span><br><span class="line">('en-us', _('English')),</span><br><span class="line">('zh_CN', _('Simplified Chinese')),</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
 
 <h4 id="hue-编译"><a href="#hue-编译" class="headerlink" title="hue 编译"></a>hue 编译</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo make apps</span><br></pre></td></tr></table></figure>
@@ -20,11 +20,11 @@
 <h4 id="hue-编译-可能出现的问题"><a href="#hue-编译-可能出现的问题" class="headerlink" title="hue 编译 可能出现的问题"></a>hue 编译 可能出现的问题</h4><h5 id="1-mysql-community-devel问题"><a href="#1-mysql-community-devel问题" class="headerlink" title="1.mysql-community-devel问题"></a>1.mysql-community-devel问题</h5><h6 id="需要注意mysql-community-devel的问题要找到对应的版本安装"><a href="#需要注意mysql-community-devel的问题要找到对应的版本安装" class="headerlink" title="需要注意mysql-community-devel的问题要找到对应的版本安装"></a>需要注意mysql-community-devel的问题要找到对应的版本安装</h6><p><a href="https://cdn.mysql.com//Downloads/MySQL-5.7/mysql-community-devel-5.7.29-1.el7.x86_64.rpm" target="_blank" rel="noopener">mysql-community-devel-5.7.29-1.el7.x86_64.rpm官方下载地址</a></p>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo rpm -ivh mysql-community-devel-5.7.29-1.el7.x86_64.rpm</span><br></pre></td></tr></table></figure>
 
-<h5 id="2-must-have-python-development-packages-for-2-6-or-2-7…问题"><a href="#2-must-have-python-development-packages-for-2-6-or-2-7…问题" class="headerlink" title="2.must have python development packages for 2.6 or 2.7…问题"></a>2.must have python development packages for 2.6 or 2.7…问题</h5><h6 id="64位安装python-devel-x86-64"><a href="#64位安装python-devel-x86-64" class="headerlink" title="64位安装python-devel.x86_64"></a>64位安装python-devel.x86_64</h6><h6 id="32位安装python-devel-i686"><a href="#32位安装python-devel-i686" class="headerlink" title="32位安装python-devel.i686"></a>32位安装python-devel.i686</h6><h6 id="我这里安装-python-devel-x86-64"><a href="#我这里安装-python-devel-x86-64" class="headerlink" title="我这里安装:python-devel.x86_64"></a>我这里安装:python-devel.x86_64</h6><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum install python-devel.x86_64 ####</span><br></pre></td></tr></table></figure>
+<h5 id="2-must-have-python-development-packages-for-2-6-or-2-7…问题"><a href="#2-must-have-python-development-packages-for-2-6-or-2-7…问题" class="headerlink" title="2.must have python development packages for 2.6 or 2.7…问题"></a>2.must have python development packages for 2.6 or 2.7…问题</h5><h6 id="64位安装python-devel-x86-64"><a href="#64位安装python-devel-x86-64" class="headerlink" title="64位安装python-devel.x86_64"></a>64位安装python-devel.x86_64</h6><h6 id="32位安装python-devel-i686"><a href="#32位安装python-devel-i686" class="headerlink" title="32位安装python-devel.i686"></a>32位安装python-devel.i686</h6><h6 id="我这里安装-python-devel-x86-64"><a href="#我这里安装-python-devel-x86-64" class="headerlink" title="我这里安装:python-devel.x86_64"></a>我这里安装:python-devel.x86_64</h6><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo yum install python-devel.x86_64</span><br></pre></td></tr></table></figure>
 
-<h4 id="hue-编译完成后，权限赋予"><a href="#hue-编译完成后，权限赋予" class="headerlink" title="hue 编译完成后，权限赋予"></a>hue 编译完成后，权限赋予</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo chmod 777 hue/desktop/</span><br><span class="line">sudo chmod 766 hue/desktop/desktop.db</span><br></pre></td></tr></table></figure>
+<h4 id="hue-编译完成后，权限赋予"><a href="#hue-编译完成后，权限赋予" class="headerlink" title="hue 编译完成后，权限赋予"></a>hue 编译完成后，权限赋予</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo chmod 777 hue/desktop/</span><br><span class="line"></span><br><span class="line">sudo chmod 766 hue/desktop/desktop.db</span><br></pre></td></tr></table></figure>
 
-<h4 id="hue-编译完成后，配置环境变量"><a href="#hue-编译完成后，配置环境变量" class="headerlink" title="hue 编译完成后，配置环境变量"></a>hue 编译完成后，配置环境变量</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HUE_HOME=此处为你的hue路径/hue</span><br><span class="line">export PATH=$HUE_HOME/build/env/bin:$PATH</span><br></pre></td></tr></table></figure>
+<h4 id="hue-编译完成后，配置环境变量"><a href="#hue-编译完成后，配置环境变量" class="headerlink" title="hue 编译完成后，配置环境变量"></a>hue 编译完成后，配置环境变量</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HUE_HOME=此处为你的hue路径/hue</span><br><span class="line"></span><br><span class="line">export PATH=$HUE_HOME/build/env/bin:$PATH</span><br></pre></td></tr></table></figure>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .***</span><br></pre></td></tr></table></figure>
 
 <h4 id="hue-修改hue-ini文件"><a href="#hue-修改hue-ini文件" class="headerlink" title="hue 修改hue.ini文件"></a>hue 修改hue.ini文件</h4><h5 id="hue-ini文件文件路径："><a href="#hue-ini文件文件路径：" class="headerlink" title="hue.ini文件文件路径："></a>hue.ini文件文件路径：</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd 此处为你的hue路径/conf</span><br></pre></td></tr></table></figure>
@@ -157,25 +157,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Azkaban ***....</title>
-    <url>/2020/01/01/Azkaban/</url>
-    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
-<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
-<ul>
-<li>Azkaban …</li>
-<li>Azkaban …</li>
-<li>Azkaban … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Azkaban</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>CentOS ***....</title>
     <url>/2020/01/01/CentOS/</url>
     <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
@@ -192,25 +173,6 @@
 ]]></content>
       <tags>
         <tag>CentOS</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Flume ***....</title>
-    <url>/2020/01/01/Flume/</url>
-    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
-<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
-<ul>
-<li>Flume …</li>
-<li>Flume …</li>
-<li>Flume … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Flume</tag>
       </tags>
   </entry>
   <entry>
@@ -249,6 +211,44 @@
 ]]></content>
       <tags>
         <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Azkaban ***....</title>
+    <url>/2020/01/01/Azkaban/</url>
+    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
+<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
+<ul>
+<li>Azkaban …</li>
+<li>Azkaban …</li>
+<li>Azkaban … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Azkaban</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume ***....</title>
+    <url>/2020/01/01/Flume/</url>
+    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
+<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
+<ul>
+<li>Flume …</li>
+<li>Flume …</li>
+<li>Flume … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Flume</tag>
       </tags>
   </entry>
   <entry>
