@@ -4,22 +4,24 @@
   <meta charset="utf-8">
   
   
-  <title>CentOS ***.... | Emerk&#39;s blog</title>
+  <title>HDFS 读写流程 | Emerk&#39;s blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="CentOS …. CentOS这里是首页显示的描述内容">
+  <meta name="description" content="HDFS文件读写流程关于HDFS文件的读写流程">
 <meta property="og:type" content="article">
-<meta property="og:title" content="CentOS ***....">
-<meta property="og:url" content="https://emerkfu.github.io/2020/01/01/CentOS/index.html">
+<meta property="og:title" content="HDFS 读写流程">
+<meta property="og:url" content="https://emerkfu.github.io/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/index.html">
 <meta property="og:site_name" content="Emerk&#39;s blog">
-<meta property="og:description" content="CentOS …. CentOS这里是首页显示的描述内容">
+<meta property="og:description" content="HDFS文件读写流程关于HDFS文件的读写流程">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://emerkfu.github.io/2020/01/01/CentOS/logistic-regression.png">
-<meta property="article:published_time" content="2020-01-01T04:00:00.000Z">
-<meta property="article:modified_time" content="2020-03-01T14:48:30.823Z">
+<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png">
+<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png">
+<meta property="article:published_time" content="2020-06-20T06:00:00.000Z">
+<meta property="article:modified_time" content="2020-06-20T08:59:38.971Z">
 <meta property="article:author" content="EmerkFu">
-<meta property="article:tag" content="CentOS">
+<meta property="article:tag" content="Hadoop">
+<meta property="article:tag" content="基本概念">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu.github.io/2020/01/01/CentOS/logistic-regression.png">
+<meta name="twitter:image" content="https://emerkfu.github.io/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png">
   
   
     <link rel="icon" href="/favicon.png">
@@ -75,10 +77,10 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main"><article id="post-CentOS" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+        <section id="main"><article id="post-HDFS读写流程" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2020/01/01/CentOS/" class="article-date">
-  <time class="dt-published" datetime="2020-01-01T04:00:00.000Z" itemprop="datePublished">2020-01-01</time>
+    <a href="/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/" class="article-date">
+  <time class="dt-published" datetime="2020-06-20T06:00:00.000Z" itemprop="datePublished">2020-06-20</time>
   &nbsp;
   
           <!-- 不蒜子统计 -->
@@ -96,7 +98,7 @@
         
   
     <h1 class="p-name article-title" itemprop="headline name">
-      CentOS ***....
+      HDFS 读写流程
     </h1>
   
 
@@ -104,26 +106,29 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
-<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
-<ul>
-<li>CentOS …</li>
-<li>CentOS …</li>
-<li>CentOS … </li>
-</ul>
+        <h3 id="HDFS文件读写流程"><a href="#HDFS文件读写流程" class="headerlink" title="HDFS文件读写流程"></a>HDFS文件读写流程</h3><h2 id="关于HDFS文件的读写流程"><a href="#关于HDFS文件的读写流程" class="headerlink" title="关于HDFS文件的读写流程"></a>关于HDFS文件的读写流程</h2><a id="more"></a>
+<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
+<p><img src="/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"><span class="image-caption">HDFS文件写流程</span></p>
+<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
+<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
+<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
+<li>Client调用FSDataInputStream.close()方法，关闭输入流。<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4>Client上传文件到HDFS，也就是类似于下面的命令：<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
+<img src="/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"><span class="image-caption">HDFS文件写流程</span><h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5></li>
+<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
+<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
+<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
+<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
+</ol>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/01/01/CentOS/" data-id="ckbnevkvg0001f0v7fuvf9665" data-title="CentOS ***...." class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/" data-id="ckbnevkvk0004f0v76bqq0wbq" data-title="HDFS 读写流程" class="article-share-link">Share</a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/CentOS/" rel="tag">CentOS</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Hadoop/" rel="tag">Hadoop</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li></ul>
 
     </footer>
   </div>
@@ -131,19 +136,10 @@
     
 <nav id="article-nav">
   
-    <a href="/2020/01/01/Azkaban/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Newer</strong>
-      <div class="article-nav-title">
-        
-          Azkaban ***....
-        
-      </div>
-    </a>
   
-  
-    <a href="/2020/01/01/Flume/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2020/03/09/Hue_%E9%83%A8%E7%BD%B2/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">Flume ***....</div>
+      <div class="article-nav-title">Hue 部署</div>
     </a>
   
 </nav>

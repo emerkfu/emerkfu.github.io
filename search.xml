@@ -1,6 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>HDFS 读写流程</title>
+    <url>/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
+    <content><![CDATA[<h3 id="HDFS文件读写流程"><a href="#HDFS文件读写流程" class="headerlink" title="HDFS文件读写流程"></a>HDFS文件读写流程</h3><h2 id="关于HDFS文件的读写流程"><a href="#关于HDFS文件的读写流程" class="headerlink" title="关于HDFS文件的读写流程"></a>关于HDFS文件的读写流程</h2><a id="more"></a>
+<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
+<p><img src="/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"><span class="image-caption">HDFS文件写流程</span></p>
+<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
+<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
+<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
+<li>Client调用FSDataInputStream.close()方法，关闭输入流。<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4>Client上传文件到HDFS，也就是类似于下面的命令：<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
+<img src="/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"><span class="image-caption">HDFS文件写流程</span><h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5></li>
+<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
+<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
+<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
+<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
+</ol>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>基本概念</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hue 部署</title>
     <url>/2020/03/09/Hue_%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<h3 id="Hue-部署"><a href="#Hue-部署" class="headerlink" title="Hue 部署"></a>Hue 部署</h3><hr>
@@ -27,10 +50,10 @@
 <h4 id="hue-编译完成后，配置环境变量"><a href="#hue-编译完成后，配置环境变量" class="headerlink" title="hue 编译完成后，配置环境变量"></a>hue 编译完成后，配置环境变量</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HUE_HOME=此处为你的hue路径/hue</span><br><span class="line"></span><br><span class="line">export PATH=$HUE_HOME/build/env/bin:$PATH</span><br></pre></td></tr></table></figure>
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .***</span><br></pre></td></tr></table></figure>
 
-<h4 id="hue-修改hue-ini文件"><a href="#hue-修改hue-ini文件" class="headerlink" title="hue 修改hue.ini文件"></a>hue 修改hue.ini文件</h4><h5 id="hue-ini文件文件路径："><a href="#hue-ini文件文件路径：" class="headerlink" title="hue.ini文件文件路径："></a>hue.ini文件文件路径：</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd 此处为你的hue路径/conf</span><br></pre></td></tr></table></figure>
+<h4 id="hue-修改hue-ini文件"><a href="#hue-修改hue-ini文件" class="headerlink" title="hue 修改hue.ini文件"></a>hue 修改hue.ini文件</h4><h5 id="hue-ini文件文件路径："><a href="#hue-ini文件文件路径：" class="headerlink" title="hue.ini文件文件路径："></a>hue.ini文件文件路径：</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd 此处为你的hue路径/desktop/conf</span><br></pre></td></tr></table></figure>
 <h5 id="修改hue-ini文件内容"><a href="#修改hue-ini文件内容" class="headerlink" title="修改hue.ini文件内容"></a>修改hue.ini文件内容</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> Webserver listens on this address and port</span></span><br><span class="line"> http_host=你的host</span><br><span class="line"> http_port=8888</span><br><span class="line"><span class="meta">#</span><span class="bash"> Time zone name</span></span><br><span class="line"> time_zone=Asia/Shanghai</span><br></pre></td></tr></table></figure>
 
-<h4 id="hue-启动"><a href="#hue-启动" class="headerlink" title="hue 启动"></a>hue 启动</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">nohup supervisor &amp;</span><br></pre></td></tr></table></figure>
+<h4 id="hue-启动"><a href="#hue-启动" class="headerlink" title="hue 启动"></a>hue 启动</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $HUE_HOME/build/env/bin/ </span><br><span class="line">nohup supervisor &amp;</span><br></pre></td></tr></table></figure>
 
 <h4 id="hue-登录"><a href="#hue-登录" class="headerlink" title="hue 登录"></a>hue 登录</h4><h5 id="你设置的host-8888"><a href="#你设置的host-8888" class="headerlink" title="你设置的host:8888"></a>你设置的host:8888</h5><h5 id="第一次登陆需要设置用户名密码"><a href="#第一次登陆需要设置用户名密码" class="headerlink" title="第一次登陆需要设置用户名密码"></a>第一次登陆需要设置用户名密码</h5><h3 id="至此-hue部署结束…"><a href="#至此-hue部署结束…" class="headerlink" title="至此 hue部署结束…"></a>至此 hue部署结束…</h3>]]></content>
       <tags>
@@ -157,6 +180,25 @@
       </tags>
   </entry>
   <entry>
+    <title>Azkaban ***....</title>
+    <url>/2020/01/01/Azkaban/</url>
+    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
+<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
+<ul>
+<li>Azkaban …</li>
+<li>Azkaban …</li>
+<li>Azkaban … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Azkaban</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>CentOS ***....</title>
     <url>/2020/01/01/CentOS/</url>
     <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
@@ -176,22 +218,22 @@
       </tags>
   </entry>
   <entry>
-    <title>Hive ***....</title>
-    <url>/2020/01/01/Hive/</url>
-    <content><![CDATA[<h3 id="Hive-…"><a href="#Hive-…" class="headerlink" title="Hive …."></a>Hive ….</h3><hr>
-<h4 id="Hive"><a href="#Hive" class="headerlink" title="Hive"></a>Hive</h4><p>这里是首页显示的描述内容</p>
+    <title>Flume ***....</title>
+    <url>/2020/01/01/Flume/</url>
+    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
+<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
 <a id="more"></a>
-<h4 id="Hive-web"><a href="#Hive-web" class="headerlink" title="Hive web"></a>Hive web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Hive-demo-code"><a href="#Hive-demo-code" class="headerlink" title="Hive demo code"></a>Hive demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Hive-img"><a href="#Hive-img" class="headerlink" title="Hive img"></a>Hive img</h4><p><img src="/2020/01/01/Hive/logistic-regression.png" alt></p>
+<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
 <ul>
-<li>Hive …</li>
-<li>Hive …</li>
-<li>Hive … </li>
+<li>Flume …</li>
+<li>Flume …</li>
+<li>Flume … </li>
 </ul>
 ]]></content>
       <tags>
-        <tag>Hive</tag>
+        <tag>Flume</tag>
       </tags>
   </entry>
   <entry>
@@ -214,41 +256,22 @@
       </tags>
   </entry>
   <entry>
-    <title>Azkaban ***....</title>
-    <url>/2020/01/01/Azkaban/</url>
-    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
-<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+    <title>Hive ***....</title>
+    <url>/2020/01/01/Hive/</url>
+    <content><![CDATA[<h3 id="Hive-…"><a href="#Hive-…" class="headerlink" title="Hive …."></a>Hive ….</h3><hr>
+<h4 id="Hive"><a href="#Hive" class="headerlink" title="Hive"></a>Hive</h4><p>这里是首页显示的描述内容</p>
 <a id="more"></a>
-<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
+<h4 id="Hive-web"><a href="#Hive-web" class="headerlink" title="Hive web"></a>Hive web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Hive-demo-code"><a href="#Hive-demo-code" class="headerlink" title="Hive demo code"></a>Hive demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Hive-img"><a href="#Hive-img" class="headerlink" title="Hive img"></a>Hive img</h4><p><img src="/2020/01/01/Hive/logistic-regression.png" alt></p>
 <ul>
-<li>Azkaban …</li>
-<li>Azkaban …</li>
-<li>Azkaban … </li>
+<li>Hive …</li>
+<li>Hive …</li>
+<li>Hive … </li>
 </ul>
 ]]></content>
       <tags>
-        <tag>Azkaban</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Flume ***....</title>
-    <url>/2020/01/01/Flume/</url>
-    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
-<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
-<ul>
-<li>Flume …</li>
-<li>Flume …</li>
-<li>Flume … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Flume</tag>
+        <tag>Hive</tag>
       </tags>
   </entry>
   <entry>
