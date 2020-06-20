@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Hive 基本概念 Hive的部署 Hive的常用命令 | Emerk&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Hive基本概念Hive官网 The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data alrea">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hive 基本概念 Hive的部署 Hive的常用命令">
+<meta property="og:url" content="https://emerkfu.github.io/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="Hive基本概念Hive官网 The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data alrea">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png">
+<meta property="article:published_time" content="2020-06-20T11:00:00.000Z">
+<meta property="article:modified_time" content="2020-06-20T16:28:45.710Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Hive">
+<meta property="article:tag" content="常用命令">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu.github.io/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Emerk&#39;s blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">knowledge is power</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://emerkfu.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Hive基本概念Hive的部署Hive的常用命令" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" class="article-date">
+  <time class="dt-published" datetime="2020-06-20T11:00:00.000Z" itemprop="datePublished">2020-06-20</time>
+  &nbsp;
+  
+          <!-- 不蒜子统计 -->
+          <span id="busuanzi_container_page_pv" style='display:none' class="article-date">
+                <i class="icon-smile icon"></i> 阅读数：<span id="busuanzi_value_page_pv"></span>次&nbsp;&nbsp;
+          </span>
+  
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Hive 基本概念 Hive的部署 Hive的常用命令
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h4 id="Hive基本概念"><a href="#Hive基本概念" class="headerlink" title="Hive基本概念"></a>Hive基本概念</h4><p><a href="http://hive.apache.org" target="_blank" rel="noopener">Hive官网</a></p>
+<p>The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data already in storage. A command line tool and JDBC driver are provided to connect users to Hive.</p>
+<hr>
+<a id="more"></a>
+
+<h4 id="什么是Hive"><a href="#什么是Hive" class="headerlink" title="什么是Hive"></a>什么是Hive</h4><p>Hive由Facebook开源，用于解决海量结构化日志的数据统计问题。</p>
+<p>Hive是基于Hadoop的一个数据仓库工具，可以将结构化的数据文化映射为一张表，并提供类SQL查询功能。</p>
+<p>本质：将HQL/SQL转化成MapReduce程序</p>
+<ol>
+<li>Hive处理的数据存储在HDFS</li>
+<li>Hive底层执行引擎：MapReduce/Tez/Spark，只需要通过一个参数就能够切换底层的执行引擎</li>
+<li>Hive作业提交到YARN上运行</li>
+</ol>
+<h4 id="Hive的优缺点"><a href="#Hive的优缺点" class="headerlink" title="Hive的优缺点"></a>Hive的优缺点</h4><p>优点：</p>
+<ol>
+<li>操作接口采用类SQL语法，提供快速开发的能力（简单、容易上手）</li>
+<li>避免了MapReduce编程，减少学习成本</li>
+<li>Hive的执行延迟比较高，因此Hive常用于离线分析，对实时性要求不高的场合</li>
+<li>Hive优势在于处理大数据，对于处理小数据没有优势，因为Hive的执行延迟比较高</li>
+<li>Hive支持用户自定义函数，用户可以根据自己的需求来实现自己的函数</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>Hive的HQL表达能力有限<ol>
+<li>迭代式算法无法表达</li>
+<li>数据挖掘方面不擅长</li>
+</ol>
+</li>
+<li>Hive的效率比较低<ol>
+<li>Hive自动生成的MapReduce作业，通常不够智能化</li>
+<li>Hive调优比较困难，粒度较粗</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的架构原理"><a href="#Hive的架构原理" class="headerlink" title="Hive的架构原理"></a>Hive的架构原理</h4><p><img src="/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png" alt="Hive的架构"></p>
+<p>如上图所示，Hive通过给用户提供的一系列交互接口，接收到用户的指令（SQL），使用自己的Driver，结合元数据（MetaStore），将这些指令翻译成MapReduce，提交到Hadoop中执行，最后将执行返回的结果输出到用户交互接口。</p>
+<ol>
+<li>用户接口：Client<br>CLI(hive shell)、JDBC/ODBC(java访问hive)、WEBUI(浏览器访问hive)</li>
+<li>元数据：Meta store<br>元数据包括：表名、表所属的数据库（默认是default）、表的拥有者、列/分区字段、表的类型（是否是外部表）、表的数据所在目录等；<br>默认存储在自带的derby数据库中，推荐使用MySQL存储Meta store。</li>
+<li>Hadoop<br>使用HDFS进行存储，使用MapReduce进行计算</li>
+<li>驱动器：Driver<ol>
+<li>解析器（SQL Parser）：将SQL字符串转换成抽象语法树AST，这一步一般都用第三方工具库完成，比如antlr；对AST进行语法分析，比如表是否存在、字段是否存在、SQL语义是否有误。</li>
+<li>编译器（Physical Plan）：将AST编译生成逻辑执行计划。</li>
+<li>优化器（Query Optimizer）：对逻辑执行计划进行优化。</li>
+<li>执行器（Execution）：把逻辑执行计划转换成可以运行的物理计划，对于Hive来说，就是MR/Spark。</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的部署"><a href="#Hive的部署" class="headerlink" title="Hive的部署"></a>Hive的部署</h4><p><a href="https://cwiki.apache.org/confluence/display/Hive/GettingStarted" target="_blank" rel="noopener">Hive的使用文档</a></p>
+<p>环境要求：</p>
+<ul>
+<li>JDK8</li>
+<li>Hadoop2.x</li>
+<li>Linux</li>
+<li>MySQL</li>
+</ul>
+<p>Hive版本选择：wget <a href="http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz</a></p>
+<h4 id="Hive安装步骤"><a href="#Hive安装步骤" class="headerlink" title="Hive安装步骤"></a>Hive安装步骤</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">解压：</span><br><span class="line">tar -zxvf hive-1.1.0-cdh5.16.2.tar.gz -C ~/app/</span><br><span class="line"></span><br><span class="line">设置软连接：</span><br><span class="line">ln -s hive-1.1.0-cdh5.16.2 hive</span><br></pre></td></tr></table></figure>
+
+<p>配置环境变量，建议普通用户的.bashrc文件，追加以下内容：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export HIVE_HOME=/home/hadoop/app/hive</span><br><span class="line">export PATH=$HIVE_HOME/bin:$PATH</span><br></pre></td></tr></table></figure>
+
+<p>生效环境变量文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">source .bashrc</span><br></pre></td></tr></table></figure>
+
+<p>检查是否生效</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">which hive</span><br></pre></td></tr></table></figure>
+
+<p>进入配置文件目录</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd $HIVE_HOME/conf/</span><br><span class="line"></span><br><span class="line">vi hive-site.xml</span><br></pre></td></tr></table></figure>
+<p>编译以下内容</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0"?&gt;</span></span><br><span class="line"><span class="meta">&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionURL<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>jdbc:mysql://hadoop001:3306/metadata_hive?createDatabaseIfNotExist=true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionDriverName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>com.mysql.jdbc.Driver<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionUserName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>root<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionPassword<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>123456<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.current.db<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.header<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>保存并退出。</p>
+<p>然后，拷贝MySQL驱动包到$HIVE_HOME/lib/下。</p>
+<p>最后，启动Hive（需要先启动HDFS和YARN）：hive</p>
+<h4 id="Hive常用命令"><a href="#Hive常用命令" class="headerlink" title="Hive常用命令"></a>Hive常用命令</h4><ul>
+<li>show databases; 查看数据库</li>
+<li>use default; 打开默认数据库</li>
+<li>create database company location ‘/user/company’; 创建库并指定hdfs路径</li>
+<li>alter database company set dbproperties(‘creator’ = ‘vinx’); 为数据库添加额外的描述信息</li>
+<li>drop database if exists company cascade; 删除不为空的数据库</li>
+<li>show tables; 查看所在数据库的所有表</li>
+<li>create table student(id int, name string); 创建一张表</li>
+<li>desc student; 查看表结构</li>
+<li>desc extended student; 查看表结构详细信息</li>
+<li>desc formatted student; 查看表结构的格式化信息</li>
+<li>insert into student values(1001, “zhangsan”); 向表中插入一条数据（慎用，会跑MR程序）</li>
+<li>select * from student; 查询表中数据</li>
+<li>!clear; 清空屏幕</li>
+<li>quit; 退出hive</li>
+<li>bin/hive -e “select * from student;” 不登录hive客户端直接操作hive</li>
+<li>bin/hive -f /home/vinx/shell/select_stu.sql 执行HQL文件</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://emerkfu.github.io/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" data-id="ckbnwdpj8000kjcv71f3vfrkk" data-title="Hive 基本概念 Hive的部署 Hive的常用命令" class="article-share-link">Share</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Hive/" rel="tag">Hive</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Hadoop HDFS架构 NameNode和DataNode工作机制
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Hadoop Shuffle机制</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Azkaban/" rel="tag">Azkaban</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/CentOS/" rel="tag">CentOS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Flume/" rel="tag">Flume</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/" rel="tag">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop%E4%BC%98%E5%8C%96/" rel="tag">Hadoop优化</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hive/" rel="tag">Hive</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hue/" rel="tag">Hue</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shuffle/" rel="tag">Shuffle</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Yarn/" rel="tag">Yarn</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Azkaban/" style="font-size: 10px;">Azkaban</a> <a href="/tags/CentOS/" style="font-size: 10px;">CentOS</a> <a href="/tags/Flume/" style="font-size: 10px;">Flume</a> <a href="/tags/Hadoop/" style="font-size: 20px;">Hadoop</a> <a href="/tags/Hadoop%E4%BC%98%E5%8C%96/" style="font-size: 12.5px;">Hadoop优化</a> <a href="/tags/Hive/" style="font-size: 12.5px;">Hive</a> <a href="/tags/Hue/" style="font-size: 10px;">Hue</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shuffle/" style="font-size: 10px;">Shuffle</a> <a href="/tags/Spark/" style="font-size: 12.5px;">Spark</a> <a href="/tags/Yarn/" style="font-size: 10px;">Yarn</a> <a href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" style="font-size: 15px;">基本概念</a> <a href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" style="font-size: 12.5px;">常用命令</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">2020年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">2020年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">2018年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/07/">2015年 07月</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/">Hadoop Block和副本数&amp;小文件问题</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/">Hadoop HDFS架构 NameNode和DataNode工作机制</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/">Hive 基本概念 Hive的部署 Hive的常用命令</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/">Hadoop Shuffle机制</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/">Hadoop 数据压缩</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js">
+  </script>
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      Copyright &copy; 2012 - 2020 <a href="/" target="_blank">EmerkFu</a>.
+      &nbsp;
+      
+        <!-- 不蒜子统计 -->
+        <span id="busuanzi_container_site_pv">
+                本站总访问量<span id="busuanzi_value_site_pv"></span>次
+        </span>
+        <span class="post-meta-divider">|</span>
+        <span id="busuanzi_container_site_uv" style='display:none'>
+                本站访客数<span id="busuanzi_value_site_uv"></span>人
+        </span>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+      
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

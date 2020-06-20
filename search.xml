@@ -1,9 +1,252 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Hadoop Block和副本数&amp;小文件问题</title>
+    <url>/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
+<hr>
+<a id="more"></a>
+
+<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
+<p><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
+<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
+<ol>
+<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
+<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
+<li>第三个副本：与第二个副本相同机架的不同节点上</li>
+<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
+</ol>
+<ul>
+<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
+<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
+</ul>
+<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
+<p>官网中的相应的默认参数如下：<br><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
+<p>可以看到，默认块大小为128M，默认副本数为3.</p>
+<p>这里会有一个常规的面试题：</p>
+<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
+<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
+<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
+<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
+<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
+<ol>
+<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS</li>
+<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并</li>
+</ol>
+<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
+<ol>
+<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
+<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
+<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
+<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
+</ol>
+<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
+<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop HDFS架构 NameNode和DataNode工作机制</title>
+    <url>/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h4 id="Hadoop-HDFS架构"><a href="#Hadoop-HDFS架构" class="headerlink" title="Hadoop HDFS架构"></a>Hadoop HDFS架构</h4><p>HDFS主要由3个组件构成：NameNode, DataNode, SecondaryNameNode。<br>HDFS是以master/slave模式运行的，通常NameNode, SecondaryNameNode运行在master节点，DataNode运行在slave节点。</p>
+<hr>
+<a id="more"></a>
+
+<h4 id="HDFS架构图"><a href="#HDFS架构图" class="headerlink" title="HDFS架构图"></a>HDFS架构图</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png" alt="HDFS主从架构"></p>
+<h4 id="NameNode（名称节点）"><a href="#NameNode（名称节点）" class="headerlink" title="NameNode（名称节点）"></a>NameNode（名称节点）</h4><p>存储：文件元数据信息，包含：</p>
+<ul>
+<li>文件名称</li>
+<li>文件目录结构</li>
+<li>文件的属性（权限，创建时间，副本数）</li>
+<li>文件对应哪些数据块 –&gt; 数据块对应哪些DN节点</li>
+</ul>
+<p>作用：</p>
+<ul>
+<li>管理文件系统命名空间</li>
+<li>维护文件系统树及树中的所有文件和目录</li>
+<li>维护所有这些文件或目录的打开、关闭、移动、重命名等操作</li>
+</ul>
+<h4 id="NameNode工作机制"><a href="#NameNode工作机制" class="headerlink" title="NameNode工作机制"></a>NameNode工作机制</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/namenode-process.png" alt="NN工作机制"></p>
+<p>第一阶段：NameNode启动</p>
+<ol>
+<li>第一次启动NameNode格式化后，创建fsimage和edits文件。如果不是第一次启动，直接加载编辑日志（edits）和镜像文件（fsimage）到内存。</li>
+<li>客户端对元数据进行增删改的请求。</li>
+<li>NameNode记录操作日志，更新滚动日志。</li>
+<li>NameNode在内存中对数据进行增删改查。</li>
+</ol>
+<p>第二阶段：SecondaryNameNode工作</p>
+<ol>
+<li>SecondaryNameNode询问NameNode是否需要checkpoint。直接带回NameNode是否检查结果。</li>
+<li>SecondaryNameNode请求执行checkpoint。</li>
+<li>NameNode滚动正在写的edits日志。</li>
+<li>将滚动前的编辑日志和镜像文件拷贝到SecondaryNameNode。</li>
+<li>SecondaryNameNode加载编辑日志和镜像文件到内存，并合并。</li>
+<li>生成新的镜像文件fsimage.chkpoint。</li>
+<li>拷贝fsimage.chkpoint到NameNode。</li>
+<li>NameNode将fsimage.chkpoint重新命名成fsimage。</li>
+</ol>
+<p>checkpoint检查时间参数设置</p>
+<ol>
+<li>通常情况下，SecondaryNameNode每隔1小时执行一次<br>[hdfs-default.xml]<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.period<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>3600<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>一分钟检查一次操作次数，当操作次数达到一百万时，SecondaryNameNode执行一次<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.txns<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>1000000<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">description</span>&gt;</span>操作动作次数<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.check.period<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>60<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">description</span>&gt;</span> 1分钟检查一次操作次数<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="DataNode（数据节点）"><a href="#DataNode（数据节点）" class="headerlink" title="DataNode（数据节点）"></a>DataNode（数据节点）</h4><p>存储：数据块，数据块校验和，与NN通信</p>
+<p>作用：</p>
+<ul>
+<li>读写文件的数据块</li>
+<li>接收NN的指示来进行创建、删除、复制等操作</li>
+<li>通过心跳定期向NN发送所存储文件块列表信息</li>
+</ul>
+<h4 id="DataNode工作机制"><a href="#DataNode工作机制" class="headerlink" title="DataNode工作机制"></a>DataNode工作机制</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/datanode-detail.png" alt="DN工作机制"></p>
+<ol>
+<li>一个数据块在DataNode上以文件形式存储在磁盘上，包括两个文件，一个是数据本身，一个是元数据，包括数据块的长度、块数据的校验和以及时间戳。</li>
+<li>DataNode启动后向NameNode注册，通过后，周期性（1小时）地向NameNode上报所有的块信息。</li>
+<li>心跳是每3秒一次，心跳返回结果带有NameNode给该DataNode的命令，如复制块数据到另一台机器或删除某个数据块。如果超过10分钟没有收到某个DataNode的心跳，则认为该节点不可用。</li>
+<li>集群运行中可以安全加入和退出一些机器。</li>
+</ol>
+<h4 id="数据完整性"><a href="#数据完整性" class="headerlink" title="数据完整性"></a>数据完整性</h4><ol>
+<li>当DataNode读取block的时候，它会计算checksum校验和。</li>
+<li>如果计算后的checksum，与block创建时值不一样，说明block已经损坏。</li>
+<li>client读取其他DataNode上的block。</li>
+<li>DataNode在其文件创建后周期验证checksum校验和。</li>
+</ol>
+<h4 id="掉线时限参数设置"><a href="#掉线时限参数设置" class="headerlink" title="掉线时限参数设置"></a>掉线时限参数设置</h4><p>DataNode进程死亡或者网络故障造成DataNode无法与NameNode通信，NameNode不会立即把该节点判定为死亡，要经过一段时间，这段时间暂称作超时时长。HDFS默认的超时时长为10分钟+30秒。如果定义超时时间为timeout，则超时时长的计算公式为：</p>
+<ul>
+<li><p>timeout = 2 * dfs.namenode.heartbeat.recheck-interval + 10 * dfs.heartbeat.interval</p>
+</li>
+<li><p>默认的dfs.namenode.heartbeat.recheck-interval 大小为5分钟，dfs.heartbeat.interval默认为3秒。</p>
+</li>
+<li><p>需要注意的是hdfs-site.xml 配置文件中的heartbeat.recheck.interval的单位为毫秒，dfs.heartbeat.interval的单位为秒。</p>
+</li>
+</ul>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.heartbeat.recheck-interval<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">value</span>&gt;</span>300000<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">name</span>&gt;</span> dfs.heartbeat.interval <span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">value</span>&gt;</span>3<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="ScondaryNameNode（第二名称节点）"><a href="#ScondaryNameNode（第二名称节点）" class="headerlink" title="ScondaryNameNode（第二名称节点）"></a>ScondaryNameNode（第二名称节点）</h4><p>存储：命名空间镜像文件fsimage+编辑日志editlog</p>
+<p>作用：</p>
+<ul>
+<li>定期合并fsimage+editlog文件为新的fsimage，推送给NN</li>
+<li>监控HDFS状态，每隔一段时间获取HDFS元数据的快照</li>
+</ul>
+<p>为了解决单点故障，设置了SNN的1小时备份机制，虽然能够减轻单点故障，但是还会有风险，即在那1小时中，还是会有发生单点故障的可能，造成数据丢失。为了解决这个问题，需要部署HDFS -HA高可用。</p>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>基本概念</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 基本概念 Hive的部署 Hive的常用命令</title>
+    <url>/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<h4 id="Hive基本概念"><a href="#Hive基本概念" class="headerlink" title="Hive基本概念"></a>Hive基本概念</h4><p><a href="http://hive.apache.org" target="_blank" rel="noopener">Hive官网</a></p>
+<p>The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data already in storage. A command line tool and JDBC driver are provided to connect users to Hive.</p>
+<hr>
+<a id="more"></a>
+
+<h4 id="什么是Hive"><a href="#什么是Hive" class="headerlink" title="什么是Hive"></a>什么是Hive</h4><p>Hive由Facebook开源，用于解决海量结构化日志的数据统计问题。</p>
+<p>Hive是基于Hadoop的一个数据仓库工具，可以将结构化的数据文化映射为一张表，并提供类SQL查询功能。</p>
+<p>本质：将HQL/SQL转化成MapReduce程序</p>
+<ol>
+<li>Hive处理的数据存储在HDFS</li>
+<li>Hive底层执行引擎：MapReduce/Tez/Spark，只需要通过一个参数就能够切换底层的执行引擎</li>
+<li>Hive作业提交到YARN上运行</li>
+</ol>
+<h4 id="Hive的优缺点"><a href="#Hive的优缺点" class="headerlink" title="Hive的优缺点"></a>Hive的优缺点</h4><p>优点：</p>
+<ol>
+<li>操作接口采用类SQL语法，提供快速开发的能力（简单、容易上手）</li>
+<li>避免了MapReduce编程，减少学习成本</li>
+<li>Hive的执行延迟比较高，因此Hive常用于离线分析，对实时性要求不高的场合</li>
+<li>Hive优势在于处理大数据，对于处理小数据没有优势，因为Hive的执行延迟比较高</li>
+<li>Hive支持用户自定义函数，用户可以根据自己的需求来实现自己的函数</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>Hive的HQL表达能力有限<ol>
+<li>迭代式算法无法表达</li>
+<li>数据挖掘方面不擅长</li>
+</ol>
+</li>
+<li>Hive的效率比较低<ol>
+<li>Hive自动生成的MapReduce作业，通常不够智能化</li>
+<li>Hive调优比较困难，粒度较粗</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的架构原理"><a href="#Hive的架构原理" class="headerlink" title="Hive的架构原理"></a>Hive的架构原理</h4><p><img src="/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png" alt="Hive的架构"></p>
+<p>如上图所示，Hive通过给用户提供的一系列交互接口，接收到用户的指令（SQL），使用自己的Driver，结合元数据（MetaStore），将这些指令翻译成MapReduce，提交到Hadoop中执行，最后将执行返回的结果输出到用户交互接口。</p>
+<ol>
+<li>用户接口：Client<br>CLI(hive shell)、JDBC/ODBC(java访问hive)、WEBUI(浏览器访问hive)</li>
+<li>元数据：Meta store<br>元数据包括：表名、表所属的数据库（默认是default）、表的拥有者、列/分区字段、表的类型（是否是外部表）、表的数据所在目录等；<br>默认存储在自带的derby数据库中，推荐使用MySQL存储Meta store。</li>
+<li>Hadoop<br>使用HDFS进行存储，使用MapReduce进行计算</li>
+<li>驱动器：Driver<ol>
+<li>解析器（SQL Parser）：将SQL字符串转换成抽象语法树AST，这一步一般都用第三方工具库完成，比如antlr；对AST进行语法分析，比如表是否存在、字段是否存在、SQL语义是否有误。</li>
+<li>编译器（Physical Plan）：将AST编译生成逻辑执行计划。</li>
+<li>优化器（Query Optimizer）：对逻辑执行计划进行优化。</li>
+<li>执行器（Execution）：把逻辑执行计划转换成可以运行的物理计划，对于Hive来说，就是MR/Spark。</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的部署"><a href="#Hive的部署" class="headerlink" title="Hive的部署"></a>Hive的部署</h4><p><a href="https://cwiki.apache.org/confluence/display/Hive/GettingStarted" target="_blank" rel="noopener">Hive的使用文档</a></p>
+<p>环境要求：</p>
+<ul>
+<li>JDK8</li>
+<li>Hadoop2.x</li>
+<li>Linux</li>
+<li>MySQL</li>
+</ul>
+<p>Hive版本选择：wget <a href="http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz</a></p>
+<h4 id="Hive安装步骤"><a href="#Hive安装步骤" class="headerlink" title="Hive安装步骤"></a>Hive安装步骤</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">解压：</span><br><span class="line">tar -zxvf hive-1.1.0-cdh5.16.2.tar.gz -C ~/app/</span><br><span class="line"></span><br><span class="line">设置软连接：</span><br><span class="line">ln -s hive-1.1.0-cdh5.16.2 hive</span><br></pre></td></tr></table></figure>
+
+<p>配置环境变量，建议普通用户的.bashrc文件，追加以下内容：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HIVE_HOME=/home/hadoop/app/hive</span><br><span class="line">export PATH=$HIVE_HOME/bin:$PATH</span><br></pre></td></tr></table></figure>
+
+<p>生效环境变量文件</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .bashrc</span><br></pre></td></tr></table></figure>
+
+<p>检查是否生效</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which hive</span><br></pre></td></tr></table></figure>
+
+<p>进入配置文件目录</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $HIVE_HOME/conf/</span><br><span class="line"></span><br><span class="line">vi hive-site.xml</span><br></pre></td></tr></table></figure>
+<p>编译以下内容</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0"?&gt;</span></span><br><span class="line"><span class="meta">&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionURL<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>jdbc:mysql://hadoop001:3306/metadata_hive?createDatabaseIfNotExist=true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionDriverName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>com.mysql.jdbc.Driver<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionUserName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>root<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionPassword<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>123456<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.current.db<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.header<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>保存并退出。</p>
+<p>然后，拷贝MySQL驱动包到$HIVE_HOME/lib/下。</p>
+<p>最后，启动Hive（需要先启动HDFS和YARN）：hive</p>
+<h4 id="Hive常用命令"><a href="#Hive常用命令" class="headerlink" title="Hive常用命令"></a>Hive常用命令</h4><ul>
+<li>show databases; 查看数据库</li>
+<li>use default; 打开默认数据库</li>
+<li>create database company location ‘/user/company’; 创建库并指定hdfs路径</li>
+<li>alter database company set dbproperties(‘creator’ = ‘vinx’); 为数据库添加额外的描述信息</li>
+<li>drop database if exists company cascade; 删除不为空的数据库</li>
+<li>show tables; 查看所在数据库的所有表</li>
+<li>create table student(id int, name string); 创建一张表</li>
+<li>desc student; 查看表结构</li>
+<li>desc extended student; 查看表结构详细信息</li>
+<li>desc formatted student; 查看表结构的格式化信息</li>
+<li>insert into student values(1001, “zhangsan”); 向表中插入一条数据（慎用，会跑MR程序）</li>
+<li>select * from student; 查询表中数据</li>
+<li>!clear; 清空屏幕</li>
+<li>quit; 退出hive</li>
+<li>bin/hive -e “select * from student;” 不登录hive客户端直接操作hive</li>
+<li>bin/hive -f /home/vinx/shell/select_stu.sql 执行HQL文件</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Hive</tag>
+        <tag>常用命令</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hadoop Shuffle机制</title>
     <url>/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<h3 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h3><hr>
+    <content><![CDATA[<h4 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h4><hr>
 <a id="more"></a>
 
 <h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
@@ -27,7 +270,9 @@
   <entry>
     <title>Hadoop 数据压缩</title>
     <url>/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/</url>
-    <content><![CDATA[<h3 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h3><h2 id="压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。"><a href="#压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。" class="headerlink" title="压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。"></a>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</h2><a id="more"></a>
+    <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
+<hr>
+<a id="more"></a>
 
 <h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
 <ul>
@@ -59,13 +304,13 @@
 ]]></content>
       <tags>
         <tag>Hadoop</tag>
-        <tag>数据压缩</tag>
+        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
     <title>Hadoop 数据切片 &amp; MapTask并行度机制</title>
     <url>/2020/06/20/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&amp;MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<h3 id="Hadoop-数据切片-MapTask并行度"><a href="#Hadoop-数据切片-MapTask并行度" class="headerlink" title="Hadoop 数据切片 MapTask并行度"></a>Hadoop 数据切片 MapTask并行度</h3><hr>
+    <content><![CDATA[<h4 id="Hadoop-数据切片-MapTask并行度"><a href="#Hadoop-数据切片-MapTask并行度" class="headerlink" title="Hadoop 数据切片 MapTask并行度"></a>Hadoop 数据切片 MapTask并行度</h4><hr>
 <a id="more"></a>
 
 <h4 id="input-split与map-task的关系"><a href="#input-split与map-task的关系" class="headerlink" title="input split与map task的关系"></a>input split与map task的关系</h4><p>split数量和map task数量一一对应。</p>
@@ -114,7 +359,9 @@
   <entry>
     <title>Yarn 调度流程</title>
     <url>/2020/06/20/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<h3 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h3><h2 id="Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。"><a href="#Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。" class="headerlink" title="Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。"></a>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</h2><a id="more"></a>
+    <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
+<hr>
+<a id="more"></a>
 
 <hr>
 <h4 id="ResourceManager"><a href="#ResourceManager" class="headerlink" title="ResourceManager"></a>ResourceManager</h4><p>官网原文：</p>
@@ -156,7 +403,7 @@
   <entry>
     <title>HDFS 常用命令</title>
     <url>/2020/06/20/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<h3 id="Hadoop常用命令"><a href="#Hadoop常用命令" class="headerlink" title="Hadoop常用命令"></a>Hadoop常用命令</h3><a id="more"></a>
+    <content><![CDATA[<h4 id="Hadoop常用命令"><a href="#Hadoop常用命令" class="headerlink" title="Hadoop常用命令"></a>Hadoop常用命令</h4><a id="more"></a>
 
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
       <tags>
@@ -167,7 +414,9 @@
   <entry>
     <title>HDFS 读写流程</title>
     <url>/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<h3 id="HDFS文件读写流程"><a href="#HDFS文件读写流程" class="headerlink" title="HDFS文件读写流程"></a>HDFS文件读写流程</h3><h2 id="关于HDFS文件的读写流程"><a href="#关于HDFS文件的读写流程" class="headerlink" title="关于HDFS文件的读写流程"></a>关于HDFS文件的读写流程</h2><a id="more"></a>
+    <content><![CDATA[<h4 id="HDFS文件读写流程"><a href="#HDFS文件读写流程" class="headerlink" title="HDFS文件读写流程"></a>HDFS文件读写流程</h4><p>关于HDFS文件的读写流程</p>
+<hr>
+<a id="more"></a>
 
 <hr>
 <h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
