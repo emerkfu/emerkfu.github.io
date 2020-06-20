@@ -1,12 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Hadoop Shuffle机制</title>
+    <url>/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h3 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h3><hr>
+<a id="more"></a>
+
+<h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
+<p><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle.png" alt="shuffle"></p>
+<p>下图是Shuffle机制图<br><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle-detail.png" alt="shuffle"></p>
+<h4 id="Shuffle过程"><a href="#Shuffle过程" class="headerlink" title="Shuffle过程"></a>Shuffle过程</h4><p>shuffle一开始就是map阶段做输出操作，map在做输出时会在内存里开启一个环形缓冲区，这个缓冲区是专门用来输出的，默认大小是100MB，并且在配置文件里为这个缓冲区设定了一个阈值，默认是0.80。同时map还会为输出操作启动一个守护线程，如果缓冲区的内存达到了阈值的80%的时候，这个守护线程就会把内容写到磁盘上，这个过程叫spill（溢写）。另外的20%内存可以继续写入要写进磁盘的数据，写入磁盘和写入内存操作互不干扰，如果缓存区被撑爆了，那么map就会阻塞写入内存的操作，让写入磁盘操作完成后再继续执行写入内存操作。</p>
+<p>写入磁盘前会有个排序操作，这个是在写入磁盘操作时进行，不是在写入内存时进行的，如果我们定义了combiner函数，那么排序前还会执行combiner操作。每次spill操作也就是写入磁盘时就会写一个溢出文件，也就是说在做map输出时有几次spill就会产生多少个溢出文件，等map输出全部做完后，map会合并这些输出文件。</p>
+<p>这个过程里还会有一个Partitioner操作，和map阶段的输入分片（Input Split）很像，一个Partitioner对应一个reduce作业，如果我们的MR操作只有一个reduce操作，那么Partitioner就只有一个，如果我们有多个reduce操作，那么Partitioner对应的就会有多个，Partitioner因此就是reduce的输入分片。</p>
+<p>到了reduce阶段就是合并map输出文件了，Partitioner会找到对应的map输出文件，然后进行复制操作，复制操作时reduce会开启几个复制线程，这些线程默认个数是5个，这个复制过程和map写入磁盘过程类似，也有阈值和内存大小，阈值可以在配置文件里配置，而内存大小是直接使用reduce的tasktracker的内存大小，复制时候reduce还会进行排序操作和合并文件操作，这些操作完了就会进行reduce计算了。</p>
+<p>上面也提到，将map的输出作为reduce的输入的过程就是shuffle（洗牌）。</p>
+<p>那么shuffle到底是属于map阶段还是reduce阶段呢？比较公认的说法是，shuffle应该是属于reduce阶段，因为map阶段的主要任务是数据映射，而shuffle的目的是主要是为reduce阶段做准备的。</p>
+<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
+<h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>基本概念</tag>
+        <tag>Shuffle</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop 数据压缩</title>
+    <url>/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/</url>
+    <content><![CDATA[<h3 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h3><h2 id="压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。"><a href="#压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。" class="headerlink" title="压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。"></a>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</h2><a id="more"></a>
+
+<h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
+<ul>
+<li>减少磁盘存储空间</li>
+<li>降低IO（网络的IO和磁盘的IO）</li>
+<li>加快数据在磁盘和网络中的传输速度，从而提高系统的处理速度</li>
+</ul>
+<p>坏处：</p>
+<ul>
+<li>由于使用数据时，需要先将数据解压，加重CPU负荷</li>
+</ul>
+<p>基本原则：</p>
+<ul>
+<li>运算密集型的job，少用压缩</li>
+<li>IO密集型的job，多用压缩</li>
+</ul>
+<p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png" alt="压缩格式"><br>是否可分割是指，压缩后的文件是否可以再分割。可以分割的格式允许单一文件由多个Mapper程序同时读取，可以做到更好的并行化。</p>
+<h4 id="压缩比"><a href="#压缩比" class="headerlink" title="压缩比"></a>压缩比</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png" alt="压缩之后的size"></p>
+<h4 id="压缩时间"><a href="#压缩时间" class="headerlink" title="压缩时间"></a>压缩时间</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png" alt="压缩时间-两次不同大小的文件"><br>可以看出，压缩比越高，压缩时间越长，压缩比：Snappy&gt;LZ4&gt;LZO&gt;GZIP&gt;BZIP2</p>
+<h4 id="压缩格式的优缺点"><a href="#压缩格式的优缺点" class="headerlink" title="压缩格式的优缺点"></a>压缩格式的优缺点</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png" alt="压缩格式的优缺点"></p>
+<h4 id="压缩的应用场景"><a href="#压缩的应用场景" class="headerlink" title="压缩的应用场景"></a>压缩的应用场景</h4><p>在Hadoop中的应用场景主要在三方面：输入，中间，输出。</p>
+<p>整体思路：hdfs ==&gt; map ==&gt; shuffle ==&gt; reduce</p>
+<ol>
+<li>Use Compressd Map Input: 从HDFS中读取文件进行MR作业，如果数据很大，可以使用压缩并且选择支持分片的压缩方式（bzip2, LZO），可以实现并行处理，提高效率，减少磁盘读取时间，同时选择合适的存储格式，例如：Sequence Files, RC, ORC等。</li>
+<li>Compress Intermediate Data: Map输出作为Reduce的输入，需要经过shuffle这一过程，需要把数据读取到一个环形缓冲区，然后读取到本地磁盘，所以选择压缩可以减少存储文件所占空间，提升数据传输速率。建议使用压缩速度快的压缩方式，例如：Snappy和LZO。</li>
+<li>Compress Reducer Output: 进行归档处理或者链接MR的工作（该作业的输出作为下个作业的输入），压缩可以减少存储文件所占空间，提升数据传输速率，如果作为归档处理，可以采用高的压缩比（Gzip, bzip2），如果作为下个作业的输入，考虑是否要分片进行选择。</li>
+</ol>
+<h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>数据压缩</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hadoop 数据切片 &amp; MapTask并行度机制</title>
     <url>/2020/06/20/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&amp;MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/</url>
     <content><![CDATA[<h3 id="Hadoop-数据切片-MapTask并行度"><a href="#Hadoop-数据切片-MapTask并行度" class="headerlink" title="Hadoop 数据切片 MapTask并行度"></a>Hadoop 数据切片 MapTask并行度</h3><hr>
 <a id="more"></a>
 
-<hr>
 <h4 id="input-split与map-task的关系"><a href="#input-split与map-task的关系" class="headerlink" title="input split与map task的关系"></a>input split与map task的关系</h4><p>split数量和map task数量一一对应。</p>
 <p>下图是wordcount的流程：<br><img src="/2020/06/20/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/wordcount-mr.png" alt="wordcount流程"></p>
 <p>可以看到，一个job的Map阶段map task并行度（个数），由客户端提交job时的切片个数决定。</p>
@@ -29,20 +90,18 @@
 <p>那么切片的数量是否就是分块的数量+小文件的数据量呢？其实是不一定的，因为源码中还有这样一个参数：private static final double SPLIT_SLOP = 1.1，也就是还有10%的切片裕度，下面结合源码进行说明。</p>
 <h4 id="切片机制-1"><a href="#切片机制-1" class="headerlink" title="切片机制"></a>切片机制</h4><p>整体流程：</p>
 <ol>
-<li>找到数据存储的目录</li>
-<li>遍历处理（规划切片）目录下的每一个文件</li>
-<li>遍历第一个文件</li>
-</ol>
-<ul>
-<li>获取文件大小</li>
-<li>计算切片大小。默认情况下，切片大小=blocksize</li>
-<li>每次切片时，都要判断切完剩下的部分是否大于块的1.1倍，不大于1.1倍就划分为一块切片</li>
-<li>将切片信息写到一个切片规划文件中</li>
-<li>整个切片的核心过程在getSplit()方法中完成</li>
+<li>找到数据存储的目录。</li>
+<li>遍历处理（规划切片）目录下的每一个文件。</li>
+<li>遍历第一个文件<ol>
+<li>获取文件大小。</li>
+<li>计算切片大小，默认情况下，切片大小=blocksize。</li>
+<li>每次切片时，都要判断切完剩下的部分是否大于块的1.1倍，不大于1.1倍就划分为一块切片。</li>
+<li>将切片信息写到一个切片规划文件中。</li>
+<li>整个切片的核心过程在getSplit()方法中完成。</li>
 <li>数据切片只是在逻辑上对输入数据进行分片，并不会在磁盘上将其切分成分片进行存储。InputSplit只记录了分片的元数据信息，比如起始位置、长度以及所在的节点列表等。</li>
-<li>注意：block是HDFS物理上存储的数据，切片是对数据逻辑上的划分</li>
-</ul>
-<ol start="4">
+<li>注意：block是HDFS物理上存储的数据，切片是对数据逻辑上的划分。</li>
+</ol>
+</li>
 <li>提交切片规划文件到YARN上，YARN上的AppMaster就可以根据切片规划文件计算开启map task个数。</li>
 </ol>
 <p>总结：所以，切片的数量并不一定等于分块的数量+小文件的数据量，还要考虑大文件切分后剩余的部分是否大于块的1.1倍。</p>
@@ -292,6 +351,25 @@
       </tags>
   </entry>
   <entry>
+    <title>Azkaban ***....</title>
+    <url>/2020/01/01/Azkaban/</url>
+    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
+<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
+<ul>
+<li>Azkaban …</li>
+<li>Azkaban …</li>
+<li>Azkaban … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Azkaban</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>CentOS ***....</title>
     <url>/2020/01/01/CentOS/</url>
     <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
@@ -346,25 +424,6 @@
 ]]></content>
       <tags>
         <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Azkaban ***....</title>
-    <url>/2020/01/01/Azkaban/</url>
-    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
-<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
-<ul>
-<li>Azkaban …</li>
-<li>Azkaban …</li>
-<li>Azkaban … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Azkaban</tag>
       </tags>
   </entry>
   <entry>
