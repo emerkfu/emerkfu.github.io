@@ -1,6 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Hive 数据倾斜</title>
+    <url>/2020/06/21/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
+    <content><![CDATA[<h4 id="Hive数据倾斜问题-大表Join大表-大表Join小表-group-By"><a href="#Hive数据倾斜问题-大表Join大表-大表Join小表-group-By" class="headerlink" title="Hive数据倾斜问题   大表Join大表   大表Join小表   group By"></a>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</h4><hr>
+<a id="more"></a>
+
+<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
+<ol>
+<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>两个表的bucket数量相等</li>
+<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
+<li>必须是应用在bucket mapjoin 的场景中</li>
+<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
+<li>hive.enforce.sorting 设置为true</li>
+<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
+<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>案例<ol>
+<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
+domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
+<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+</li>
+</ol>
+<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
+<p>user表为用户基本表，domain为用户访问域名的宽表</p>
+<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
+<ol>
+<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
+<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
+<ol>
+<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
+<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
+</ol>
+<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
+<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
+<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
+</ol>
+]]></content>
+      <tags>
+        <tag>Hive</tag>
+        <tag>数据倾斜</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hadoop Block和副本数&amp;小文件问题</title>
     <url>/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
     <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
@@ -239,8 +294,8 @@
 </ul>
 ]]></content>
       <tags>
-        <tag>Hive</tag>
         <tag>常用命令</tag>
+        <tag>Hive</tag>
       </tags>
   </entry>
   <entry>
@@ -619,25 +674,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Flume ***....</title>
-    <url>/2020/01/01/Flume/</url>
-    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
-<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
-<ul>
-<li>Flume …</li>
-<li>Flume …</li>
-<li>Flume … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>CentOS ***....</title>
     <url>/2020/01/01/CentOS/</url>
     <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
@@ -654,6 +690,25 @@
 ]]></content>
       <tags>
         <tag>CentOS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume ***....</title>
+    <url>/2020/01/01/Flume/</url>
+    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
+<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
+<ul>
+<li>Flume …</li>
+<li>Flume …</li>
+<li>Flume … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Flume</tag>
       </tags>
   </entry>
   <entry>
