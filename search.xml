@@ -1,6 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>HBase 基本概念和使用</title>
+    <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
+    <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
+<p>HBase是基于列的而不是基于行的模式。</p>
+<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
+<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+<a id="more"></a>
+
+<hr>
+<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
+<li>监控RegionServer</li>
+<li>处理RegionServer故障转移</li>
+<li>处理元数据的变更</li>
+<li>处理region的分配或移除</li>
+<li>在空闲时间进行数据的负载均衡</li>
+<li>通过zookeeper发布自己的位置给客户端</li>
+</ol>
+<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
+<li>负责存储HBase的实际数据</li>
+<li>处理分配给它的Region</li>
+<li>刷新缓存到HDFS</li>
+<li>维护HLog</li>
+<li>执行压缩</li>
+<li>负责处理Region分片</li>
+</ol>
+<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
+<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
+<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
+</ul>
+<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
+<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
+<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
+<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
+<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
+<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
+<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
+<ul>
+<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
+<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
+<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
+<li>Zookeeper中记录了-ROOT-表的location</li>
+<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
+</ul>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
+<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
+<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
+<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
+<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
+<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
+<ol>
+<li>管理用户对Table的增、删、改、查操作</li>
+<li>管理HRegionServer的负载均衡，调整Region分布</li>
+<li>在Region Split后，负责新Region的分配</li>
+<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
+</ol>
+<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
+<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
+<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
+<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
+<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
+<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
+<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
+<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
+<ol>
+<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
+<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
+</ol>
+<p>Zookeeper中hbase的节点的存储信息：</p>
+<ul>
+<li>rs：regionserver节点信息</li>
+<li>table-lock：hbase的除meta以外的所有表</li>
+<li>Table：hbase的所有的表</li>
+</ul>
+<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
+<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
+<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
+</ul>
+<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
+<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
+<li>进入HBase客户端命令行<br>bin/hbase shell</li>
+<li>查看帮助命令<br>hbase(main)&gt; help</li>
+<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
+<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
+</ul>
+<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
+<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
+</li>
+<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
+</li>
+<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
+</li>
+<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
+</li>
+<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
+</li>
+<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
+</li>
+<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
+</li>
+<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
+</li>
+<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
+</li>
+<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
+</li>
+<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
+</li>
+</ul>
+<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
+<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
+</li>
+<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
+</li>
+<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
+</li>
+<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
+</li>
+<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
+</li>
+<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
+</li>
+<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
+</li>
+<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
+</li>
+</ul>
+]]></content>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>HBase</tag>
+        <tag>常用命令</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hive 数据倾斜</title>
     <url>/2020/06/21/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
     <content><![CDATA[<h4 id="Hive数据倾斜问题-大表Join大表-大表Join小表-group-By"><a href="#Hive数据倾斜问题-大表Join大表-大表Join小表-group-By" class="headerlink" title="Hive数据倾斜问题   大表Join大表   大表Join小表   group By"></a>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</h4><hr>
@@ -299,30 +434,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Hadoop Shuffle机制</title>
-    <url>/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<h4 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h4><hr>
-<a id="more"></a>
-
-<h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
-<p><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle.png" alt="shuffle"></p>
-<p>下图是Shuffle机制图<br><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle-detail.png" alt="shuffle"></p>
-<h4 id="Shuffle过程"><a href="#Shuffle过程" class="headerlink" title="Shuffle过程"></a>Shuffle过程</h4><p>shuffle一开始就是map阶段做输出操作，map在做输出时会在内存里开启一个环形缓冲区，这个缓冲区是专门用来输出的，默认大小是100MB，并且在配置文件里为这个缓冲区设定了一个阈值，默认是0.80。同时map还会为输出操作启动一个守护线程，如果缓冲区的内存达到了阈值的80%的时候，这个守护线程就会把内容写到磁盘上，这个过程叫spill（溢写）。另外的20%内存可以继续写入要写进磁盘的数据，写入磁盘和写入内存操作互不干扰，如果缓存区被撑爆了，那么map就会阻塞写入内存的操作，让写入磁盘操作完成后再继续执行写入内存操作。</p>
-<p>写入磁盘前会有个排序操作，这个是在写入磁盘操作时进行，不是在写入内存时进行的，如果我们定义了combiner函数，那么排序前还会执行combiner操作。每次spill操作也就是写入磁盘时就会写一个溢出文件，也就是说在做map输出时有几次spill就会产生多少个溢出文件，等map输出全部做完后，map会合并这些输出文件。</p>
-<p>这个过程里还会有一个Partitioner操作，和map阶段的输入分片（Input Split）很像，一个Partitioner对应一个reduce作业，如果我们的MR操作只有一个reduce操作，那么Partitioner就只有一个，如果我们有多个reduce操作，那么Partitioner对应的就会有多个，Partitioner因此就是reduce的输入分片。</p>
-<p>到了reduce阶段就是合并map输出文件了，Partitioner会找到对应的map输出文件，然后进行复制操作，复制操作时reduce会开启几个复制线程，这些线程默认个数是5个，这个复制过程和map写入磁盘过程类似，也有阈值和内存大小，阈值可以在配置文件里配置，而内存大小是直接使用reduce的tasktracker的内存大小，复制时候reduce还会进行排序操作和合并文件操作，这些操作完了就会进行reduce计算了。</p>
-<p>上面也提到，将map的输出作为reduce的输入的过程就是shuffle（洗牌）。</p>
-<p>那么shuffle到底是属于map阶段还是reduce阶段呢？比较公认的说法是，shuffle应该是属于reduce阶段，因为map阶段的主要任务是数据映射，而shuffle的目的是主要是为reduce阶段做准备的。</p>
-<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
-<h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
-]]></content>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>基本概念</tag>
-        <tag>Shuffle</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hadoop 数据压缩</title>
     <url>/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/</url>
     <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
@@ -360,6 +471,30 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>Hadoop</tag>
         <tag>Hadoop优化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop Shuffle机制</title>
+    <url>/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h4 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h4><hr>
+<a id="more"></a>
+
+<h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
+<p><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle.png" alt="shuffle"></p>
+<p>下图是Shuffle机制图<br><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle-detail.png" alt="shuffle"></p>
+<h4 id="Shuffle过程"><a href="#Shuffle过程" class="headerlink" title="Shuffle过程"></a>Shuffle过程</h4><p>shuffle一开始就是map阶段做输出操作，map在做输出时会在内存里开启一个环形缓冲区，这个缓冲区是专门用来输出的，默认大小是100MB，并且在配置文件里为这个缓冲区设定了一个阈值，默认是0.80。同时map还会为输出操作启动一个守护线程，如果缓冲区的内存达到了阈值的80%的时候，这个守护线程就会把内容写到磁盘上，这个过程叫spill（溢写）。另外的20%内存可以继续写入要写进磁盘的数据，写入磁盘和写入内存操作互不干扰，如果缓存区被撑爆了，那么map就会阻塞写入内存的操作，让写入磁盘操作完成后再继续执行写入内存操作。</p>
+<p>写入磁盘前会有个排序操作，这个是在写入磁盘操作时进行，不是在写入内存时进行的，如果我们定义了combiner函数，那么排序前还会执行combiner操作。每次spill操作也就是写入磁盘时就会写一个溢出文件，也就是说在做map输出时有几次spill就会产生多少个溢出文件，等map输出全部做完后，map会合并这些输出文件。</p>
+<p>这个过程里还会有一个Partitioner操作，和map阶段的输入分片（Input Split）很像，一个Partitioner对应一个reduce作业，如果我们的MR操作只有一个reduce操作，那么Partitioner就只有一个，如果我们有多个reduce操作，那么Partitioner对应的就会有多个，Partitioner因此就是reduce的输入分片。</p>
+<p>到了reduce阶段就是合并map输出文件了，Partitioner会找到对应的map输出文件，然后进行复制操作，复制操作时reduce会开启几个复制线程，这些线程默认个数是5个，这个复制过程和map写入磁盘过程类似，也有阈值和内存大小，阈值可以在配置文件里配置，而内存大小是直接使用reduce的tasktracker的内存大小，复制时候reduce还会进行排序操作和合并文件操作，这些操作完了就会进行reduce计算了。</p>
+<p>上面也提到，将map的输出作为reduce的输入的过程就是shuffle（洗牌）。</p>
+<p>那么shuffle到底是属于map阶段还是reduce阶段呢？比较公认的说法是，shuffle应该是属于reduce阶段，因为map阶段的主要任务是数据映射，而shuffle的目的是主要是为reduce阶段做准备的。</p>
+<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
+<h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>基本概念</tag>
+        <tag>Shuffle</tag>
       </tags>
   </entry>
   <entry>
@@ -655,25 +790,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Azkaban ***....</title>
-    <url>/2020/01/01/Azkaban/</url>
-    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
-<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
-<ul>
-<li>Azkaban …</li>
-<li>Azkaban …</li>
-<li>Azkaban … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Azkaban</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>CentOS ***....</title>
     <url>/2020/01/01/CentOS/</url>
     <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
@@ -690,6 +806,25 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 ]]></content>
       <tags>
         <tag>CentOS</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Azkaban ***....</title>
+    <url>/2020/01/01/Azkaban/</url>
+    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
+<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
+<ul>
+<li>Azkaban …</li>
+<li>Azkaban …</li>
+<li>Azkaban … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>Azkaban</tag>
       </tags>
   </entry>
   <entry>

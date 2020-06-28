@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>HBase 基本概念和使用 | Emerk&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="HBase简介HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。 HBase是基于列的而不是基于行的模式。 面向列：面向列（族）的存储和权限控制，列（族）独立检索。 稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase 基本概念和使用">
+<meta property="og:url" content="https://emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="HBase简介HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。 HBase是基于列的而不是基于行的模式。 面向列：面向列（族）的存储和权限控制，列（族）独立检索。 稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png">
+<meta property="og:image" content="https://emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png">
+<meta property="og:image" content="https://emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png">
+<meta property="article:published_time" content="2020-06-28T15:00:00.000Z">
+<meta property="article:modified_time" content="2020-06-28T15:59:04.366Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="基本概念">
+<meta property="article:tag" content="HBase">
+<meta property="article:tag" content="常用命令">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Emerk&#39;s blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">knowledge is power</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://emerkfu.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-HBase基本概念" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" class="article-date">
+  <time class="dt-published" datetime="2020-06-28T15:00:00.000Z" itemprop="datePublished">2020-06-28</time>
+  &nbsp;
+  
+          <!-- 不蒜子统计 -->
+          <span id="busuanzi_container_page_pv" style='display:none' class="article-date">
+                <i class="icon-smile icon"></i> 阅读数：<span id="busuanzi_value_page_pv"></span>次&nbsp;&nbsp;
+          </span>
+  
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      HBase 基本概念和使用
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
+<p>HBase是基于列的而不是基于行的模式。</p>
+<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
+<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+<a id="more"></a>
+
+<hr>
+<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
+<li>监控RegionServer</li>
+<li>处理RegionServer故障转移</li>
+<li>处理元数据的变更</li>
+<li>处理region的分配或移除</li>
+<li>在空闲时间进行数据的负载均衡</li>
+<li>通过zookeeper发布自己的位置给客户端</li>
+</ol>
+<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
+<li>负责存储HBase的实际数据</li>
+<li>处理分配给它的Region</li>
+<li>刷新缓存到HDFS</li>
+<li>维护HLog</li>
+<li>执行压缩</li>
+<li>负责处理Region分片</li>
+</ol>
+<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
+<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
+<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
+</ul>
+<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
+<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
+<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
+<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
+<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
+<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
+<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
+<ul>
+<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
+<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
+<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
+<li>Zookeeper中记录了-ROOT-表的location</li>
+<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
+</ul>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
+<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
+<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
+<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
+<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
+<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
+<ol>
+<li>管理用户对Table的增、删、改、查操作</li>
+<li>管理HRegionServer的负载均衡，调整Region分布</li>
+<li>在Region Split后，负责新Region的分配</li>
+<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
+</ol>
+<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
+<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
+<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
+<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
+<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
+<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
+<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
+<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
+<ol>
+<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
+<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
+</ol>
+<p>Zookeeper中hbase的节点的存储信息：</p>
+<ul>
+<li>rs：regionserver节点信息</li>
+<li>table-lock：hbase的除meta以外的所有表</li>
+<li>Table：hbase的所有的表</li>
+</ul>
+<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
+<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
+<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
+</ul>
+<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
+<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
+<li>进入HBase客户端命令行<br>bin/hbase shell</li>
+<li>查看帮助命令<br>hbase(main)&gt; help</li>
+<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
+<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
+</ul>
+<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
+<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
+</li>
+<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
+</li>
+<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
+</li>
+<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
+</li>
+<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
+</li>
+<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
+</li>
+<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
+</li>
+<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
+</li>
+<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
+</li>
+<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
+</li>
+<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
+</li>
+</ul>
+<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
+<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
+</li>
+<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
+</li>
+<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
+</li>
+<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
+</li>
+<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
+</li>
+<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
+</li>
+<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
+</li>
+<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
+</li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" data-id="ckbz9lqlj0005iov7derm99ed" data-title="HBase 基本概念和使用" class="article-share-link">Share</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2020/06/21/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Hive 数据倾斜</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Azkaban/" rel="tag">Azkaban</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/CentOS/" rel="tag">CentOS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Flume/" rel="tag">Flume</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/" rel="tag">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop%E4%BC%98%E5%8C%96/" rel="tag">Hadoop优化</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hive/" rel="tag">Hive</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hue/" rel="tag">Hue</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shuffle/" rel="tag">Shuffle</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Yarn/" rel="tag">Yarn</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" rel="tag">数据倾斜</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Azkaban/" style="font-size: 10px;">Azkaban</a> <a href="/tags/CentOS/" style="font-size: 10px;">CentOS</a> <a href="/tags/Flume/" style="font-size: 10px;">Flume</a> <a href="/tags/HBase/" style="font-size: 10px;">HBase</a> <a href="/tags/Hadoop/" style="font-size: 20px;">Hadoop</a> <a href="/tags/Hadoop%E4%BC%98%E5%8C%96/" style="font-size: 12.5px;">Hadoop优化</a> <a href="/tags/Hive/" style="font-size: 15px;">Hive</a> <a href="/tags/Hue/" style="font-size: 10px;">Hue</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Scala/" style="font-size: 17.5px;">Scala</a> <a href="/tags/Shuffle/" style="font-size: 10px;">Shuffle</a> <a href="/tags/Spark/" style="font-size: 12.5px;">Spark</a> <a href="/tags/Yarn/" style="font-size: 10px;">Yarn</a> <a href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" style="font-size: 17.5px;">基本概念</a> <a href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" style="font-size: 15px;">常用命令</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" style="font-size: 10px;">数据倾斜</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">2020年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">2020年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">2018年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/07/">2015年 07月</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">HBase 基本概念和使用</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/21/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/">Hive 数据倾斜</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/">Hadoop Block和副本数&amp;小文件问题</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/">Hadoop HDFS架构 NameNode和DataNode工作机制</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/">Hive 基本概念 Hive的部署 Hive的常用命令</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js">
+  </script>
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      Copyright &copy; 2012 - 2020 <a href="/" target="_blank">EmerkFu</a>.
+      &nbsp;
+      
+        <!-- 不蒜子统计 -->
+        <span id="busuanzi_container_site_pv">
+                本站总访问量<span id="busuanzi_value_site_pv"></span>次
+        </span>
+        <span class="post-meta-divider">|</span>
+        <span id="busuanzi_container_site_uv" style='display:none'>
+                本站访客数<span id="busuanzi_value_site_uv"></span>人
+        </span>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+      
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
