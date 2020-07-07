@@ -4,24 +4,22 @@
   <meta charset="utf-8">
   
   
-  <title>Hadoop Block和副本数&amp;小文件问题 | Emerk&#39;s blog</title>
+  <title>Spark 多目录输出 | Emerk&#39;s blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="机架感知（副本放置策略）官网地址： Rack Awareness HDFS Architecture">
+  <meta name="description" content="实现多目录输出自定义类">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Hadoop Block和副本数&amp;小文件问题">
-<meta property="og:url" content="https://emerkfu.github.io/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:title" content="Spark 多目录输出">
+<meta property="og:url" content="https://emerkfu.github.io/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/index.html">
 <meta property="og:site_name" content="Emerk&#39;s blog">
-<meta property="og:description" content="机架感知（副本放置策略）官网地址： Rack Awareness HDFS Architecture">
+<meta property="og:description" content="实现多目录输出自定义类">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg">
-<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png">
-<meta property="article:published_time" content="2020-06-20T11:00:00.000Z">
-<meta property="article:modified_time" content="2020-06-20T15:58:10.664Z">
+<meta property="og:image" content="https://emerkfu.github.io/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA.jpg">
+<meta property="article:published_time" content="2020-07-01T00:00:00.000Z">
+<meta property="article:modified_time" content="2020-07-07T15:43:50.717Z">
 <meta property="article:author" content="EmerkFu">
-<meta property="article:tag" content="Hadoop">
-<meta property="article:tag" content="Hadoop优化">
+<meta property="article:tag" content="Spark">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu.github.io/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg">
+<meta name="twitter:image" content="https://emerkfu.github.io/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA.jpg">
   
   
     <link rel="icon" href="/favicon.png">
@@ -77,10 +75,10 @@
   </div>
 </header>
       <div class="outer">
-        <section id="main"><article id="post-HadoopBLOCK和副本数&amp;小文件问题" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+        <section id="main"><article id="post-Spark多目录输出" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/" class="article-date">
-  <time class="dt-published" datetime="2020-06-20T11:00:00.000Z" itemprop="datePublished">2020-06-20</time>
+    <a href="/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/" class="article-date">
+  <time class="dt-published" datetime="2020-07-01T00:00:00.000Z" itemprop="datePublished">2020-07-01</time>
   &nbsp;
   
           <!-- 不蒜子统计 -->
@@ -98,7 +96,7 @@
         
   
     <h1 class="p-name article-title" itemprop="headline name">
-      Hadoop Block和副本数&amp;小文件问题
+      Spark 多目录输出
     </h1>
   
 
@@ -106,56 +104,23 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
-<hr>
-<a id="more"></a>
+        <h5 id="实现多目录输出自定义类"><a href="#实现多目录输出自定义类" class="headerlink" title="实现多目录输出自定义类"></a>实现多目录输出自定义类</h5><a id="more"></a>
 
-<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
-<p><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
-<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
-<ol>
-<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
-<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
-<li>第三个副本：与第二个副本相同机架的不同节点上</li>
-<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
-</ol>
-<ul>
-<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
-<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
-</ul>
-<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
-<p>官网中的相应的默认参数如下：<br><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
-<p>可以看到，默认块大小为128M，默认副本数为3.</p>
-<p>这里会有一个常规的面试题：</p>
-<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
-<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
-<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
-<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
-<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
-<ol>
-<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS</li>
-<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并</li>
-</ol>
-<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
-<ol>
-<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
-<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
-<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
-<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
-</ol>
-<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
-<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
+<hr>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.hadoop.io.<span class="type">NullWritable</span></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.mapred.lib.<span class="type">MultipleTextOutputFormat</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyMultipleTextOutputFormat</span> <span class="keyword">extends</span> <span class="title">MultipleTextOutputFormat</span>[<span class="type">Any</span>,<span class="type">Any</span>] </span>&#123;</span><br><span class="line">    <span class="comment">//生成最终生成的key的类型，这里不要，给Null</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualKey</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = <span class="type">NullWritable</span>.get()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成最终生成的value的类型，这里是String</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = &#123;</span><br><span class="line">        value.asInstanceOf[<span class="type">String</span>]</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成文件名</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateFileNameForKeyValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>, name: <span class="type">String</span>): <span class="type">String</span> = &#123;</span><br><span class="line">        <span class="string">s"<span class="subst">$key</span>/<span class="subst">$name</span>"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数"><a href="#主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数" class="headerlink" title="主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数"></a>主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数</h5><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">MultipleDirectory</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"spark-core/out"</span></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">        <span class="type">CheckHDFSOutPath</span>.ifExistsDeletePath(sc.hadoopConfiguration,out)</span><br><span class="line">        <span class="comment">//读取数组，转换成键值对的格式</span></span><br><span class="line">        <span class="keyword">val</span> lines = sc.textFile(<span class="string">"spark-core/ip/access-result/*"</span>)</span><br><span class="line">        <span class="keyword">val</span> mapRDD: <span class="type">RDD</span>[(<span class="type">String</span>, <span class="type">String</span>)] = lines.map(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = line.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">12</span>), line)</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="comment">//多目录保存文件</span></span><br><span class="line">        mapRDD.saveAsHadoopFile(out,</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">MyMultipleTextOutputFormat</span>])</span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h5><p><img src="/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA.jpg" alt="多目录输出"></p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/" data-id="ckcc6yrwu00083kv746n04x79" data-title="Hadoop Block和副本数&amp;小文件问题" class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/" data-id="ckcc6yry1001t3kv74ifq7lba" data-title="Spark 多目录输出" class="article-share-link">Share</a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Hadoop/" rel="tag">Hadoop</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Hadoop%E4%BC%98%E5%8C%96/" rel="tag">Hadoop优化</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
 
     </footer>
   </div>
@@ -163,19 +128,10 @@
     
 <nav id="article-nav">
   
-    <a href="/2020/06/21/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">Newer</strong>
-      <div class="article-nav-title">
-        
-          Hive 数据倾斜
-        
-      </div>
-    </a>
   
-  
-    <a href="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">Hadoop HDFS架构 NameNode和DataNode工作机制</div>
+      <div class="article-nav-title">HBase 基本概念和使用</div>
     </a>
   
 </nav>

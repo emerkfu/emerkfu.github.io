@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>Spark 多目录输出</title>
+    <url>/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/</url>
+    <content><![CDATA[<h5 id="实现多目录输出自定义类"><a href="#实现多目录输出自定义类" class="headerlink" title="实现多目录输出自定义类"></a>实现多目录输出自定义类</h5><a id="more"></a>
+
+<hr>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.hadoop.io.<span class="type">NullWritable</span></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.mapred.lib.<span class="type">MultipleTextOutputFormat</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyMultipleTextOutputFormat</span> <span class="keyword">extends</span> <span class="title">MultipleTextOutputFormat</span>[<span class="type">Any</span>,<span class="type">Any</span>] </span>&#123;</span><br><span class="line">    <span class="comment">//生成最终生成的key的类型，这里不要，给Null</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualKey</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = <span class="type">NullWritable</span>.get()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成最终生成的value的类型，这里是String</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = &#123;</span><br><span class="line">        value.asInstanceOf[<span class="type">String</span>]</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成文件名</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateFileNameForKeyValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>, name: <span class="type">String</span>): <span class="type">String</span> = &#123;</span><br><span class="line">        <span class="string">s"<span class="subst">$key</span>/<span class="subst">$name</span>"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数"><a href="#主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数" class="headerlink" title="主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数"></a>主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">MultipleDirectory</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"spark-core/out"</span></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">        <span class="type">CheckHDFSOutPath</span>.ifExistsDeletePath(sc.hadoopConfiguration,out)</span><br><span class="line">        <span class="comment">//读取数组，转换成键值对的格式</span></span><br><span class="line">        <span class="keyword">val</span> lines = sc.textFile(<span class="string">"spark-core/ip/access-result/*"</span>)</span><br><span class="line">        <span class="keyword">val</span> mapRDD: <span class="type">RDD</span>[(<span class="type">String</span>, <span class="type">String</span>)] = lines.map(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = line.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">12</span>), line)</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="comment">//多目录保存文件</span></span><br><span class="line">        mapRDD.saveAsHadoopFile(out,</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">MyMultipleTextOutputFormat</span>])</span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h5><p><img src="/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA.jpg" alt="多目录输出"></p>
+]]></content>
+      <tags>
+        <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>HBase 基本概念和使用</title>
     <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
     <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
@@ -434,46 +450,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Hadoop 数据压缩</title>
-    <url>/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/</url>
-    <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
-<hr>
-<a id="more"></a>
-
-<h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
-<ul>
-<li>减少磁盘存储空间</li>
-<li>降低IO（网络的IO和磁盘的IO）</li>
-<li>加快数据在磁盘和网络中的传输速度，从而提高系统的处理速度</li>
-</ul>
-<p>坏处：</p>
-<ul>
-<li>由于使用数据时，需要先将数据解压，加重CPU负荷</li>
-</ul>
-<p>基本原则：</p>
-<ul>
-<li>运算密集型的job，少用压缩</li>
-<li>IO密集型的job，多用压缩</li>
-</ul>
-<p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png" alt="压缩格式"><br>是否可分割是指，压缩后的文件是否可以再分割。可以分割的格式允许单一文件由多个Mapper程序同时读取，可以做到更好的并行化。</p>
-<h4 id="压缩比"><a href="#压缩比" class="headerlink" title="压缩比"></a>压缩比</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png" alt="压缩之后的size"></p>
-<h4 id="压缩时间"><a href="#压缩时间" class="headerlink" title="压缩时间"></a>压缩时间</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png" alt="压缩时间-两次不同大小的文件"><br>可以看出，压缩比越高，压缩时间越长，压缩比：Snappy&gt;LZ4&gt;LZO&gt;GZIP&gt;BZIP2</p>
-<h4 id="压缩格式的优缺点"><a href="#压缩格式的优缺点" class="headerlink" title="压缩格式的优缺点"></a>压缩格式的优缺点</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png" alt="压缩格式的优缺点"></p>
-<h4 id="压缩的应用场景"><a href="#压缩的应用场景" class="headerlink" title="压缩的应用场景"></a>压缩的应用场景</h4><p>在Hadoop中的应用场景主要在三方面：输入，中间，输出。</p>
-<p>整体思路：hdfs ==&gt; map ==&gt; shuffle ==&gt; reduce</p>
-<ol>
-<li>Use Compressd Map Input: 从HDFS中读取文件进行MR作业，如果数据很大，可以使用压缩并且选择支持分片的压缩方式（bzip2, LZO），可以实现并行处理，提高效率，减少磁盘读取时间，同时选择合适的存储格式，例如：Sequence Files, RC, ORC等。</li>
-<li>Compress Intermediate Data: Map输出作为Reduce的输入，需要经过shuffle这一过程，需要把数据读取到一个环形缓冲区，然后读取到本地磁盘，所以选择压缩可以减少存储文件所占空间，提升数据传输速率。建议使用压缩速度快的压缩方式，例如：Snappy和LZO。</li>
-<li>Compress Reducer Output: 进行归档处理或者链接MR的工作（该作业的输出作为下个作业的输入），压缩可以减少存储文件所占空间，提升数据传输速率，如果作为归档处理，可以采用高的压缩比（Gzip, bzip2），如果作为下个作业的输入，考虑是否要分片进行选择。</li>
-</ol>
-<h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
-]]></content>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hadoop Shuffle机制</title>
     <url>/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
     <content><![CDATA[<h4 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h4><hr>
@@ -544,6 +520,46 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>Hadoop</tag>
         <tag>基本概念</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop 数据压缩</title>
+    <url>/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/</url>
+    <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
+<hr>
+<a id="more"></a>
+
+<h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
+<ul>
+<li>减少磁盘存储空间</li>
+<li>降低IO（网络的IO和磁盘的IO）</li>
+<li>加快数据在磁盘和网络中的传输速度，从而提高系统的处理速度</li>
+</ul>
+<p>坏处：</p>
+<ul>
+<li>由于使用数据时，需要先将数据解压，加重CPU负荷</li>
+</ul>
+<p>基本原则：</p>
+<ul>
+<li>运算密集型的job，少用压缩</li>
+<li>IO密集型的job，多用压缩</li>
+</ul>
+<p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png" alt="压缩格式"><br>是否可分割是指，压缩后的文件是否可以再分割。可以分割的格式允许单一文件由多个Mapper程序同时读取，可以做到更好的并行化。</p>
+<h4 id="压缩比"><a href="#压缩比" class="headerlink" title="压缩比"></a>压缩比</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png" alt="压缩之后的size"></p>
+<h4 id="压缩时间"><a href="#压缩时间" class="headerlink" title="压缩时间"></a>压缩时间</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png" alt="压缩时间-两次不同大小的文件"><br>可以看出，压缩比越高，压缩时间越长，压缩比：Snappy&gt;LZ4&gt;LZO&gt;GZIP&gt;BZIP2</p>
+<h4 id="压缩格式的优缺点"><a href="#压缩格式的优缺点" class="headerlink" title="压缩格式的优缺点"></a>压缩格式的优缺点</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png" alt="压缩格式的优缺点"></p>
+<h4 id="压缩的应用场景"><a href="#压缩的应用场景" class="headerlink" title="压缩的应用场景"></a>压缩的应用场景</h4><p>在Hadoop中的应用场景主要在三方面：输入，中间，输出。</p>
+<p>整体思路：hdfs ==&gt; map ==&gt; shuffle ==&gt; reduce</p>
+<ol>
+<li>Use Compressd Map Input: 从HDFS中读取文件进行MR作业，如果数据很大，可以使用压缩并且选择支持分片的压缩方式（bzip2, LZO），可以实现并行处理，提高效率，减少磁盘读取时间，同时选择合适的存储格式，例如：Sequence Files, RC, ORC等。</li>
+<li>Compress Intermediate Data: Map输出作为Reduce的输入，需要经过shuffle这一过程，需要把数据读取到一个环形缓冲区，然后读取到本地磁盘，所以选择压缩可以减少存储文件所占空间，提升数据传输速率。建议使用压缩速度快的压缩方式，例如：Snappy和LZO。</li>
+<li>Compress Reducer Output: 进行归档处理或者链接MR的工作（该作业的输出作为下个作业的输入），压缩可以减少存储文件所占空间，提升数据传输速率，如果作为归档处理，可以采用高的压缩比（Gzip, bzip2），如果作为下个作业的输入，考虑是否要分片进行选择。</li>
+</ol>
+<h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
+]]></content>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -790,22 +806,22 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>CentOS ***....</title>
-    <url>/2020/01/01/CentOS/</url>
-    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
-<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
+    <title>Flume ***....</title>
+    <url>/2020/01/01/Flume/</url>
+    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
+<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
 <a id="more"></a>
-<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
+<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
 <ul>
-<li>CentOS …</li>
-<li>CentOS …</li>
-<li>CentOS … </li>
+<li>Flume …</li>
+<li>Flume …</li>
+<li>Flume … </li>
 </ul>
 ]]></content>
       <tags>
-        <tag>CentOS</tag>
+        <tag>Flume</tag>
       </tags>
   </entry>
   <entry>
@@ -828,22 +844,22 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Flume ***....</title>
-    <url>/2020/01/01/Flume/</url>
-    <content><![CDATA[<h3 id="Flume-…"><a href="#Flume-…" class="headerlink" title="Flume …."></a>Flume ….</h3><hr>
-<h4 id="Flume"><a href="#Flume" class="headerlink" title="Flume"></a>Flume</h4><p>这里是首页显示的描述内容</p>
+    <title>CentOS ***....</title>
+    <url>/2020/01/01/CentOS/</url>
+    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
+<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
 <a id="more"></a>
-<h4 id="Flume-web"><a href="#Flume-web" class="headerlink" title="Flume web"></a>Flume web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Flume-demo-code"><a href="#Flume-demo-code" class="headerlink" title="Flume demo code"></a>Flume demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Flume-img"><a href="#Flume-img" class="headerlink" title="Flume img"></a>Flume img</h4><p><img src="/2020/01/01/Flume/logistic-regression.png" alt></p>
+<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
 <ul>
-<li>Flume …</li>
-<li>Flume …</li>
-<li>Flume … </li>
+<li>CentOS …</li>
+<li>CentOS …</li>
+<li>CentOS … </li>
 </ul>
 ]]></content>
       <tags>
-        <tag>Flume</tag>
+        <tag>CentOS</tag>
       </tags>
   </entry>
   <entry>
@@ -885,25 +901,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>MySQL ***....</title>
-    <url>/2020/01/01/MySQL/</url>
-    <content><![CDATA[<h3 id="MySQL-…"><a href="#MySQL-…" class="headerlink" title="MySQL …."></a>MySQL ….</h3><hr>
-<h4 id="MySQL"><a href="#MySQL" class="headerlink" title="MySQL"></a>MySQL</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="MySQL-web"><a href="#MySQL-web" class="headerlink" title="MySQL web"></a>MySQL web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="MySQL-demo-code"><a href="#MySQL-demo-code" class="headerlink" title="MySQL demo code"></a>MySQL demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="MySQL-img"><a href="#MySQL-img" class="headerlink" title="MySQL img"></a>MySQL img</h4><p><img src="/2020/01/01/MySQL/logistic-regression.png" alt></p>
-<ul>
-<li>MySQL …</li>
-<li>MySQL …</li>
-<li>MySQL … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>MySQL</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Scala ***....</title>
     <url>/2020/01/01/Scala/</url>
     <content><![CDATA[<h3 id="Scala-…"><a href="#Scala-…" class="headerlink" title="Scala …."></a>Scala ….</h3><hr>
@@ -920,6 +917,25 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 ]]></content>
       <tags>
         <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>MySQL ***....</title>
+    <url>/2020/01/01/MySQL/</url>
+    <content><![CDATA[<h3 id="MySQL-…"><a href="#MySQL-…" class="headerlink" title="MySQL …."></a>MySQL ….</h3><hr>
+<h4 id="MySQL"><a href="#MySQL" class="headerlink" title="MySQL"></a>MySQL</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="MySQL-web"><a href="#MySQL-web" class="headerlink" title="MySQL web"></a>MySQL web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="MySQL-demo-code"><a href="#MySQL-demo-code" class="headerlink" title="MySQL demo code"></a>MySQL demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="MySQL-img"><a href="#MySQL-img" class="headerlink" title="MySQL img"></a>MySQL img</h4><p><img src="/2020/01/01/MySQL/logistic-regression.png" alt></p>
+<ul>
+<li>MySQL …</li>
+<li>MySQL …</li>
+<li>MySQL … </li>
+</ul>
+]]></content>
+      <tags>
+        <tag>MySQL</tag>
       </tags>
   </entry>
   <entry>
