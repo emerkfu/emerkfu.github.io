@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>SparkSQL 做统计分析 | Emerk&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="SparkSQL 做统计分析的方法、存储格式的转换">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SparkSQL 做统计分析">
+<meta property="og:url" content="https://emerkfu.github.io/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="SparkSQL 做统计分析的方法、存储格式的转换">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-07-10T13:00:00.000Z">
+<meta property="article:modified_time" content="2020-07-11T15:37:52.138Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Spark">
+<meta property="article:tag" content="SparkSQL">
+<meta name="twitter:card" content="summary">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Emerk&#39;s blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">knowledge is power</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://emerkfu.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-SparkSQL做统计分析" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/" class="article-date">
+  <time class="dt-published" datetime="2020-07-10T13:00:00.000Z" itemprop="datePublished">2020-07-10</time>
+  &nbsp;
+  
+          <!-- 不蒜子统计 -->
+          <span id="busuanzi_container_page_pv" style='display:none' class="article-date">
+                <i class="icon-smile icon"></i> 阅读数：<span id="busuanzi_value_page_pv"></span>次&nbsp;&nbsp;
+          </span>
+  
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      SparkSQL 做统计分析
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h4 id="SparkSQL-做统计分析的方法、存储格式的转换"><a href="#SparkSQL-做统计分析的方法、存储格式的转换" class="headerlink" title="SparkSQL 做统计分析的方法、存储格式的转换"></a>SparkSQL 做统计分析的方法、存储格式的转换</h4><a id="more"></a>
+
+<hr>
+<h4 id="SparkSQL做统计分析"><a href="#SparkSQL做统计分析" class="headerlink" title="SparkSQL做统计分析"></a>SparkSQL做统计分析</h4><ol>
+<li>数据</li>
+<li>需求：求每个国家的每个域名的访问流量排名前2</li>
+<li>SQL实现<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">GroupTopN</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/data.json"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">		<span class="comment">//读取数据</span></span><br><span class="line">        <span class="keyword">val</span> ds = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        <span class="comment">//为生成需要的表格做准备</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = ds.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">3</span>), words(<span class="number">12</span>), words(<span class="number">15</span>).toLong)</span><br><span class="line">        &#125;).toDF(<span class="string">"country"</span>, <span class="string">"domain"</span>, <span class="string">"traffic"</span>)</span><br><span class="line"></span><br><span class="line">        df.createOrReplaceTempView(<span class="string">"access"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 每个国家的域名流量前2</span></span><br><span class="line">        <span class="keyword">val</span> topNSQL=<span class="string">""</span><span class="string">"select</span></span><br><span class="line"><span class="string">                      |	*</span></span><br><span class="line"><span class="string">                      |from (</span></span><br><span class="line"><span class="string">                      |		select</span></span><br><span class="line"><span class="string">                      |			t.*,row_number() over(partition by country order by sum_traffic desc) r</span></span><br><span class="line"><span class="string">                      |		from</span></span><br><span class="line"><span class="string">                      |			(</span></span><br><span class="line"><span class="string">                      |				select country,domain,sum(traffic) as sum_traffic from access group by country,domain</span></span><br><span class="line"><span class="string">                      |			) t</span></span><br><span class="line"><span class="string">                      |	    ) rt</span></span><br><span class="line"><span class="string">                      |where rt.r &lt;=2 "</span><span class="string">""</span>.stripMargin</span><br><span class="line">        spark.sql(topNSQL).show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>如果只要求traffic的降序，可以使用API直接写出来<br>分组，求和，别名，降序<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//traffic降序排序</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.functions._</span><br><span class="line">df.groupBy(<span class="string">"country"</span>,<span class="string">"domain"</span>).agg(sum(<span class="string">"traffic"</span>).as(<span class="string">"sum_traffic"</span>)).sort($<span class="string">"sum_traffic"</span>.desc).show()</span><br></pre></td></tr></table></figure>
+注意看源码中案例仿写</li>
+<li>结果展示<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|         country|           domain|sum_traffic|  r|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|            中国| www.bilibili.com|   <span class="number">24265886</span>|  <span class="number">1</span>|</span><br><span class="line">|            中国|www.ruozedata.com|    <span class="number">4187637</span>|  <span class="number">2</span>|</span><br><span class="line">|          利比亚| www.bilibili.com|      <span class="number">22816</span>|  <span class="number">1</span>|</span><br><span class="line">|          利比亚|  ruoze.ke.qq.com|      <span class="number">15970</span>|  <span class="number">2</span>|</span><br><span class="line">|            加纳| www.bilibili.com|     <span class="number">138659</span>|  <span class="number">1</span>|</span><br><span class="line">|            加纳|www.ruozedata.com|      <span class="number">17988</span>|  <span class="number">2</span>|</span><br><span class="line">|        利比里亚| www.bilibili.com|      <span class="number">20593</span>|  <span class="number">1</span>|</span><br><span class="line">|        利比里亚|  ruoze.ke.qq.com|       <span class="number">7466</span>|  <span class="number">2</span>|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="UDF函数"><a href="#UDF函数" class="headerlink" title="UDF函数"></a>UDF函数</h4><ol>
+<li><p>数据</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">蔡三	唱,跳,rap,篮球</span><br><span class="line">李四	唱</span><br><span class="line">王五	唱,跳</span><br></pre></td></tr></table></figure></li>
+<li><p>需求：求出每个人的爱好的个数<br>提供一个编程抽象（DataFrame） 并且作为分布式 SQL 查询引擎<br>DataFrame：它可以根据很多源进行构建，包括：结构化的数据文件，hive中的表，外部的关系型数据库，以及RDD</p>
+</li>
+<li><p>SQL实现</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">practice04</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> in = <span class="string">"data/data.txt"</span></span><br><span class="line">    <span class="keyword">val</span> session = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>)</span><br><span class="line">      .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">      .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">      .getOrCreate()</span><br><span class="line">    session.sparkContext.setLogLevel(<span class="string">"ERROR"</span>)</span><br><span class="line">    <span class="keyword">import</span> session.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> ds = session.read.textFile(in)</span><br><span class="line">    <span class="keyword">val</span> df = ds.map(row =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> words = row.split(<span class="string">"\t"</span>)</span><br><span class="line">      (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">    &#125;).toDF(<span class="string">"name"</span>, <span class="string">"fav"</span>)</span><br><span class="line"></span><br><span class="line">    session.udf.register(<span class="string">"length"</span>,(fav: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">      fav.split(<span class="string">","</span>).length</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    df.createOrReplaceTempView(<span class="string">"udf_fav"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> sql1 =</span><br><span class="line">      <span class="string">""</span><span class="string">"</span></span><br><span class="line"><span class="string">        |select</span></span><br><span class="line"><span class="string">        | name,</span></span><br><span class="line"><span class="string">        | fav,</span></span><br><span class="line"><span class="string">        | length(fav) fav_count</span></span><br><span class="line"><span class="string">        |from udf_fav</span></span><br><span class="line"><span class="string">        |"</span><span class="string">""</span>.stripMargin</span><br><span class="line">    session.sql(sql1).show()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>上面是使用SQL的解决方案，还可以使用API的方法</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//自定义的udf需要返回值</span></span><br><span class="line"><span class="keyword">val</span> loveLengthUDF: <span class="type">UserDefinedFunction</span> = spark.udf.register(<span class="string">"length"</span>, (love: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">    love.split(<span class="string">","</span>).length</span><br><span class="line">&#125;)</span><br><span class="line"><span class="comment">//df.select中传入UDF函数</span></span><br><span class="line">df.select($<span class="string">"name"</span>,$<span class="string">"love"</span>,loveLengthUDF($<span class="string">"love"</span>)).show()</span><br></pre></td></tr></table></figure></li>
+<li><p>结果展示</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">+----+--------------+---------+</span><br><span class="line">|name|           fav|fav_count|</span><br><span class="line">+----+--------------+---------+</span><br><span class="line">|蔡三|唱,跳,rap,篮球|        <span class="number">4</span>|</span><br><span class="line">|李四|            唱|        <span class="number">1</span>|</span><br><span class="line">|王五|         唱,跳|        <span class="number">2</span>|</span><br><span class="line">+----+--------------+---------+</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="存储格式的转换"><a href="#存储格式的转换" class="headerlink" title="存储格式的转换"></a>存储格式的转换</h4><p>Spark读text文件进行清洗，清洗完以后直接以我们想要的列式存储格式输出，如果按以前的方式要经过很多复杂的步骤</p>
+<p>用Spark的时候只需要在df.write.format(“orc”).mode().save()中指定格式即可，如orc，现在就很方便了，想转成什么格式，只要format支持就ok</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2orc</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//对文本文件做处理</span></span><br><span class="line">        df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>),words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">            .toDF(<span class="string">"name"</span>,<span class="string">"age"</span>)	<span class="comment">//这一步解决了数据没有表头的问题</span></span><br><span class="line">            .write</span><br><span class="line">            .mode(<span class="string">"overwrite"</span>)	<span class="comment">//save mode</span></span><br><span class="line">            .format(<span class="string">"orc"</span>)	<span class="comment">//save format</span></span><br><span class="line">            .save(out)	<span class="comment">//save path</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://emerkfu.github.io/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/" data-id="ckchtdvrn00262kv7970c1rz9" data-title="SparkSQL 做统计分析" class="article-share-link">Share</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/SparkSQL/" rel="tag">SparkSQL</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2020/07/10/SparkSQL/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">SparkSQL 基础</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/Azkaban/" rel="tag">Azkaban</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/CentOS/" rel="tag">CentOS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Flume/" rel="tag">Flume</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/" rel="tag">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop%E4%BC%98%E5%8C%96/" rel="tag">Hadoop优化</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hive/" rel="tag">Hive</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hue/" rel="tag">Hue</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shuffle/" rel="tag">Shuffle</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SparkSQL/" rel="tag">SparkSQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Yarn/" rel="tag">Yarn</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" rel="tag">数据倾斜</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/Azkaban/" style="font-size: 10px;">Azkaban</a> <a href="/tags/CentOS/" style="font-size: 10px;">CentOS</a> <a href="/tags/Flume/" style="font-size: 10px;">Flume</a> <a href="/tags/HBase/" style="font-size: 10px;">HBase</a> <a href="/tags/Hadoop/" style="font-size: 20px;">Hadoop</a> <a href="/tags/Hadoop%E4%BC%98%E5%8C%96/" style="font-size: 12px;">Hadoop优化</a> <a href="/tags/Hive/" style="font-size: 14px;">Hive</a> <a href="/tags/Hue/" style="font-size: 10px;">Hue</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Scala/" style="font-size: 18px;">Scala</a> <a href="/tags/Shuffle/" style="font-size: 10px;">Shuffle</a> <a href="/tags/Spark/" style="font-size: 16px;">Spark</a> <a href="/tags/SparkSQL/" style="font-size: 12px;">SparkSQL</a> <a href="/tags/Yarn/" style="font-size: 10px;">Yarn</a> <a href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" style="font-size: 18px;">基本概念</a> <a href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" style="font-size: 14px;">常用命令</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" style="font-size: 10px;">数据倾斜</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">2020年 07月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">2020年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">2020年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">2018年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/07/">2015年 07月</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/">SparkSQL 做统计分析</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/10/SparkSQL/">SparkSQL 基础</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/">Spark 多目录输出</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">HBase 基本概念和使用</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/21/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/">Hive 数据倾斜</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js">
+  </script>
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      Copyright &copy; 2012 - 2020 <a href="/" target="_blank">EmerkFu</a>.
+      &nbsp;
+      
+        <!-- 不蒜子统计 -->
+        <span id="busuanzi_container_site_pv">
+                本站总访问量<span id="busuanzi_value_site_pv"></span>次
+        </span>
+        <span class="post-meta-divider">|</span>
+        <span id="busuanzi_container_site_uv" style='display:none'>
+                本站访客数<span id="busuanzi_value_site_uv"></span>人
+        </span>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+      
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
