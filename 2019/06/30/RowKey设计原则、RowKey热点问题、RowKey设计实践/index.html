@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>RowKey设计原则、解决RowKey热点问题、RowKey设计实践 | Emerk&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RowKey设计原则、解决RowKey热点问题、RowKey设计实践">
+<meta property="og:url" content="https://emerkfu.github.io/2019/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-06-30T15:36:18.000Z">
+<meta property="article:modified_time" content="2020-12-01T15:58:14.676Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="HBase">
+<meta name="twitter:card" content="summary">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Emerk&#39;s blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">knowledge is power</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://emerkfu.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-RowKey设计原则、RowKey热点问题、RowKey设计实践" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2019/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/" class="article-date">
+  <time class="dt-published" datetime="2019-06-30T15:36:18.000Z" itemprop="datePublished">2019-06-30</time>
+  &nbsp;
+  
+          <!-- 不蒜子统计 -->
+          <span id="busuanzi_container_page_pv" style='display:none' class="article-date">
+                <i class="icon-smile icon"></i> 阅读数：<span id="busuanzi_value_page_pv"></span>次&nbsp;&nbsp;
+          </span>
+  
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/HBase/">HBase</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      RowKey设计原则、解决RowKey热点问题、RowKey设计实践
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h5 id="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"><a href="#HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。" class="headerlink" title="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"></a>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</h5><h5 id="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："><a href="#作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：" class="headerlink" title="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："></a>作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：</h5><a id="more"></a>
+<p>假如有5个Rowkey：”012”, “0”, “123”, “234”, “3”，按ASCII字典排序后的结果为：”0”, “012”, “123”, “234”, “3”。（注：文末附常用ASCII码表）<br>Rowkey排序时会先比对两个Rowkey的第一个字节，如果相同，然后会比对第二个字节，依次类推… 对比到第X个字节时，已经超出了其中一个Rowkey的长度，短的Rowkey排在前面。<br>由于HBase是通过Rowkey查询的，一般Rowkey上都会存一些比较关键的检索信息，我们需要提前想好数据具体需要如何查询，根据查询方式进行数据存储格式的设计，要避免做全表扫描，因为效率特别低。</p>
+<hr>
+<h4 id="Rowkey设计原则"><a href="#Rowkey设计原则" class="headerlink" title="Rowkey设计原则"></a>Rowkey设计原则</h4><h5 id="Rowkey的唯一原则"><a href="#Rowkey的唯一原则" class="headerlink" title="Rowkey的唯一原则"></a>Rowkey的唯一原则</h5><p>必须在设计上保证其唯一性。由于在HBase中数据存储是Key-Value形式，若HBase中同一表插入相同Rowkey，则原先的数据会被覆盖掉(如果表的version设置为1的话)，所以务必保证Rowkey的唯一性</p>
+<h5 id="Rowkey的排序原则"><a href="#Rowkey的排序原则" class="headerlink" title="Rowkey的排序原则"></a>Rowkey的排序原则</h5><p>HBase的Rowkey是按照ASCII有序设计的，我们在设计Rowkey时要充分利用这点。比如视频网站上对影片《泰坦尼克号》的弹幕信息，这个弹幕是按照时间倒排序展示视频里，这个时候我们设计的Rowkey要和时间顺序相关。可以使用”Long.MAX_VALUE - 弹幕发表时间”的 long 值作为 Rowkey 的前缀</p>
+<h5 id="Rowkey的散列原则"><a href="#Rowkey的散列原则" class="headerlink" title="Rowkey的散列原则"></a>Rowkey的散列原则</h5><p>我们设计的Rowkey应均匀的分布在各个HBase节点上。拿常见的时间戳举例，假如Rowkey是按系统时间戳的方式递增，Rowkey的第一部分如果是时间戳信息的话将造成所有新数据都在一个RegionServer上堆积的热点现象，也就是通常说的Region热点问题， 热点发生在大量的client直接访问集中在个别RegionServer上（访问可能是读，写或者其他操作），导致单个RegionServer机器自身负载过高，引起性能下降甚至Region不可用，常见的是发生jvm full gc或者显示region too busy异常情况，当然这也会影响同一个RegionServer上的其他Region。</p>
+<h5 id="Rowkey的长度原则"><a href="#Rowkey的长度原则" class="headerlink" title="Rowkey的长度原则"></a>Rowkey的长度原则</h5><p>Rowkey长度设计原则：Rowkey是一个二进制，Rowkey的长度被很多开发者建议说设计在10~100个字节，建议是越短越好。<br>原因有两点：<br>其一是HBase的持久化文件HFile是按照KeyValue存储的，如果Rowkey过长比如500个字节，1000万列数据光Rowkey就要占用500*1000万=50亿个字节，将近1G数据，这会极大影响HFile的存储效率<br>其二是MemStore缓存部分数据到内存，如果Rowkey字段过长内存的有效利用率会降低，系统无法缓存更多的数据，这会降低检索效率<br>需要指出的是不仅Rowkey的长度是越短越好，而且列族名、列名等尽量使用短名字，因为HBase属于列式数据库，这些名字都是会写入到HBase的持久化文件HFile中去，过长的Rowkey、列族、列名都会导致整体的存储量成倍增加。</p>
+<hr>
+<h4 id="Region热点"><a href="#Region热点" class="headerlink" title="Region热点"></a>Region热点</h4><h5 id="Reverse反转"><a href="#Reverse反转" class="headerlink" title="Reverse反转"></a>Reverse反转</h5><p>针对固定长度的Rowkey反转后存储，这样可以使Rowkey中经常改变的部分放在最前面，可以有效的随机Rowkey。<br>反转Rowkey的例子通常以手机举例，可以将手机号反转后的字符串作为Rowkey，这样的就避免了以手机号那样比较固定开头(137x、15x等)导致热点问题，<br>这样做的缺点是牺牲了Rowkey的有序性。</p>
+<h5 id="Salt加盐"><a href="#Salt加盐" class="headerlink" title="Salt加盐"></a>Salt加盐</h5><p>Salting是将每一个Rowkey加一个前缀，前缀使用一些随机字符，使得数据分散在多个不同的Region，达到Region负载均衡的目标。<br>比如在一个有4个Region(注：以 [ ,a)、[a,b)、[b,c)、[c, )为Region起至)的HBase表中，<br>加Salt前的Rowkey：abc001、abc002、abc003<br>我们分别加上a、b、c前缀，加Salt后Rowkey为：a-abc001、b-abc002、c-abc003<br>可以看到，加盐前的Rowkey默认会在第2个region中，加盐后的Rowkey数据会分布在3个region中，理论上处理后的吞吐量应是之前的3倍。由于前缀是随机的，读这些数据时需要耗费更多的时间，所以Salt增加了写操作的吞吐量，不过缺点是同时增加了读操作的开销。</p>
+<h5 id="Hash散列或者Mod"><a href="#Hash散列或者Mod" class="headerlink" title="Hash散列或者Mod"></a>Hash散列或者Mod</h5><p>用Hash散列来替代随机Salt前缀的好处是能让一个给定的行有相同的前缀，这在分散了Region负载的同时，使读操作也能够推断。确定性Hash(比如md5后取前4位做前缀)能让客户端重建完整的RowKey，可以使用get操作直接get想要的行。<br>例如将上述的原始Rowkey经过hash处理，此处我们采用md5散列算法取前4位做前缀，结果如下</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">9</span>bf0-abc001 （abc001在md5后是<span class="number">9</span>bf049097142c168c38a94c626eddf3d，取前<span class="number">4</span>位是<span class="number">9</span>bf0）</span><br><span class="line"><span class="number">7006</span>-abc002</span><br><span class="line"><span class="number">95e6</span>-abc003</span><br></pre></td></tr></table></figure>
+<p>若以前4个字符作为不同分区的起止，上面几个Rowkey数据会分布在3个region中。实际应用场景是当数据量越来越大的时候，这种设计会使得分区之间更加均衡。<br>如果Rowkey是数字类型的，也可以考虑Mod方法。</p>
+<hr>
+<h4 id="Rowkey设计实践"><a href="#Rowkey设计实践" class="headerlink" title="Rowkey设计实践"></a>Rowkey设计实践</h4><p>在实际的设计中我们可能更多的是结合多种设计方法来实现Rowkey的最优化设计，比如设计订单状态表时使用：Rowkey: reverse(order_id) + (Long.MAX_VALUE – timestamp)，这样设计的好处一是通过reverse订单号避免Region热点，二是可以按时间倒排显示。<br>结合使用HBase作为事件(事件指的的终端在APP中发生的行为，比如登录、下单等等统称事件(event))的临时存储(HBase只存储了最近10分钟的热数据)来举例：<br>设计event事件的Rowkey为：两位随机数Salt + eventId + Date + kafka的Offset<br>这样设计的好处是：<br>设计加盐的目的是为了增加查询的并发性，假如Salt的范围是0~n，那我们在查询的时候，可以将数据分为n个split同时做scan操作。经过我们的多次测试验证，增加并发度能够将整体的查询速度提升5～20倍以上。随后的eventId和Date是用来做范围Scan使用的。在我们的查询场景中，大部分都是指定了eventId的，因此我们把eventId放在了第二个位置上，同时呢，eventId的取值有几十个，通过Salt + eventId的方式可以保证不会形成热点。在单机部署版本中，HBase会存储所有的event数据，所以我们把date放在rowkey的第三个位置上以实现按date做scan，批量Scan性能甚至可以做到毫秒级返回。<br>这样的rowkey设计能够很好的支持如下几个查询场景：</p>
+<ol>
+<li>全表scan: 在这种情况下，我们仍然可以将全表数据切分成n份并发查询，从而实现查询的实时响应。</li>
+<li>只按照event_id查询</li>
+<li>按照event_id和date查询</li>
+</ol>
+<p>此外使用HBase做用户画像的标签存储方案，存储每个app的用户的人口学属性和商业属性等标签信息，由于其设计的更为复杂，后续会另起篇幅详细展开。<br>最后我们顺带提下HBase的表设计，HBase表设计通常可以是宽表（wide table）模式，即一行包括很多列。同样的信息也可以用高表（tall table）形式存储，通常高表的性能比宽表要高出 50%以上，所以推荐大家使用高表来完成表设计。表设计时，我们也应该要考虑HBase数据库的一些特性：</p>
+<ol>
+<li>在HBase表中是通过Rowkey的字典序来进行数据排序的</li>
+<li>所有存储在HBase表中的数据都是二进制的字节</li>
+<li>原子性只在行内保证，HBase不支持跨行事务</li>
+<li>列族(Column Family)在表创建之前就要定义好</li>
+<li>列族中的列标识(Column Qualifier)可以在表创建完以后动态插入数据时添加</li>
+</ol>
+<hr>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>在做Rowkey设计时，请先考虑业务是读比写多、还是读比写少，HBase本身是为写优化的，即便是这样，也可能会出现热点问题，而如果我们读比较多的话，除了考虑以上Rowkey设计原则外，还可以考虑HBase的Coprocessor甚至elastic search结合的方法，无论哪种方式，都建议做实际业务场景下数据的压力测试以得到最优结果。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://emerkfu.github.io/2019/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/" data-id="cki661p7p001gt4v7f6rfcqgr" data-title="RowKey设计原则、解决RowKey热点问题、RowKey设计实践" class="article-share-link">Share</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2020/01/01/Spark%E6%96%87%E6%A1%A3/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Spark文档 ***....
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Nginx的简介、安装、常用操作</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Azkaban/">Azkaban</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/CentOS/">CentOS</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Flume/">Flume</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/HBase/">HBase</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hadoop/">Hadoop</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hive/">Hive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hue/">Hue</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/MySQL/">MySQL</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Nginx/">Nginx</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Scala/">Scala</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spark/">Spark</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Yarn/">Yarn</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/blog/">blog</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/">生产配置</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/CentOS/" rel="tag">CentOS</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Flume/" rel="tag">Flume</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/" rel="tag">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop%E4%BC%98%E5%8C%96/" rel="tag">Hadoop优化</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hive/" rel="tag">Hive</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hue/" rel="tag">Hue</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/MySQL/" rel="tag">MySQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Nginx/" rel="tag">Nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shuffle/" rel="tag">Shuffle</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SparkSQL/" rel="tag">SparkSQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Yarn/" rel="tag">Yarn</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" rel="tag">数据倾斜</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/" rel="tag">生产配置</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/CentOS/" style="font-size: 10px;">CentOS</a> <a href="/tags/Flume/" style="font-size: 10px;">Flume</a> <a href="/tags/HBase/" style="font-size: 12px;">HBase</a> <a href="/tags/Hadoop/" style="font-size: 20px;">Hadoop</a> <a href="/tags/Hadoop%E4%BC%98%E5%8C%96/" style="font-size: 12px;">Hadoop优化</a> <a href="/tags/Hive/" style="font-size: 14px;">Hive</a> <a href="/tags/Hue/" style="font-size: 10px;">Hue</a> <a href="/tags/MySQL/" style="font-size: 10px;">MySQL</a> <a href="/tags/Nginx/" style="font-size: 10px;">Nginx</a> <a href="/tags/Scala/" style="font-size: 18px;">Scala</a> <a href="/tags/Shuffle/" style="font-size: 10px;">Shuffle</a> <a href="/tags/Spark/" style="font-size: 16px;">Spark</a> <a href="/tags/SparkSQL/" style="font-size: 12px;">SparkSQL</a> <a href="/tags/Yarn/" style="font-size: 10px;">Yarn</a> <a href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" style="font-size: 18px;">基本概念</a> <a href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" style="font-size: 14px;">常用命令</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" style="font-size: 10px;">数据倾斜</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/" style="font-size: 10px;">生产配置</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">2020年 08月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">2020年 07月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">2020年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">2020年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">2019年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">2019年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">2018年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/07/">2015年 07月</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/08/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/">生产相关配置</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/">SparkSQL 做统计分析</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/10/SparkSQL/">SparkSQL 基础</a>
+          </li>
+        
+          <li>
+            <a href="/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/">Spark 多目录输出</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">HBase 基本概念和使用</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js">
+  </script>
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      Copyright &copy; 2012 - 2020 <a href="/" target="_blank">EmerkFu</a>.
+      &nbsp;
+      
+        <!-- 不蒜子统计 -->
+        <span id="busuanzi_container_site_pv">
+                本站总访问量<span id="busuanzi_value_site_pv"></span>次
+        </span>
+        <span class="post-meta-divider">|</span>
+        <span id="busuanzi_container_site_uv" style='display:none'>
+                本站访客数<span id="busuanzi_value_site_uv"></span>人
+        </span>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+      
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
