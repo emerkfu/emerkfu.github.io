@@ -107,7 +107,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/08/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/" data-id="cki661p87002nt4v70ys8g48w" data-title="生产相关配置" class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2020/08/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/" data-id="cki662awh002hmsv76y2h28s6" data-title="生产相关配置" class="article-share-link">Share</a>
       
       
       
@@ -158,7 +158,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/" data-id="cki661p810026t4v74usd6f8h" data-title="SparkSQL 做统计分析" class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/" data-id="cki662awa0020msv7h0c4aamk" data-title="SparkSQL 做统计分析" class="article-share-link">Share</a>
       
       
       
@@ -209,7 +209,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/07/10/SparkSQL/" data-id="cki661p800022t4v74e84cz4i" data-title="SparkSQL 基础" class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2020/07/10/SparkSQL/" data-id="cki662aw9001wmsv7er7uhdo3" data-title="SparkSQL 基础" class="article-share-link">Share</a>
       
       
       
@@ -260,7 +260,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/" data-id="cki661p820028t4v7a8mi4abt" data-title="Spark 多目录输出" class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/" data-id="cki662awe0028msv72al17i3v" data-title="Spark 多目录输出" class="article-share-link">Share</a>
       
       
       
@@ -274,10 +274,10 @@
 
 
   
-    <article id="post-HBase基本概念" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+    <article id="post-RowKey设计原则、RowKey热点问题、RowKey设计实践" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" class="article-date">
-  <time class="dt-published" datetime="2020-06-28T15:00:00.000Z" itemprop="datePublished">2020-06-28</time>
+    <a href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/" class="article-date">
+  <time class="dt-published" datetime="2020-06-30T15:36:18.000Z" itemprop="datePublished">2020-06-30</time>
   &nbsp;
   
 </a>
@@ -294,7 +294,7 @@
         
   
     <h1 itemprop="name">
-      <a class="p-name article-title" href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">HBase 基本概念和使用</a>
+      <a class="p-name article-title" href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/">RowKey设计原则、解决RowKey热点问题、RowKey设计实践</a>
     </h1>
   
 
@@ -302,23 +302,20 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
-<p>HBase是基于列的而不是基于行的模式。</p>
-<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
-<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+        <h5 id="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"><a href="#HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。" class="headerlink" title="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"></a>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</h5><h5 id="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："><a href="#作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：" class="headerlink" title="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："></a>作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：</h5>
         
           <p class="article-more-link">
-            <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/#more">Read More</a>
+            <a href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/#more">Read More</a>
           </p>
         
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" data-id="cki661p700008t4v76ozjbf0b" data-title="HBase 基本概念和使用" class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/" data-id="cki662aw0001dmsv70fbb9fh7" data-title="RowKey设计原则、解决RowKey热点问题、RowKey设计实践" class="article-share-link">Share</a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li></ul>
 
     </footer>
   </div>
@@ -372,7 +369,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">归档</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">2020年 08月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">2020年 07月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">2020年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">2020年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/06/">2019年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">2019年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">2018年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/07/">2015年 07月</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">2020年 08月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">2020年 07月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/03/">2020年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/01/">2020年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">2019年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/01/">2018年 01月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2015/07/">2015年 07月</a></li></ul>
     </div>
   </div>
 
@@ -401,7 +398,7 @@
           </li>
         
           <li>
-            <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">HBase 基本概念和使用</a>
+            <a href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/">RowKey设计原则、解决RowKey热点问题、RowKey设计实践</a>
           </li>
         
       </ul>
