@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>生产相关配置</title>
+    <url>/2020/08/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<h4 id="记录了生产的组件版本、数据量大小、提交方式、分配的资源数量"><a href="#记录了生产的组件版本、数据量大小、提交方式、分配的资源数量" class="headerlink" title="记录了生产的组件版本、数据量大小、提交方式、分配的资源数量"></a>记录了生产的组件版本、数据量大小、提交方式、分配的资源数量</h4><hr>
+<a id="more"></a>
+<h3 id="用户行为分析（离线）"><a href="#用户行为分析（离线）" class="headerlink" title="用户行为分析（离线）"></a>用户行为分析（离线）</h3><h4 id="组件版本"><a href="#组件版本" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
+<h4 id="数据量大小"><a href="#数据量大小" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>用户表数据量    5000w<br>流水表        8e<br>一个block    80M左右</p>
+<h4 id="提交方式"><a href="#提交方式" class="headerlink" title="提交方式"></a>提交方式</h4><p>Spark on Yarn</p>
+<h4 id="分配的资源数量"><a href="#分配的资源数量" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
+<h3 id="数据中心预警平台（实时）"><a href="#数据中心预警平台（实时）" class="headerlink" title="数据中心预警平台（实时）"></a>数据中心预警平台（实时）</h3><h4 id="组件版本-1"><a href="#组件版本-1" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
+<h4 id="数据量大小-1"><a href="#数据量大小-1" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>…</p>
+<h4 id="提交方式-1"><a href="#提交方式-1" class="headerlink" title="提交方式"></a>提交方式</h4><p>…</p>
+<h4 id="分配的资源数量-1"><a href="#分配的资源数量-1" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
+]]></content>
+      <categories>
+        <category>生产配置</category>
+      </categories>
+      <tags>
+        <tag>生产配置</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>SparkSQL 做统计分析</title>
     <url>/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/</url>
     <content><![CDATA[<h4 id="SparkSQL-做统计分析的方法、存储格式的转换"><a href="#SparkSQL-做统计分析的方法、存储格式的转换" class="headerlink" title="SparkSQL 做统计分析的方法、存储格式的转换"></a>SparkSQL 做统计分析的方法、存储格式的转换</h4><a id="more"></a>
@@ -34,6 +55,9 @@
 <h4 id="存储格式的转换"><a href="#存储格式的转换" class="headerlink" title="存储格式的转换"></a>存储格式的转换</h4><p>Spark读text文件进行清洗，清洗完以后直接以我们想要的列式存储格式输出，如果按以前的方式要经过很多复杂的步骤</p>
 <p>用Spark的时候只需要在df.write.format(“orc”).mode().save()中指定格式即可，如orc，现在就很方便了，想转成什么格式，只要format支持就ok</p>
 <figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2orc</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//对文本文件做处理</span></span><br><span class="line">        df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>),words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">            .toDF(<span class="string">"name"</span>,<span class="string">"age"</span>)	<span class="comment">//这一步解决了数据没有表头的问题</span></span><br><span class="line">            .write</span><br><span class="line">            .mode(<span class="string">"overwrite"</span>)	<span class="comment">//save mode</span></span><br><span class="line">            .format(<span class="string">"orc"</span>)	<span class="comment">//save format</span></span><br><span class="line">            .save(out)	<span class="comment">//save path</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
       <tags>
         <tag>Spark</tag>
         <tag>SparkSQL</tag>
@@ -143,6 +167,9 @@ csv读取数据注意使用几个参数</li>
 <figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//接着上面返回的sqlDF: DataFrame</span></span><br><span class="line">sqlDF.write</span><br><span class="line">    .format(<span class="string">"jdbc"</span>)</span><br><span class="line">    .option(<span class="string">"url"</span>, url)</span><br><span class="line">    .option(<span class="string">"dbtable"</span>, <span class="string">s"<span class="subst">$db</span>.<span class="subst">$target</span>"</span>)	<span class="comment">//库名.目标表</span></span><br><span class="line">    .option(<span class="string">"user"</span>, user)</span><br><span class="line">    .option(<span class="string">"password"</span>, password)</span><br><span class="line">    .option(<span class="string">"driver"</span>,driver)</span><br><span class="line">    .save()</span><br></pre></td></tr></table></figure></li>
 </ol>
 ]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
       <tags>
         <tag>Spark</tag>
         <tag>SparkSQL</tag>
@@ -160,6 +187,9 @@ csv读取数据注意使用几个参数</li>
 
 <h5 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h5><p><img src="/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA.jpg" alt="多目录输出"></p>
 ]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
       <tags>
         <tag>Spark</tag>
       </tags>
@@ -293,9 +323,12 @@ csv读取数据注意使用几个参数</li>
 </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>HBase</category>
+      </categories>
       <tags>
-        <tag>HBase</tag>
         <tag>基本概念</tag>
+        <tag>HBase</tag>
         <tag>常用命令</tag>
       </tags>
   </entry>
@@ -349,9 +382,65 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
 </ol>
 ]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
       <tags>
         <tag>Hive</tag>
         <tag>数据倾斜</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop Block和副本数&amp;小文件问题</title>
+    <url>/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
+<hr>
+<a id="more"></a>
+
+<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
+<p><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
+<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
+<ol>
+<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
+<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
+<li>第三个副本：与第二个副本相同机架的不同节点上</li>
+<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
+</ol>
+<ul>
+<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
+<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
+</ul>
+<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
+<p>官网中的相应的默认参数如下：<br><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
+<p>可以看到，默认块大小为128M，默认副本数为3.</p>
+<p>这里会有一个常规的面试题：</p>
+<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
+<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
+<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
+<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
+<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
+<ol>
+<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS</li>
+<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并</li>
+</ol>
+<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
+<ol>
+<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
+<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
+<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
+<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
+</ol>
+<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
+<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -440,59 +529,12 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 </ul>
 <p>为了解决单点故障，设置了SNN的1小时备份机制，虽然能够减轻单点故障，但是还会有风险，即在那1小时中，还是会有发生单点故障的可能，造成数据丢失。为了解决这个问题，需要部署HDFS -HA高可用。</p>
 ]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
       <tags>
+        <tag>Hadoop</tag>
         <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop Block和副本数&amp;小文件问题</title>
-    <url>/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
-    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
-<hr>
-<a id="more"></a>
-
-<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
-<p><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
-<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
-<ol>
-<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
-<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
-<li>第三个副本：与第二个副本相同机架的不同节点上</li>
-<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
-</ol>
-<ul>
-<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
-<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
-</ul>
-<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
-<p>官网中的相应的默认参数如下：<br><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
-<p>可以看到，默认块大小为128M，默认副本数为3.</p>
-<p>这里会有一个常规的面试题：</p>
-<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
-<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
-<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
-<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
-<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
-<ol>
-<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS</li>
-<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并</li>
-</ol>
-<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
-<ol>
-<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
-<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
-<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
-<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
-</ol>
-<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
-<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
-]]></content>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -592,6 +634,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>bin/hive -f /home/vinx/shell/select_stu.sql 执行HQL文件</li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
       <tags>
         <tag>常用命令</tag>
         <tag>Hive</tag>
@@ -615,9 +660,12 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
 <h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
 ]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+        <tag>基本概念</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -656,6 +704,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 </ol>
 <h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
 ]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
       <tags>
         <tag>Hadoop</tag>
         <tag>Hadoop优化</tag>
@@ -705,9 +756,12 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 </ol>
 <p>总结：所以，切片的数量并不一定等于分块的数量+小文件的数据量，还要考虑大文件切分后剩余的部分是否大于块的1.1倍。</p>
 ]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+        <tag>基本概念</tag>
       </tags>
   </entry>
   <entry>
@@ -749,6 +803,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>运行任务，直到任务运行完成。</li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Yarn</category>
+      </categories>
       <tags>
         <tag>基本概念</tag>
         <tag>Yarn</tag>
@@ -760,9 +817,12 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
     <content><![CDATA[<h4 id="Hadoop常用命令"><a href="#Hadoop常用命令" class="headerlink" title="Hadoop常用命令"></a>Hadoop常用命令</h4><a id="more"></a>
 
 <figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
       <tags>
-        <tag>常用命令</tag>
         <tag>Hadoop</tag>
+        <tag>常用命令</tag>
       </tags>
   </entry>
   <entry>
@@ -792,9 +852,12 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
 </ol>
 ]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+        <tag>基本概念</tag>
       </tags>
   </entry>
   <entry>
@@ -830,6 +893,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <h4 id="hue-启动"><a href="#hue-启动" class="headerlink" title="hue 启动"></a>hue 启动</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $HUE_HOME/build/env/bin/ </span><br><span class="line">nohup supervisor &amp;</span><br></pre></td></tr></table></figure>
 
 <h4 id="hue-登录"><a href="#hue-登录" class="headerlink" title="hue 登录"></a>hue 登录</h4><h5 id="你设置的host-8888"><a href="#你设置的host-8888" class="headerlink" title="你设置的host:8888"></a>你设置的host:8888</h5><h5 id="第一次登陆需要设置用户名密码"><a href="#第一次登陆需要设置用户名密码" class="headerlink" title="第一次登陆需要设置用户名密码"></a>第一次登陆需要设置用户名密码</h5><h3 id="至此-hue部署结束…"><a href="#至此-hue部署结束…" class="headerlink" title="至此 hue部署结束…"></a>至此 hue部署结束…</h3>]]></content>
+      <categories>
+        <category>Hue</category>
+      </categories>
       <tags>
         <tag>Hue</tag>
       </tags>
@@ -869,6 +935,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 
 <p>例3：</p>
 <figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="comment">//open</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">//关闭文件流或释放数据库连接</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
       <tags>
         <tag>Scala</tag>
       </tags>
@@ -896,6 +965,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <h6 id="获取所有key："><a href="#获取所有key：" class="headerlink" title="获取所有key："></a>获取所有key：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> (v &lt;- c.values) &#123;</span><br><span class="line">  println(v)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h6 id="结果：-2"><a href="#结果：-2" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="number">20</span></span><br><span class="line"><span class="number">10</span></span><br></pre></td></tr></table></figure>
 <h5 id="some的解释："><a href="#some的解释：" class="headerlink" title="some的解释："></a>some的解释：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">val</span> a = <span class="type">Map</span>(<span class="number">1</span> -&gt; <span class="number">2</span>)</span><br><span class="line">a: scala.collection.immutable.<span class="type">Map</span>[<span class="type">Int</span>,<span class="type">Int</span>] = <span class="type">Map</span>(<span class="number">1</span> -&gt; <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">1</span>)</span><br><span class="line">res10: <span class="type">Option</span>[<span class="type">Int</span>] = <span class="type">Some</span>(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">2</span>)</span><br><span class="line">res11: <span class="type">Option</span>[<span class="type">Int</span>] = <span class="type">None</span></span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">1</span>).get</span><br><span class="line">res12: <span class="type">Int</span> = <span class="number">2</span></span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">2</span>).getOrElse(<span class="number">99</span>)</span><br><span class="line">res2: <span class="type">Int</span> = <span class="number">99</span></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
       <tags>
         <tag>Scala</tag>
       </tags>
@@ -914,6 +986,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <h5 id="tuple遍历"><a href="#tuple遍历" class="headerlink" title="tuple遍历"></a>tuple遍历</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> b = (<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>,<span class="string">"a"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (i &lt;- <span class="number">0</span> until b.productArity)&#123;</span><br><span class="line">  println(b.productElement(i))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h6 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="number">1</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="number">3</span></span><br><span class="line"><span class="number">4</span></span><br><span class="line"><span class="number">5</span></span><br><span class="line">a</span><br></pre></td></tr></table></figure>
 <h5 id="Tuple2-对偶（调换位置）"><a href="#Tuple2-对偶（调换位置）" class="headerlink" title="Tuple2 对偶（调换位置）"></a>Tuple2 对偶（调换位置）</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">val</span> t = (<span class="string">"a"</span>,<span class="string">"b"</span>)</span><br><span class="line">t: (<span class="type">String</span>, <span class="type">String</span>) = (a,b)</span><br><span class="line"></span><br><span class="line">scala&gt; t.swap</span><br><span class="line">res0: (<span class="type">String</span>, <span class="type">String</span>) = (b,a)</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
       <tags>
         <tag>Scala</tag>
       </tags>
@@ -929,6 +1004,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <h5 id="增加一个值，成功了返回值为true："><a href="#增加一个值，成功了返回值为true：" class="headerlink" title="增加一个值，成功了返回值为true："></a>增加一个值，成功了返回值为true：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s.add(<span class="number">10</span>)</span><br><span class="line">res14: <span class="type">Boolean</span> = <span class="literal">true</span></span><br></pre></td></tr></table></figure>
 <h5 id="多种增加值的方法："><a href="#多种增加值的方法：" class="headerlink" title="多种增加值的方法："></a>多种增加值的方法：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s += <span class="number">11</span></span><br><span class="line">res15: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += (<span class="number">12</span>)</span><br><span class="line">res16: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += <span class="number">12</span></span><br><span class="line">res17: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.add(<span class="number">12</span>)</span><br><span class="line">res18: <span class="type">Boolean</span> = <span class="literal">false</span></span><br><span class="line"><span class="comment">//此处因为12存在，所以不能增加了</span></span><br></pre></td></tr></table></figure>
 <h5 id="去掉一个值"><a href="#去掉一个值" class="headerlink" title="去掉一个值"></a>去掉一个值</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s -= <span class="number">12</span></span><br><span class="line">res19: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.remove(<span class="number">10</span>)</span><br><span class="line">res20: <span class="type">Boolean</span> = <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">scala&gt; s</span><br><span class="line">res21: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">11</span>)</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
       <tags>
         <tag>Scala</tag>
       </tags>
@@ -949,8 +1027,51 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <h6 id="读取最后一位数据"><a href="#读取最后一位数据" class="headerlink" title="读取最后一位数据"></a>读取最后一位数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.last</span><br><span class="line">res8: <span class="type">Int</span> = <span class="number">6</span></span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res9: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
 
 <h6 id="读取第一位以后的所有值"><a href="#读取第一位以后的所有值" class="headerlink" title="读取第一位以后的所有值"></a>读取第一位以后的所有值</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.tail</span><br><span class="line">res10: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res11: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1.tail.tail</span><br><span class="line">res12: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res13: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
       <tags>
         <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Azkaban ***....</title>
+    <url>/2020/01/01/Azkaban/</url>
+    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
+<ul>
+<li>Azkaban …</li>
+<li>Azkaban …</li>
+<li>Azkaban … </li>
+</ul>
+]]></content>
+      <categories>
+        <category>Azkaban</category>
+      </categories>
+  </entry>
+  <entry>
+    <title>CentOS ***....</title>
+    <url>/2020/01/01/CentOS/</url>
+    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
+<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
+<a id="more"></a>
+<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
+<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
+<ul>
+<li>CentOS …</li>
+<li>CentOS …</li>
+<li>CentOS … </li>
+</ul>
+]]></content>
+      <categories>
+        <category>CentOS</category>
+      </categories>
+      <tags>
+        <tag>CentOS</tag>
       </tags>
   </entry>
   <entry>
@@ -968,46 +1089,11 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>Flume … </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
       <tags>
         <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>CentOS ***....</title>
-    <url>/2020/01/01/CentOS/</url>
-    <content><![CDATA[<h3 id="CentOS-…"><a href="#CentOS-…" class="headerlink" title="CentOS …."></a>CentOS ….</h3><hr>
-<h4 id="CentOS"><a href="#CentOS" class="headerlink" title="CentOS"></a>CentOS</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="CentOS-web"><a href="#CentOS-web" class="headerlink" title="CentOS web"></a>CentOS web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="CentOS-demo-code"><a href="#CentOS-demo-code" class="headerlink" title="CentOS demo code"></a>CentOS demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="CentOS-img"><a href="#CentOS-img" class="headerlink" title="CentOS img"></a>CentOS img</h4><p><img src="/2020/01/01/CentOS/logistic-regression.png" alt></p>
-<ul>
-<li>CentOS …</li>
-<li>CentOS …</li>
-<li>CentOS … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>CentOS</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Azkaban ***....</title>
-    <url>/2020/01/01/Azkaban/</url>
-    <content><![CDATA[<h3 id="Azkaban-…"><a href="#Azkaban-…" class="headerlink" title="Azkaban …."></a>Azkaban ….</h3><hr>
-<h4 id="Azkaban"><a href="#Azkaban" class="headerlink" title="Azkaban"></a>Azkaban</h4><p>这里是首页显示的描述内容</p>
-<a id="more"></a>
-<h4 id="Azkaban-web"><a href="#Azkaban-web" class="headerlink" title="Azkaban web"></a>Azkaban web</h4><p><a href="https://github.com/azkaban/azkaban" target="_blank" rel="noopener">Azkaban github</a></p>
-<h4 id="Azkaban-demo-code"><a href="#Azkaban-demo-code" class="headerlink" title="Azkaban demo code"></a>Azkaban demo code</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">val textFile = sc.textFile(<span class="string">"hdfs://..."</span>)</span><br><span class="line">val counts = textFile.flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                 .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                 .reduceByKey(_ + _)</span><br><span class="line">counts.saveAsTextFile(<span class="string">"hdfs://..."</span>)</span><br></pre></td></tr></table></figure>
-<h4 id="Spark-img"><a href="#Spark-img" class="headerlink" title="Spark img"></a>Spark img</h4><p><img src="/2020/01/01/Azkaban/app.png" alt></p>
-<ul>
-<li>Azkaban …</li>
-<li>Azkaban …</li>
-<li>Azkaban … </li>
-</ul>
-]]></content>
-      <tags>
-        <tag>Azkaban</tag>
       </tags>
   </entry>
   <entry>
@@ -1025,6 +1111,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>Hadoop … </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
       <tags>
         <tag>Hadoop</tag>
       </tags>
@@ -1044,6 +1133,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>Hive … </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
       <tags>
         <tag>Hive</tag>
       </tags>
@@ -1063,6 +1155,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>MySQL … </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>MySQL</category>
+      </categories>
       <tags>
         <tag>MySQL</tag>
       </tags>
@@ -1082,6 +1177,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>Scala … </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
       <tags>
         <tag>Scala</tag>
       </tags>
@@ -1101,8 +1199,56 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>Spark文档 … </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
       <tags>
         <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Nginx的简介、安装、常用操作</title>
+    <url>/2019/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/</url>
+    <content><![CDATA[<h3 id="Nginx的功能介绍"><a href="#Nginx的功能介绍" class="headerlink" title="Nginx的功能介绍"></a>Nginx的功能介绍</h3><p>Nginx是一个轻量级、高性能、稳定性高、并发性好的HTTP和反向代理服务器。也是由于其的特性，其应用非常广。</p>
+<hr>
+<a id="more"></a>
+<h4 id="反向代理"><a href="#反向代理" class="headerlink" title="反向代理"></a>反向代理</h4><p>在说反向代理之前说一下正向代理：某些情况下，代理服务器代理我们用户去访问服务器，需要用户手动的设置代理服务器的ip和端口号。正向代理的最大特点是代理服务器在客户端。<br>反向代理是用来代理服务器的，代理服务器代理我们要访问的目标服务器。代理服务器接受请求，然后将请求转发给内部网络的服务器(集群化)，并将从服务器上得到的结果返回给客户端，此时代理服务器对外就表现为一个服务器。反向代理的最大特点是代理服务器在服务器端。<br><img src="/2019/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx01.jpg" alt="Nginx反向代理"></p>
+<h4 id="负载均衡"><a href="#负载均衡" class="headerlink" title="负载均衡"></a>负载均衡</h4><p>负载均衡是在高并发情况下需要使用。其原理就是将数据流量分摊到多个服务器执行，减轻每台服务器的压力，多台服务器(集群)共同完成工作任务，从而提高了数据的吞吐量。<br>Nginx可使用的负载均衡策略有：轮询（默认）、权重、ip_hash、url_hash(第三方)、fair(第三方)<br><img src="/2019/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx02.jpg" alt="Nginx负载均衡策略"><br>Ip hash算法，对客户端请求的ip进行hash操作，然后根据hash结果将同一个客户端ip的请求分发给同一台服务器进行处理，可以解决session不共享的问题。<br><img src="/2019/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx03.jpg" alt="Nginx负载均衡策略"></p>
+<h4 id="动静分离"><a href="#动静分离" class="headerlink" title="动静分离"></a>动静分离</h4><p>Nginx提供的动静分离是指把动态请求和静态请求分离开，合适的服务器处理相应的请求，使整个服务器系统的性能、效率更高。<br>Nginx可以根据配置对不同的请求做不同转发，这是动态分离的基础。静态请求对应的静态资源可以直接放在Nginx上做缓冲，更好的做法是放在相应的缓冲服务器上。动态请求由相应的后端服务器处理。<br>常见的静态文件有js、css、html，常见的动态文件有jsp、servlet</p>
+<h3 id="Nginx的安装"><a href="#Nginx的安装" class="headerlink" title="Nginx的安装"></a>Nginx的安装</h3><h4 id="安装所需环境"><a href="#安装所需环境" class="headerlink" title="安装所需环境"></a>安装所需环境</h4><p>一. gcc 安装<br>安装 nginx 需要先将官网下载的源码进行编译，编译依赖 gcc 环境，如果没有 gcc 环境，则需要安装：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install gcc-c++</span><br></pre></td></tr></table></figure>
+<p>二. PCRE pcre-devel 安装<br>PCRE(Perl Compatible Regular Expressions) 是一个Perl库，包括 perl 兼容的正则表达式库。nginx 的 http 模块使用 pcre 来解析正则表达式，所以需要在 linux 上安装 pcre 库，pcre-devel 是使用 pcre 开发的一个二次开发库。nginx也需要此库。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y pcre pcre-devel</span><br></pre></td></tr></table></figure>
+<p>三. zlib 安装<br>zlib 库提供了很多种压缩和解压缩的方式， nginx 使用 zlib 对 http 包的内容进行 gzip ，所以需要在 Centos 上安装 zlib 库。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y zlib zlib-devel</span><br></pre></td></tr></table></figure>
+<p>四. OpenSSL 安装<br>OpenSSL 是一个强大的安全套接字层密码库，囊括主要的密码算法、常用的密钥和证书封装管理功能及 SSL 协议，并提供丰富的应用程序供测试或其它目的使用。<br>nginx 不仅支持 http 协议，还支持 https（即在ssl协议上传输http），所以需要在 Centos 安装 OpenSSL 库。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y openssl openssl-devel</span><br></pre></td></tr></table></figure>
+<p>五. 综合操作下载命令</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install gcc-c++ pcre pcre-devel zlib zlib-devel openssl openssl-devel -y</span><br></pre></td></tr></table></figure>
+<h4 id="下载安装Nginx"><a href="#下载安装Nginx" class="headerlink" title="下载安装Nginx"></a>下载安装Nginx</h4><ol>
+<li>官网下载.tar.gz安装包，地址：<a href="https://nginx.org/en/download.html" target="_blank" rel="noopener">https://nginx.org/en/download.html</a></li>
+<li>使用wget命令下载（推荐）。确保系统已经安装了wget，如果没有安装，执行 yum install wget 安装。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">wget -c https://nginx.org/download/nginx-1.12.0.tar.gz</span><br></pre></td></tr></table></figure></li>
+<li>解压<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tar -zxvf nginx-1.12.0.tar.gz -C ../app</span><br><span class="line">cd nginx-1.12.0</span><br></pre></td></tr></table></figure></li>
+<li>默认配置(默认是安装在/usr/local/nginx，不推介指定安装目录)<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./configure</span><br></pre></td></tr></table></figure></li>
+<li>编译安装(root用户)<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">make &amp;&amp; make install</span><br></pre></td></tr></table></figure></li>
+<li>查找安装路径<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">whereis nginx</span><br></pre></td></tr></table></figure>
+结果：/usr/local/nginx、</li>
+</ol>
+<h4 id="Nginx常用操作"><a href="#Nginx常用操作" class="headerlink" title="Nginx常用操作"></a>Nginx常用操作</h4><ol>
+<li>启动、停止nginx<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /usr/local/nginx/sbin/</span><br><span class="line">./nginx 	        #启动</span><br><span class="line">./nginx -s stop		#停止</span><br><span class="line">./nginx -s quit		#退出</span><br><span class="line">./nginx -s reload	#重新加载配置文件</span><br></pre></td></tr></table></figure>
+启动时报80端口被占用:nginx: [emerg] bind() to 0.0.0.0:80 failed (98: Address already in use)<br>解决办法：安装net-tool 包：yum install net-tools<br>命令详解：<br>./nginx -s quit:此方式停止步骤是待nginx进程处理任务完毕进行停止。<br>./nginx -s stop:此方式相当于先查出nginx进程id再使用kill命令强制杀掉进程。</li>
+<li>重启Nginx<br>对 nginx 进行重启相当于先停止再启动，即先执行停止命令再执行启动命令。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./nginx -s quit</span><br><span class="line">./nginx</span><br></pre></td></tr></table></figure></li>
+<li>重新加载配置文件<br>当 ngin x的配置文件 nginx.conf 修改后，要想让配置生效需要重启 nginx，使用-s reload不用先停止 ngin x再启动 nginx 即可将配置信息在 nginx 中生效。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./nginx -s reload</span><br></pre></td></tr></table></figure>
+启动成功后，可打开浏览器访问，默认端口80</li>
+<li>配置开机自启<br>即在rc.local增加启动代码就可以了。<br>vi /etc/rc.local<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">/usr/local/nginx/sbin/nginx</span><br></pre></td></tr></table></figure>
+设置执行权限：chmod 755 rc.local</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Nginx</category>
+      </categories>
+      <tags>
+        <tag>Nginx</tag>
       </tags>
   </entry>
   <entry>
@@ -1140,6 +1286,9 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <li>spark sql </li>
 </ul>
 ]]></content>
+      <categories>
+        <category>blog</category>
+      </categories>
       <tags>
         <tag>Spark</tag>
       </tags>
