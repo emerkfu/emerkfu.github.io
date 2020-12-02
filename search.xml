@@ -432,153 +432,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Hadoop Block和副本数&amp;小文件问题</title>
-    <url>/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
-    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
-<hr>
-<a id="more"></a>
-
-<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
-<p><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
-<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
-<ol>
-<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
-<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
-<li>第三个副本：与第二个副本相同机架的不同节点上</li>
-<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
-</ol>
-<ul>
-<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
-<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
-</ul>
-<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
-<p>官网中的相应的默认参数如下：<br><img src="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
-<p>可以看到，默认块大小为128M，默认副本数为3.</p>
-<p>这里会有一个常规的面试题：</p>
-<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
-<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
-<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
-<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
-<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
-<ol>
-<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS</li>
-<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并</li>
-</ol>
-<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
-<ol>
-<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
-<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
-<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
-<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
-</ol>
-<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
-<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop HDFS架构 NameNode和DataNode工作机制</title>
-    <url>/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<h4 id="Hadoop-HDFS架构"><a href="#Hadoop-HDFS架构" class="headerlink" title="Hadoop HDFS架构"></a>Hadoop HDFS架构</h4><p>HDFS主要由3个组件构成：NameNode, DataNode, SecondaryNameNode。<br>HDFS是以master/slave模式运行的，通常NameNode, SecondaryNameNode运行在master节点，DataNode运行在slave节点。</p>
-<hr>
-<a id="more"></a>
-
-<h4 id="HDFS架构图"><a href="#HDFS架构图" class="headerlink" title="HDFS架构图"></a>HDFS架构图</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png" alt="HDFS主从架构"></p>
-<h4 id="NameNode（名称节点）"><a href="#NameNode（名称节点）" class="headerlink" title="NameNode（名称节点）"></a>NameNode（名称节点）</h4><p>存储：文件元数据信息，包含：</p>
-<ul>
-<li>文件名称</li>
-<li>文件目录结构</li>
-<li>文件的属性（权限，创建时间，副本数）</li>
-<li>文件对应哪些数据块 –&gt; 数据块对应哪些DN节点</li>
-</ul>
-<p>作用：</p>
-<ul>
-<li>管理文件系统命名空间</li>
-<li>维护文件系统树及树中的所有文件和目录</li>
-<li>维护所有这些文件或目录的打开、关闭、移动、重命名等操作</li>
-</ul>
-<h4 id="NameNode工作机制"><a href="#NameNode工作机制" class="headerlink" title="NameNode工作机制"></a>NameNode工作机制</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/namenode-process.png" alt="NN工作机制"></p>
-<p>第一阶段：NameNode启动</p>
-<ol>
-<li>第一次启动NameNode格式化后，创建fsimage和edits文件。如果不是第一次启动，直接加载编辑日志（edits）和镜像文件（fsimage）到内存。</li>
-<li>客户端对元数据进行增删改的请求。</li>
-<li>NameNode记录操作日志，更新滚动日志。</li>
-<li>NameNode在内存中对数据进行增删改查。</li>
-</ol>
-<p>第二阶段：SecondaryNameNode工作</p>
-<ol>
-<li>SecondaryNameNode询问NameNode是否需要checkpoint。直接带回NameNode是否检查结果。</li>
-<li>SecondaryNameNode请求执行checkpoint。</li>
-<li>NameNode滚动正在写的edits日志。</li>
-<li>将滚动前的编辑日志和镜像文件拷贝到SecondaryNameNode。</li>
-<li>SecondaryNameNode加载编辑日志和镜像文件到内存，并合并。</li>
-<li>生成新的镜像文件fsimage.chkpoint。</li>
-<li>拷贝fsimage.chkpoint到NameNode。</li>
-<li>NameNode将fsimage.chkpoint重新命名成fsimage。</li>
-</ol>
-<p>checkpoint检查时间参数设置</p>
-<ol>
-<li>通常情况下，SecondaryNameNode每隔1小时执行一次<br>[hdfs-default.xml]<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.period<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>3600<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
-<li>一分钟检查一次操作次数，当操作次数达到一百万时，SecondaryNameNode执行一次<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.txns<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>1000000<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">description</span>&gt;</span>操作动作次数<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.check.period<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>60<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">description</span>&gt;</span> 1分钟检查一次操作次数<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h4 id="DataNode（数据节点）"><a href="#DataNode（数据节点）" class="headerlink" title="DataNode（数据节点）"></a>DataNode（数据节点）</h4><p>存储：数据块，数据块校验和，与NN通信</p>
-<p>作用：</p>
-<ul>
-<li>读写文件的数据块</li>
-<li>接收NN的指示来进行创建、删除、复制等操作</li>
-<li>通过心跳定期向NN发送所存储文件块列表信息</li>
-</ul>
-<h4 id="DataNode工作机制"><a href="#DataNode工作机制" class="headerlink" title="DataNode工作机制"></a>DataNode工作机制</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/datanode-detail.png" alt="DN工作机制"></p>
-<ol>
-<li>一个数据块在DataNode上以文件形式存储在磁盘上，包括两个文件，一个是数据本身，一个是元数据，包括数据块的长度、块数据的校验和以及时间戳。</li>
-<li>DataNode启动后向NameNode注册，通过后，周期性（1小时）地向NameNode上报所有的块信息。</li>
-<li>心跳是每3秒一次，心跳返回结果带有NameNode给该DataNode的命令，如复制块数据到另一台机器或删除某个数据块。如果超过10分钟没有收到某个DataNode的心跳，则认为该节点不可用。</li>
-<li>集群运行中可以安全加入和退出一些机器。</li>
-</ol>
-<h4 id="数据完整性"><a href="#数据完整性" class="headerlink" title="数据完整性"></a>数据完整性</h4><ol>
-<li>当DataNode读取block的时候，它会计算checksum校验和。</li>
-<li>如果计算后的checksum，与block创建时值不一样，说明block已经损坏。</li>
-<li>client读取其他DataNode上的block。</li>
-<li>DataNode在其文件创建后周期验证checksum校验和。</li>
-</ol>
-<h4 id="掉线时限参数设置"><a href="#掉线时限参数设置" class="headerlink" title="掉线时限参数设置"></a>掉线时限参数设置</h4><p>DataNode进程死亡或者网络故障造成DataNode无法与NameNode通信，NameNode不会立即把该节点判定为死亡，要经过一段时间，这段时间暂称作超时时长。HDFS默认的超时时长为10分钟+30秒。如果定义超时时间为timeout，则超时时长的计算公式为：</p>
-<ul>
-<li><p>timeout = 2 * dfs.namenode.heartbeat.recheck-interval + 10 * dfs.heartbeat.interval</p>
-</li>
-<li><p>默认的dfs.namenode.heartbeat.recheck-interval 大小为5分钟，dfs.heartbeat.interval默认为3秒。</p>
-</li>
-<li><p>需要注意的是hdfs-site.xml 配置文件中的heartbeat.recheck.interval的单位为毫秒，dfs.heartbeat.interval的单位为秒。</p>
-</li>
-</ul>
-<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.heartbeat.recheck-interval<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">value</span>&gt;</span>300000<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">name</span>&gt;</span> dfs.heartbeat.interval <span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">value</span>&gt;</span>3<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="ScondaryNameNode（第二名称节点）"><a href="#ScondaryNameNode（第二名称节点）" class="headerlink" title="ScondaryNameNode（第二名称节点）"></a>ScondaryNameNode（第二名称节点）</h4><p>存储：命名空间镜像文件fsimage+编辑日志editlog</p>
-<p>作用：</p>
-<ul>
-<li>定期合并fsimage+editlog文件为新的fsimage，推送给NN</li>
-<li>监控HDFS状态，每隔一段时间获取HDFS元数据的快照</li>
-</ul>
-<p>为了解决单点故障，设置了SNN的1小时备份机制，虽然能够减轻单点故障，但是还会有风险，即在那1小时中，还是会有发生单点故障的可能，造成数据丢失。为了解决这个问题，需要部署HDFS -HA高可用。</p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hive 基本概念 Hive的部署 Hive的常用命令</title>
     <url>/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
     <content><![CDATA[<h4 id="Hive基本概念"><a href="#Hive基本概念" class="headerlink" title="Hive基本概念"></a>Hive基本概念</h4><p><a href="http://hive.apache.org" target="_blank" rel="noopener">Hive官网</a></p>
@@ -684,128 +537,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Hadoop Shuffle机制</title>
-    <url>/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<h4 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h4><hr>
-<a id="more"></a>
-
-<h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
-<p><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle.png" alt="shuffle"></p>
-<p>下图是Shuffle机制图<br><img src="/2020/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle-detail.png" alt="shuffle"></p>
-<h4 id="Shuffle过程"><a href="#Shuffle过程" class="headerlink" title="Shuffle过程"></a>Shuffle过程</h4><p>shuffle一开始就是map阶段做输出操作，map在做输出时会在内存里开启一个环形缓冲区，这个缓冲区是专门用来输出的，默认大小是100MB，并且在配置文件里为这个缓冲区设定了一个阈值，默认是0.80。同时map还会为输出操作启动一个守护线程，如果缓冲区的内存达到了阈值的80%的时候，这个守护线程就会把内容写到磁盘上，这个过程叫spill（溢写）。另外的20%内存可以继续写入要写进磁盘的数据，写入磁盘和写入内存操作互不干扰，如果缓存区被撑爆了，那么map就会阻塞写入内存的操作，让写入磁盘操作完成后再继续执行写入内存操作。</p>
-<p>写入磁盘前会有个排序操作，这个是在写入磁盘操作时进行，不是在写入内存时进行的，如果我们定义了combiner函数，那么排序前还会执行combiner操作。每次spill操作也就是写入磁盘时就会写一个溢出文件，也就是说在做map输出时有几次spill就会产生多少个溢出文件，等map输出全部做完后，map会合并这些输出文件。</p>
-<p>这个过程里还会有一个Partitioner操作，和map阶段的输入分片（Input Split）很像，一个Partitioner对应一个reduce作业，如果我们的MR操作只有一个reduce操作，那么Partitioner就只有一个，如果我们有多个reduce操作，那么Partitioner对应的就会有多个，Partitioner因此就是reduce的输入分片。</p>
-<p>到了reduce阶段就是合并map输出文件了，Partitioner会找到对应的map输出文件，然后进行复制操作，复制操作时reduce会开启几个复制线程，这些线程默认个数是5个，这个复制过程和map写入磁盘过程类似，也有阈值和内存大小，阈值可以在配置文件里配置，而内存大小是直接使用reduce的tasktracker的内存大小，复制时候reduce还会进行排序操作和合并文件操作，这些操作完了就会进行reduce计算了。</p>
-<p>上面也提到，将map的输出作为reduce的输入的过程就是shuffle（洗牌）。</p>
-<p>那么shuffle到底是属于map阶段还是reduce阶段呢？比较公认的说法是，shuffle应该是属于reduce阶段，因为map阶段的主要任务是数据映射，而shuffle的目的是主要是为reduce阶段做准备的。</p>
-<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
-<h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-        <tag>Shuffle</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop 数据压缩</title>
-    <url>/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/</url>
-    <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
-<hr>
-<a id="more"></a>
-
-<h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
-<ul>
-<li>减少磁盘存储空间</li>
-<li>降低IO（网络的IO和磁盘的IO）</li>
-<li>加快数据在磁盘和网络中的传输速度，从而提高系统的处理速度</li>
-</ul>
-<p>坏处：</p>
-<ul>
-<li>由于使用数据时，需要先将数据解压，加重CPU负荷</li>
-</ul>
-<p>基本原则：</p>
-<ul>
-<li>运算密集型的job，少用压缩</li>
-<li>IO密集型的job，多用压缩</li>
-</ul>
-<p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png" alt="压缩格式"><br>是否可分割是指，压缩后的文件是否可以再分割。可以分割的格式允许单一文件由多个Mapper程序同时读取，可以做到更好的并行化。</p>
-<h4 id="压缩比"><a href="#压缩比" class="headerlink" title="压缩比"></a>压缩比</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png" alt="压缩之后的size"></p>
-<h4 id="压缩时间"><a href="#压缩时间" class="headerlink" title="压缩时间"></a>压缩时间</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png" alt="压缩时间-两次不同大小的文件"><br>可以看出，压缩比越高，压缩时间越长，压缩比：Snappy&gt;LZ4&gt;LZO&gt;GZIP&gt;BZIP2</p>
-<h4 id="压缩格式的优缺点"><a href="#压缩格式的优缺点" class="headerlink" title="压缩格式的优缺点"></a>压缩格式的优缺点</h4><p><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png" alt="压缩格式的优缺点"></p>
-<h4 id="压缩的应用场景"><a href="#压缩的应用场景" class="headerlink" title="压缩的应用场景"></a>压缩的应用场景</h4><p>在Hadoop中的应用场景主要在三方面：输入，中间，输出。</p>
-<p>整体思路：hdfs ==&gt; map ==&gt; shuffle ==&gt; reduce</p>
-<ol>
-<li>Use Compressd Map Input: 从HDFS中读取文件进行MR作业，如果数据很大，可以使用压缩并且选择支持分片的压缩方式（bzip2, LZO），可以实现并行处理，提高效率，减少磁盘读取时间，同时选择合适的存储格式，例如：Sequence Files, RC, ORC等。</li>
-<li>Compress Intermediate Data: Map输出作为Reduce的输入，需要经过shuffle这一过程，需要把数据读取到一个环形缓冲区，然后读取到本地磁盘，所以选择压缩可以减少存储文件所占空间，提升数据传输速率。建议使用压缩速度快的压缩方式，例如：Snappy和LZO。</li>
-<li>Compress Reducer Output: 进行归档处理或者链接MR的工作（该作业的输出作为下个作业的输入），压缩可以减少存储文件所占空间，提升数据传输速率，如果作为归档处理，可以采用高的压缩比（Gzip, bzip2），如果作为下个作业的输入，考虑是否要分片进行选择。</li>
-</ol>
-<h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2020/06/20/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop 数据切片 &amp; MapTask并行度机制</title>
-    <url>/2020/06/20/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&amp;MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<h4 id="Hadoop-数据切片-MapTask并行度"><a href="#Hadoop-数据切片-MapTask并行度" class="headerlink" title="Hadoop 数据切片 MapTask并行度"></a>Hadoop 数据切片 MapTask并行度</h4><hr>
-<a id="more"></a>
-
-<h4 id="input-split与map-task的关系"><a href="#input-split与map-task的关系" class="headerlink" title="input split与map task的关系"></a>input split与map task的关系</h4><p>split数量和map task数量一一对应。</p>
-<p>下图是wordcount的流程：<br><img src="/2020/06/20/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/wordcount-mr.png" alt="wordcount流程"></p>
-<p>可以看到，一个job的Map阶段map task并行度（个数），由客户端提交job时的切片个数决定。</p>
-<h4 id="数据切片-MapTask并行度机制"><a href="#数据切片-MapTask并行度机制" class="headerlink" title="数据切片 MapTask并行度机制"></a>数据切片 MapTask并行度机制</h4><p>假如有以下两个文件，blocksize=128M，则split和map task的关系如下图所示：<br><img src="/2020/06/20/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/split-maptask.png" alt="split-maptask的关系"></p>
-<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
-<h4 id="切片机制"><a href="#切片机制" class="headerlink" title="切片机制"></a>切片机制</h4><p>默认使用FileInputFormat类处理数据输入，遵循如下的切片机制：</p>
-<ul>
-<li>按照文件的内容长度进行切片</li>
-<li>切片大小，默认等于block大小</li>
-<li>切片时不考虑数据集整体，而是逐个针对每一个文件单独切片</li>
-</ul>
-<p>比如待处理数据有两个文件：</p>
-<p>file01.txt 320M</p>
-<p>file02.txt 10M</p>
-<p>经过FileInputFormat的切片机制运算后，形成的切片信息如下：</p>
-<p>file01.txt.split1– 0~128</p>
-<p>file01.txt.split2– 128~256</p>
-<p>file01.txt.split3– 256~320</p>
-<p>file02.txt.split1– 0~10M</p>
-<p>那么切片的数量是否就是分块的数量+小文件的数据量呢？其实是不一定的，因为源码中还有这样一个参数：private static final double SPLIT_SLOP = 1.1，也就是还有10%的切片裕度，下面结合源码进行说明。</p>
-<h4 id="切片机制-1"><a href="#切片机制-1" class="headerlink" title="切片机制"></a>切片机制</h4><p>整体流程：</p>
-<ol>
-<li>找到数据存储的目录。</li>
-<li>遍历处理（规划切片）目录下的每一个文件。</li>
-<li>遍历第一个文件<ol>
-<li>获取文件大小。</li>
-<li>计算切片大小，默认情况下，切片大小=blocksize。</li>
-<li>每次切片时，都要判断切完剩下的部分是否大于块的1.1倍，不大于1.1倍就划分为一块切片。</li>
-<li>将切片信息写到一个切片规划文件中。</li>
-<li>整个切片的核心过程在getSplit()方法中完成。</li>
-<li>数据切片只是在逻辑上对输入数据进行分片，并不会在磁盘上将其切分成分片进行存储。InputSplit只记录了分片的元数据信息，比如起始位置、长度以及所在的节点列表等。</li>
-<li>注意：block是HDFS物理上存储的数据，切片是对数据逻辑上的划分。</li>
-</ol>
-</li>
-<li>提交切片规划文件到YARN上，YARN上的AppMaster就可以根据切片规划文件计算开启map task个数。</li>
-</ol>
-<p>总结：所以，切片的数量并不一定等于分块的数量+小文件的数据量，还要考虑大文件切分后剩余的部分是否大于块的1.1倍。</p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Yarn 调度流程</title>
     <url>/2020/06/20/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
@@ -850,55 +581,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>基本概念</tag>
         <tag>Yarn</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>HDFS 常用命令</title>
-    <url>/2020/06/20/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<h4 id="Hadoop常用命令"><a href="#Hadoop常用命令" class="headerlink" title="Hadoop常用命令"></a>Hadoop常用命令</h4><a id="more"></a>
-
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>常用命令</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>HDFS 读写流程</title>
-    <url>/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<h4 id="HDFS文件读写流程"><a href="#HDFS文件读写流程" class="headerlink" title="HDFS文件读写流程"></a>HDFS文件读写流程</h4><p>关于HDFS文件的读写流程</p>
-<hr>
-<a id="more"></a>
-
-<hr>
-<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
-<p><img src="/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"></p>
-<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
-<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
-<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
-<li>Client调用FSDataInputStream.close()方法，关闭输入流。</li>
-</ol>
-<hr>
-<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
-<p><img src="/2020/06/20/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"></p>
-<h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5><ol>
-<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创  建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
-<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
-<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
-<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1090,6 +772,324 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </categories>
       <tags>
         <tag>Hue</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop 数据压缩</title>
+    <url>/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/</url>
+    <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
+<hr>
+<a id="more"></a>
+
+<h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
+<ul>
+<li>减少磁盘存储空间</li>
+<li>降低IO（网络的IO和磁盘的IO）</li>
+<li>加快数据在磁盘和网络中的传输速度，从而提高系统的处理速度</li>
+</ul>
+<p>坏处：</p>
+<ul>
+<li>由于使用数据时，需要先将数据解压，加重CPU负荷</li>
+</ul>
+<p>基本原则：</p>
+<ul>
+<li>运算密集型的job，少用压缩</li>
+<li>IO密集型的job，多用压缩</li>
+</ul>
+<p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png" alt="压缩格式"><br>是否可分割是指，压缩后的文件是否可以再分割。可以分割的格式允许单一文件由多个Mapper程序同时读取，可以做到更好的并行化。</p>
+<h4 id="压缩比"><a href="#压缩比" class="headerlink" title="压缩比"></a>压缩比</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png" alt="压缩之后的size"></p>
+<h4 id="压缩时间"><a href="#压缩时间" class="headerlink" title="压缩时间"></a>压缩时间</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png" alt="压缩时间-两次不同大小的文件"><br>可以看出，压缩比越高，压缩时间越长，压缩比：Snappy&gt;LZ4&gt;LZO&gt;GZIP&gt;BZIP2</p>
+<h4 id="压缩格式的优缺点"><a href="#压缩格式的优缺点" class="headerlink" title="压缩格式的优缺点"></a>压缩格式的优缺点</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png" alt="压缩格式的优缺点"></p>
+<h4 id="压缩的应用场景"><a href="#压缩的应用场景" class="headerlink" title="压缩的应用场景"></a>压缩的应用场景</h4><p>在Hadoop中的应用场景主要在三方面：输入，中间，输出。</p>
+<p>整体思路：hdfs ==&gt; map ==&gt; shuffle ==&gt; reduce</p>
+<ol>
+<li>Use Compressd Map Input: 从HDFS中读取文件进行MR作业，如果数据很大，可以使用压缩并且选择支持分片的压缩方式（bzip2, LZO），可以实现并行处理，提高效率，减少磁盘读取时间，同时选择合适的存储格式，例如：Sequence Files, RC, ORC等。</li>
+<li>Compress Intermediate Data: Map输出作为Reduce的输入，需要经过shuffle这一过程，需要把数据读取到一个环形缓冲区，然后读取到本地磁盘，所以选择压缩可以减少存储文件所占空间，提升数据传输速率。建议使用压缩速度快的压缩方式，例如：Snappy和LZO。</li>
+<li>Compress Reducer Output: 进行归档处理或者链接MR的工作（该作业的输出作为下个作业的输入），压缩可以减少存储文件所占空间，提升数据传输速率，如果作为归档处理，可以采用高的压缩比（Gzip, bzip2），如果作为下个作业的输入，考虑是否要分片进行选择。</li>
+</ol>
+<h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HDFS 常用命令</title>
+    <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<h4 id="Hadoop常用命令"><a href="#Hadoop常用命令" class="headerlink" title="Hadoop常用命令"></a>Hadoop常用命令</h4><a id="more"></a>
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>常用命令</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop HDFS架构 NameNode和DataNode工作机制</title>
+    <url>/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h4 id="Hadoop-HDFS架构"><a href="#Hadoop-HDFS架构" class="headerlink" title="Hadoop HDFS架构"></a>Hadoop HDFS架构</h4><p>HDFS主要由3个组件构成：NameNode, DataNode, SecondaryNameNode。<br>HDFS是以master/slave模式运行的，通常NameNode, SecondaryNameNode运行在master节点，DataNode运行在slave节点。</p>
+<hr>
+<a id="more"></a>
+
+<h4 id="HDFS架构图"><a href="#HDFS架构图" class="headerlink" title="HDFS架构图"></a>HDFS架构图</h4><p><img src="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png" alt="HDFS主从架构"></p>
+<h4 id="NameNode（名称节点）"><a href="#NameNode（名称节点）" class="headerlink" title="NameNode（名称节点）"></a>NameNode（名称节点）</h4><p>存储：文件元数据信息，包含：</p>
+<ul>
+<li>文件名称</li>
+<li>文件目录结构</li>
+<li>文件的属性（权限，创建时间，副本数）</li>
+<li>文件对应哪些数据块 –&gt; 数据块对应哪些DN节点</li>
+</ul>
+<p>作用：</p>
+<ul>
+<li>管理文件系统命名空间</li>
+<li>维护文件系统树及树中的所有文件和目录</li>
+<li>维护所有这些文件或目录的打开、关闭、移动、重命名等操作</li>
+</ul>
+<h4 id="NameNode工作机制"><a href="#NameNode工作机制" class="headerlink" title="NameNode工作机制"></a>NameNode工作机制</h4><p><img src="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/namenode-process.png" alt="NN工作机制"></p>
+<p>第一阶段：NameNode启动</p>
+<ol>
+<li>第一次启动NameNode格式化后，创建fsimage和edits文件。如果不是第一次启动，直接加载编辑日志（edits）和镜像文件（fsimage）到内存。</li>
+<li>客户端对元数据进行增删改的请求。</li>
+<li>NameNode记录操作日志，更新滚动日志。</li>
+<li>NameNode在内存中对数据进行增删改查。</li>
+</ol>
+<p>第二阶段：SecondaryNameNode工作</p>
+<ol>
+<li>SecondaryNameNode询问NameNode是否需要checkpoint。直接带回NameNode是否检查结果。</li>
+<li>SecondaryNameNode请求执行checkpoint。</li>
+<li>NameNode滚动正在写的edits日志。</li>
+<li>将滚动前的编辑日志和镜像文件拷贝到SecondaryNameNode。</li>
+<li>SecondaryNameNode加载编辑日志和镜像文件到内存，并合并。</li>
+<li>生成新的镜像文件fsimage.chkpoint。</li>
+<li>拷贝fsimage.chkpoint到NameNode。</li>
+<li>NameNode将fsimage.chkpoint重新命名成fsimage。</li>
+</ol>
+<p>checkpoint检查时间参数设置</p>
+<ol>
+<li>通常情况下，SecondaryNameNode每隔1小时执行一次<br>[hdfs-default.xml]<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.period<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>3600<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure></li>
+<li>一分钟检查一次操作次数，当操作次数达到一百万时，SecondaryNameNode执行一次<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.txns<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>1000000<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">description</span>&gt;</span>操作动作次数<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.checkpoint.check.period<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">value</span>&gt;</span>60<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">description</span>&gt;</span> 1分钟检查一次操作次数<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="DataNode（数据节点）"><a href="#DataNode（数据节点）" class="headerlink" title="DataNode（数据节点）"></a>DataNode（数据节点）</h4><p>存储：数据块，数据块校验和，与NN通信</p>
+<p>作用：</p>
+<ul>
+<li>读写文件的数据块</li>
+<li>接收NN的指示来进行创建、删除、复制等操作</li>
+<li>通过心跳定期向NN发送所存储文件块列表信息</li>
+</ul>
+<h4 id="DataNode工作机制"><a href="#DataNode工作机制" class="headerlink" title="DataNode工作机制"></a>DataNode工作机制</h4><p><img src="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/datanode-detail.png" alt="DN工作机制"></p>
+<ol>
+<li>一个数据块在DataNode上以文件形式存储在磁盘上，包括两个文件，一个是数据本身，一个是元数据，包括数据块的长度、块数据的校验和以及时间戳。</li>
+<li>DataNode启动后向NameNode注册，通过后，周期性（1小时）地向NameNode上报所有的块信息。</li>
+<li>心跳是每3秒一次，心跳返回结果带有NameNode给该DataNode的命令，如复制块数据到另一台机器或删除某个数据块。如果超过10分钟没有收到某个DataNode的心跳，则认为该节点不可用。</li>
+<li>集群运行中可以安全加入和退出一些机器。</li>
+</ol>
+<h4 id="数据完整性"><a href="#数据完整性" class="headerlink" title="数据完整性"></a>数据完整性</h4><ol>
+<li>当DataNode读取block的时候，它会计算checksum校验和。</li>
+<li>如果计算后的checksum，与block创建时值不一样，说明block已经损坏。</li>
+<li>client读取其他DataNode上的block。</li>
+<li>DataNode在其文件创建后周期验证checksum校验和。</li>
+</ol>
+<h4 id="掉线时限参数设置"><a href="#掉线时限参数设置" class="headerlink" title="掉线时限参数设置"></a>掉线时限参数设置</h4><p>DataNode进程死亡或者网络故障造成DataNode无法与NameNode通信，NameNode不会立即把该节点判定为死亡，要经过一段时间，这段时间暂称作超时时长。HDFS默认的超时时长为10分钟+30秒。如果定义超时时间为timeout，则超时时长的计算公式为：</p>
+<ul>
+<li><p>timeout = 2 * dfs.namenode.heartbeat.recheck-interval + 10 * dfs.heartbeat.interval</p>
+</li>
+<li><p>默认的dfs.namenode.heartbeat.recheck-interval 大小为5分钟，dfs.heartbeat.interval默认为3秒。</p>
+</li>
+<li><p>需要注意的是hdfs-site.xml 配置文件中的heartbeat.recheck.interval的单位为毫秒，dfs.heartbeat.interval的单位为秒。</p>
+</li>
+</ul>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">name</span>&gt;</span>dfs.namenode.heartbeat.recheck-interval<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">value</span>&gt;</span>300000<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">name</span>&gt;</span> dfs.heartbeat.interval <span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">value</span>&gt;</span>3<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="ScondaryNameNode（第二名称节点）"><a href="#ScondaryNameNode（第二名称节点）" class="headerlink" title="ScondaryNameNode（第二名称节点）"></a>ScondaryNameNode（第二名称节点）</h4><p>存储：命名空间镜像文件fsimage+编辑日志editlog</p>
+<p>作用：</p>
+<ul>
+<li>定期合并fsimage+editlog文件为新的fsimage，推送给NN</li>
+<li>监控HDFS状态，每隔一段时间获取HDFS元数据的快照</li>
+</ul>
+<p>为了解决单点故障，设置了SNN的1小时备份机制，虽然能够减轻单点故障，但是还会有风险，即在那1小时中，还是会有发生单点故障的可能，造成数据丢失。为了解决这个问题，需要部署HDFS -HA高可用。</p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop Block和副本数&amp;小文件问题</title>
+    <url>/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
+<hr>
+<a id="more"></a>
+
+<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
+<p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
+<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
+<ol>
+<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
+<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
+<li>第三个副本：与第二个副本相同机架的不同节点上</li>
+<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
+</ol>
+<ul>
+<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
+<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
+</ul>
+<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
+<p>官网中的相应的默认参数如下：<br><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
+<p>可以看到，默认块大小为128M，默认副本数为3.</p>
+<p>这里会有一个常规的面试题：</p>
+<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
+<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
+<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
+<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
+<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
+<ol>
+<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS</li>
+<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并</li>
+</ol>
+<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
+<ol>
+<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
+<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
+<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
+<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
+</ol>
+<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
+<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop Shuffle机制</title>
+    <url>/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h4 id="Hadoop-Shuffle机制-Shuffle过程"><a href="#Hadoop-Shuffle机制-Shuffle过程" class="headerlink" title="Hadoop Shuffle机制 Shuffle过程"></a>Hadoop Shuffle机制 Shuffle过程</h4><hr>
+<a id="more"></a>
+
+<h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
+<p><img src="/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle.png" alt="shuffle"></p>
+<p>下图是Shuffle机制图<br><img src="/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle-detail.png" alt="shuffle"></p>
+<h4 id="Shuffle过程"><a href="#Shuffle过程" class="headerlink" title="Shuffle过程"></a>Shuffle过程</h4><p>shuffle一开始就是map阶段做输出操作，map在做输出时会在内存里开启一个环形缓冲区，这个缓冲区是专门用来输出的，默认大小是100MB，并且在配置文件里为这个缓冲区设定了一个阈值，默认是0.80。同时map还会为输出操作启动一个守护线程，如果缓冲区的内存达到了阈值的80%的时候，这个守护线程就会把内容写到磁盘上，这个过程叫spill（溢写）。另外的20%内存可以继续写入要写进磁盘的数据，写入磁盘和写入内存操作互不干扰，如果缓存区被撑爆了，那么map就会阻塞写入内存的操作，让写入磁盘操作完成后再继续执行写入内存操作。</p>
+<p>写入磁盘前会有个排序操作，这个是在写入磁盘操作时进行，不是在写入内存时进行的，如果我们定义了combiner函数，那么排序前还会执行combiner操作。每次spill操作也就是写入磁盘时就会写一个溢出文件，也就是说在做map输出时有几次spill就会产生多少个溢出文件，等map输出全部做完后，map会合并这些输出文件。</p>
+<p>这个过程里还会有一个Partitioner操作，和map阶段的输入分片（Input Split）很像，一个Partitioner对应一个reduce作业，如果我们的MR操作只有一个reduce操作，那么Partitioner就只有一个，如果我们有多个reduce操作，那么Partitioner对应的就会有多个，Partitioner因此就是reduce的输入分片。</p>
+<p>到了reduce阶段就是合并map输出文件了，Partitioner会找到对应的map输出文件，然后进行复制操作，复制操作时reduce会开启几个复制线程，这些线程默认个数是5个，这个复制过程和map写入磁盘过程类似，也有阈值和内存大小，阈值可以在配置文件里配置，而内存大小是直接使用reduce的tasktracker的内存大小，复制时候reduce还会进行排序操作和合并文件操作，这些操作完了就会进行reduce计算了。</p>
+<p>上面也提到，将map的输出作为reduce的输入的过程就是shuffle（洗牌）。</p>
+<p>那么shuffle到底是属于map阶段还是reduce阶段呢？比较公认的说法是，shuffle应该是属于reduce阶段，因为map阶段的主要任务是数据映射，而shuffle的目的是主要是为reduce阶段做准备的。</p>
+<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
+<h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>Hadoop</tag>
+        <tag>Shuffle</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop 数据切片 &amp; MapTask并行度机制</title>
+    <url>/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&amp;MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h4 id="Hadoop-数据切片-MapTask并行度"><a href="#Hadoop-数据切片-MapTask并行度" class="headerlink" title="Hadoop 数据切片 MapTask并行度"></a>Hadoop 数据切片 MapTask并行度</h4><hr>
+<a id="more"></a>
+
+<h4 id="input-split与map-task的关系"><a href="#input-split与map-task的关系" class="headerlink" title="input split与map task的关系"></a>input split与map task的关系</h4><p>split数量和map task数量一一对应。</p>
+<p>下图是wordcount的流程：<br><img src="/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/wordcount-mr.png" alt="wordcount流程"></p>
+<p>可以看到，一个job的Map阶段map task并行度（个数），由客户端提交job时的切片个数决定。</p>
+<h4 id="数据切片-MapTask并行度机制"><a href="#数据切片-MapTask并行度机制" class="headerlink" title="数据切片 MapTask并行度机制"></a>数据切片 MapTask并行度机制</h4><p>假如有以下两个文件，blocksize=128M，则split和map task的关系如下图所示：<br><img src="/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/split-maptask.png" alt="split-maptask的关系"></p>
+<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
+<h4 id="切片机制"><a href="#切片机制" class="headerlink" title="切片机制"></a>切片机制</h4><p>默认使用FileInputFormat类处理数据输入，遵循如下的切片机制：</p>
+<ul>
+<li>按照文件的内容长度进行切片</li>
+<li>切片大小，默认等于block大小</li>
+<li>切片时不考虑数据集整体，而是逐个针对每一个文件单独切片</li>
+</ul>
+<p>比如待处理数据有两个文件：</p>
+<p>file01.txt 320M</p>
+<p>file02.txt 10M</p>
+<p>经过FileInputFormat的切片机制运算后，形成的切片信息如下：</p>
+<p>file01.txt.split1– 0~128</p>
+<p>file01.txt.split2– 128~256</p>
+<p>file01.txt.split3– 256~320</p>
+<p>file02.txt.split1– 0~10M</p>
+<p>那么切片的数量是否就是分块的数量+小文件的数据量呢？其实是不一定的，因为源码中还有这样一个参数：private static final double SPLIT_SLOP = 1.1，也就是还有10%的切片裕度，下面结合源码进行说明。</p>
+<h4 id="切片机制-1"><a href="#切片机制-1" class="headerlink" title="切片机制"></a>切片机制</h4><p>整体流程：</p>
+<ol>
+<li>找到数据存储的目录。</li>
+<li>遍历处理（规划切片）目录下的每一个文件。</li>
+<li>遍历第一个文件<ol>
+<li>获取文件大小。</li>
+<li>计算切片大小，默认情况下，切片大小=blocksize。</li>
+<li>每次切片时，都要判断切完剩下的部分是否大于块的1.1倍，不大于1.1倍就划分为一块切片。</li>
+<li>将切片信息写到一个切片规划文件中。</li>
+<li>整个切片的核心过程在getSplit()方法中完成。</li>
+<li>数据切片只是在逻辑上对输入数据进行分片，并不会在磁盘上将其切分成分片进行存储。InputSplit只记录了分片的元数据信息，比如起始位置、长度以及所在的节点列表等。</li>
+<li>注意：block是HDFS物理上存储的数据，切片是对数据逻辑上的划分。</li>
+</ol>
+</li>
+<li>提交切片规划文件到YARN上，YARN上的AppMaster就可以根据切片规划文件计算开启map task个数。</li>
+</ol>
+<p>总结：所以，切片的数量并不一定等于分块的数量+小文件的数据量，还要考虑大文件切分后剩余的部分是否大于块的1.1倍。</p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HDFS 读写流程</title>
+    <url>/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
+    <content><![CDATA[<h4 id="HDFS文件读写流程"><a href="#HDFS文件读写流程" class="headerlink" title="HDFS文件读写流程"></a>HDFS文件读写流程</h4><p>关于HDFS文件的读写流程</p>
+<hr>
+<a id="more"></a>
+
+<hr>
+<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"></p>
+<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
+<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
+<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
+<li>Client调用FSDataInputStream.close()方法，关闭输入流。</li>
+</ol>
+<hr>
+<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"></p>
+<h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5><ol>
+<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创  建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
+<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
+<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
+<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>

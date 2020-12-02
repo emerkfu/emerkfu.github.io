@@ -9,20 +9,20 @@
   <meta name="description" content="Hadoop HDFS架构HDFS主要由3个组件构成：NameNode, DataNode, SecondaryNameNode。HDFS是以master&#x2F;slave模式运行的，通常NameNode, SecondaryNameNode运行在master节点，DataNode运行在slave节点。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Hadoop HDFS架构 NameNode和DataNode工作机制">
-<meta property="og:url" content="https://emerkfu.github.io/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/index.html">
+<meta property="og:url" content="https://emerkfu.github.io/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/index.html">
 <meta property="og:site_name" content="Emerk&#39;s blog">
 <meta property="og:description" content="Hadoop HDFS架构HDFS主要由3个组件构成：NameNode, DataNode, SecondaryNameNode。HDFS是以master&#x2F;slave模式运行的，通常NameNode, SecondaryNameNode运行在master节点，DataNode运行在slave节点。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png">
-<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/namenode-process.png">
-<meta property="og:image" content="https://emerkfu.github.io/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/datanode-detail.png">
-<meta property="article:published_time" content="2020-06-20T11:00:00.000Z">
-<meta property="article:modified_time" content="2020-07-19T10:18:02.365Z">
+<meta property="og:image" content="https://emerkfu.github.io/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png">
+<meta property="og:image" content="https://emerkfu.github.io/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/namenode-process.png">
+<meta property="og:image" content="https://emerkfu.github.io/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/datanode-detail.png">
+<meta property="article:published_time" content="2018-06-20T11:00:00.000Z">
+<meta property="article:modified_time" content="2020-12-02T16:13:50.532Z">
 <meta property="article:author" content="EmerkFu">
 <meta property="article:tag" content="基本概念">
 <meta property="article:tag" content="Hadoop">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu.github.io/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png">
+<meta name="twitter:image" content="https://emerkfu.github.io/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png">
   
   
     <link rel="icon" href="/favicon.png">
@@ -80,8 +80,8 @@
       <div class="outer">
         <section id="main"><article id="post-HadoopHDFS架构NameNode和DataNode工作机制" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" class="article-date">
-  <time class="dt-published" datetime="2020-06-20T11:00:00.000Z" itemprop="datePublished">2020-06-20</time>
+    <a href="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" class="article-date">
+  <time class="dt-published" datetime="2018-06-20T11:00:00.000Z" itemprop="datePublished">2018-06-20</time>
   &nbsp;
   
           <!-- 不蒜子统计 -->
@@ -115,7 +115,7 @@
 <hr>
 <a id="more"></a>
 
-<h4 id="HDFS架构图"><a href="#HDFS架构图" class="headerlink" title="HDFS架构图"></a>HDFS架构图</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png" alt="HDFS主从架构"></p>
+<h4 id="HDFS架构图"><a href="#HDFS架构图" class="headerlink" title="HDFS架构图"></a>HDFS架构图</h4><p><img src="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/hdfs-architecture.png" alt="HDFS主从架构"></p>
 <h4 id="NameNode（名称节点）"><a href="#NameNode（名称节点）" class="headerlink" title="NameNode（名称节点）"></a>NameNode（名称节点）</h4><p>存储：文件元数据信息，包含：</p>
 <ul>
 <li>文件名称</li>
@@ -129,7 +129,7 @@
 <li>维护文件系统树及树中的所有文件和目录</li>
 <li>维护所有这些文件或目录的打开、关闭、移动、重命名等操作</li>
 </ul>
-<h4 id="NameNode工作机制"><a href="#NameNode工作机制" class="headerlink" title="NameNode工作机制"></a>NameNode工作机制</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/namenode-process.png" alt="NN工作机制"></p>
+<h4 id="NameNode工作机制"><a href="#NameNode工作机制" class="headerlink" title="NameNode工作机制"></a>NameNode工作机制</h4><p><img src="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/namenode-process.png" alt="NN工作机制"></p>
 <p>第一阶段：NameNode启动</p>
 <ol>
 <li>第一次启动NameNode格式化后，创建fsimage和edits文件。如果不是第一次启动，直接加载编辑日志（edits）和镜像文件（fsimage）到内存。</li>
@@ -162,7 +162,7 @@
 <li>接收NN的指示来进行创建、删除、复制等操作</li>
 <li>通过心跳定期向NN发送所存储文件块列表信息</li>
 </ul>
-<h4 id="DataNode工作机制"><a href="#DataNode工作机制" class="headerlink" title="DataNode工作机制"></a>DataNode工作机制</h4><p><img src="/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/datanode-detail.png" alt="DN工作机制"></p>
+<h4 id="DataNode工作机制"><a href="#DataNode工作机制" class="headerlink" title="DataNode工作机制"></a>DataNode工作机制</h4><p><img src="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/datanode-detail.png" alt="DN工作机制"></p>
 <ol>
 <li>一个数据块在DataNode上以文件形式存储在磁盘上，包括两个文件，一个是数据本身，一个是元数据，包括数据块的长度、块数据的校验和以及时间戳。</li>
 <li>DataNode启动后向NameNode注册，通过后，周期性（1小时）地向NameNode上报所有的块信息。</li>
@@ -197,7 +197,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://emerkfu.github.io/2020/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" data-id="cki7ludv9000ak8v784l93ogh" data-title="Hadoop HDFS架构 NameNode和DataNode工作机制" class="article-share-link">Share</a>
+      <a data-url="https://emerkfu.github.io/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" data-id="cki7m3usn0004i8v78onk3v8d" data-title="Hadoop HDFS架构 NameNode和DataNode工作机制" class="article-share-link">Share</a>
       
       
       
@@ -209,19 +209,19 @@
     
 <nav id="article-nav">
   
-    <a href="/2020/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Newer</strong>
       <div class="article-nav-title">
         
-          Hadoop Block和副本数&amp;小文件问题
+          HDFS 常用命令
         
       </div>
     </a>
   
   
-    <a href="/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
-      <div class="article-nav-title">Hive 基本概念 Hive的部署 Hive的常用命令</div>
+      <div class="article-nav-title">Hadoop Block和副本数&amp;小文件问题</div>
     </a>
   
 </nav>
@@ -267,7 +267,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">归档</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">2020年 08月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">2020年 07月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">2019年 04月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">2019年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">2018年 05月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">2018年 03月</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">2020年 08月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/07/">2020年 07月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">2019年 04月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">2019年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">2018年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">2018年 05月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">2018年 03月</a></li></ul>
     </div>
   </div>
 
