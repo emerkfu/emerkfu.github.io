@@ -197,8 +197,8 @@
         <category>HBase</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>HBase</tag>
+        <tag>基本概念</tag>
         <tag>常用命令</tag>
       </tags>
   </entry>
@@ -887,8 +887,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>常用命令</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1034,8 +1034,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1060,8 +1060,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -1113,8 +1113,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1195,8 +1195,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
