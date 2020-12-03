@@ -22,179 +22,6 @@
       </tags>
   </entry>
   <entry>
-    <title>SparkSQL 做统计分析</title>
-    <url>/2020/07/10/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/</url>
-    <content><![CDATA[<h4 id="SparkSQL-做统计分析的方法、存储格式的转换"><a href="#SparkSQL-做统计分析的方法、存储格式的转换" class="headerlink" title="SparkSQL 做统计分析的方法、存储格式的转换"></a>SparkSQL 做统计分析的方法、存储格式的转换</h4><a id="more"></a>
-
-<hr>
-<h4 id="SparkSQL做统计分析"><a href="#SparkSQL做统计分析" class="headerlink" title="SparkSQL做统计分析"></a>SparkSQL做统计分析</h4><ol>
-<li>数据</li>
-<li>需求：求每个国家的每个域名的访问流量排名前2</li>
-<li>SQL实现<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">GroupTopN</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/data.json"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">		<span class="comment">//读取数据</span></span><br><span class="line">        <span class="keyword">val</span> ds = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        <span class="comment">//为生成需要的表格做准备</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = ds.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">3</span>), words(<span class="number">12</span>), words(<span class="number">15</span>).toLong)</span><br><span class="line">        &#125;).toDF(<span class="string">"country"</span>, <span class="string">"domain"</span>, <span class="string">"traffic"</span>)</span><br><span class="line"></span><br><span class="line">        df.createOrReplaceTempView(<span class="string">"access"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 每个国家的域名流量前2</span></span><br><span class="line">        <span class="keyword">val</span> topNSQL=<span class="string">""</span><span class="string">"select</span></span><br><span class="line"><span class="string">                      |	*</span></span><br><span class="line"><span class="string">                      |from (</span></span><br><span class="line"><span class="string">                      |		select</span></span><br><span class="line"><span class="string">                      |			t.*,row_number() over(partition by country order by sum_traffic desc) r</span></span><br><span class="line"><span class="string">                      |		from</span></span><br><span class="line"><span class="string">                      |			(</span></span><br><span class="line"><span class="string">                      |				select country,domain,sum(traffic) as sum_traffic from access group by country,domain</span></span><br><span class="line"><span class="string">                      |			) t</span></span><br><span class="line"><span class="string">                      |	    ) rt</span></span><br><span class="line"><span class="string">                      |where rt.r &lt;=2 "</span><span class="string">""</span>.stripMargin</span><br><span class="line">        spark.sql(topNSQL).show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li>如果只要求traffic的降序，可以使用API直接写出来<br>分组，求和，别名，降序<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//traffic降序排序</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.functions._</span><br><span class="line">df.groupBy(<span class="string">"country"</span>,<span class="string">"domain"</span>).agg(sum(<span class="string">"traffic"</span>).as(<span class="string">"sum_traffic"</span>)).sort($<span class="string">"sum_traffic"</span>.desc).show()</span><br></pre></td></tr></table></figure>
-注意看源码中案例仿写</li>
-<li>结果展示<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|         country|           domain|sum_traffic|  r|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|            中国| www.bilibili.com|   <span class="number">24265886</span>|  <span class="number">1</span>|</span><br><span class="line">|            中国|www.ruozedata.com|    <span class="number">4187637</span>|  <span class="number">2</span>|</span><br><span class="line">|          利比亚| www.bilibili.com|      <span class="number">22816</span>|  <span class="number">1</span>|</span><br><span class="line">|          利比亚|  ruoze.ke.qq.com|      <span class="number">15970</span>|  <span class="number">2</span>|</span><br><span class="line">|            加纳| www.bilibili.com|     <span class="number">138659</span>|  <span class="number">1</span>|</span><br><span class="line">|            加纳|www.ruozedata.com|      <span class="number">17988</span>|  <span class="number">2</span>|</span><br><span class="line">|        利比里亚| www.bilibili.com|      <span class="number">20593</span>|  <span class="number">1</span>|</span><br><span class="line">|        利比里亚|  ruoze.ke.qq.com|       <span class="number">7466</span>|  <span class="number">2</span>|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h4 id="UDF函数"><a href="#UDF函数" class="headerlink" title="UDF函数"></a>UDF函数</h4><ol>
-<li><p>数据</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">蔡三	唱,跳,rap,篮球</span><br><span class="line">李四	唱</span><br><span class="line">王五	唱,跳</span><br></pre></td></tr></table></figure></li>
-<li><p>需求：求出每个人的爱好的个数<br>提供一个编程抽象（DataFrame） 并且作为分布式 SQL 查询引擎<br>DataFrame：它可以根据很多源进行构建，包括：结构化的数据文件，hive中的表，外部的关系型数据库，以及RDD</p>
-</li>
-<li><p>SQL实现</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">practice04</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> in = <span class="string">"data/data.txt"</span></span><br><span class="line">    <span class="keyword">val</span> session = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>)</span><br><span class="line">      .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">      .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">      .getOrCreate()</span><br><span class="line">    session.sparkContext.setLogLevel(<span class="string">"ERROR"</span>)</span><br><span class="line">    <span class="keyword">import</span> session.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> ds = session.read.textFile(in)</span><br><span class="line">    <span class="keyword">val</span> df = ds.map(row =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> words = row.split(<span class="string">"\t"</span>)</span><br><span class="line">      (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">    &#125;).toDF(<span class="string">"name"</span>, <span class="string">"fav"</span>)</span><br><span class="line"></span><br><span class="line">    session.udf.register(<span class="string">"length"</span>,(fav: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">      fav.split(<span class="string">","</span>).length</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    df.createOrReplaceTempView(<span class="string">"udf_fav"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> sql1 =</span><br><span class="line">      <span class="string">""</span><span class="string">"</span></span><br><span class="line"><span class="string">        |select</span></span><br><span class="line"><span class="string">        | name,</span></span><br><span class="line"><span class="string">        | fav,</span></span><br><span class="line"><span class="string">        | length(fav) fav_count</span></span><br><span class="line"><span class="string">        |from udf_fav</span></span><br><span class="line"><span class="string">        |"</span><span class="string">""</span>.stripMargin</span><br><span class="line">    session.sql(sql1).show()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>上面是使用SQL的解决方案，还可以使用API的方法</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//自定义的udf需要返回值</span></span><br><span class="line"><span class="keyword">val</span> loveLengthUDF: <span class="type">UserDefinedFunction</span> = spark.udf.register(<span class="string">"length"</span>, (love: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">    love.split(<span class="string">","</span>).length</span><br><span class="line">&#125;)</span><br><span class="line"><span class="comment">//df.select中传入UDF函数</span></span><br><span class="line">df.select($<span class="string">"name"</span>,$<span class="string">"love"</span>,loveLengthUDF($<span class="string">"love"</span>)).show()</span><br></pre></td></tr></table></figure></li>
-<li><p>结果展示</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----+--------------+---------+</span><br><span class="line">|name|           fav|fav_count|</span><br><span class="line">+----+--------------+---------+</span><br><span class="line">|蔡三|唱,跳,rap,篮球|        <span class="number">4</span>|</span><br><span class="line">|李四|            唱|        <span class="number">1</span>|</span><br><span class="line">|王五|         唱,跳|        <span class="number">2</span>|</span><br><span class="line">+----+--------------+---------+</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h4 id="存储格式的转换"><a href="#存储格式的转换" class="headerlink" title="存储格式的转换"></a>存储格式的转换</h4><p>Spark读text文件进行清洗，清洗完以后直接以我们想要的列式存储格式输出，如果按以前的方式要经过很多复杂的步骤</p>
-<p>用Spark的时候只需要在df.write.format(“orc”).mode().save()中指定格式即可，如orc，现在就很方便了，想转成什么格式，只要format支持就ok</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2orc</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//对文本文件做处理</span></span><br><span class="line">        df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>),words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">            .toDF(<span class="string">"name"</span>,<span class="string">"age"</span>)	<span class="comment">//这一步解决了数据没有表头的问题</span></span><br><span class="line">            .write</span><br><span class="line">            .mode(<span class="string">"overwrite"</span>)	<span class="comment">//save mode</span></span><br><span class="line">            .format(<span class="string">"orc"</span>)	<span class="comment">//save format</span></span><br><span class="line">            .save(out)	<span class="comment">//save path</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>SparkSQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>SparkSQL 基础</title>
-    <url>/2020/07/10/SparkSQL/</url>
-    <content><![CDATA[<h4 id="SparkSQL-基础内容"><a href="#SparkSQL-基础内容" class="headerlink" title="SparkSQL 基础内容"></a>SparkSQL 基础内容</h4><a id="more"></a>
-
-<hr>
-<h4 id="认识SparkSQL"><a href="#认识SparkSQL" class="headerlink" title="认识SparkSQL"></a>认识SparkSQL</h4><ol>
-<li>SparkSQL的版本变更<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">1.0以前：</span><br><span class="line">   Shark</span><br><span class="line">1.1.x开始：</span><br><span class="line">   SparkSQL(只是测试性的) SQL</span><br><span class="line">1.3.x:</span><br><span class="line">   SparkSQL(正式版本)+Dataframe</span><br><span class="line">1.5.x:</span><br><span class="line">   SparkSQL 钨丝计划</span><br><span class="line">1.6.x：</span><br><span class="line">   SparkSQL+DataFrame+DataSet(测试版本)</span><br><span class="line">2.x.x:</span><br><span class="line">   SparkSQL+DataFrame+DataSet(正式版本)</span><br><span class="line">   SparkSQL:还有其他的优化</span><br><span class="line">   StructuredStreaming(DataSet)</span><br></pre></td></tr></table></figure></li>
-<li>什么是SparkSQL?<br>spark SQL是spark的一个模块，主要用于进行结构化数据的处理。它提供的最核心的编程抽象就是DataFrame。</li>
-<li>SparkSQL的作用<br>提供一个编程抽象（DataFrame） 并且作为分布式 SQL 查询引擎<br>DataFrame：它可以根据很多源进行构建，包括：结构化的数据文件，hive中的表，外部的关系型数据库，以及RDD</li>
-<li>运行原理<br>将 Spark SQL 转化为 RDD， 然后提交到集群执行</li>
-<li>特点</li>
-</ol>
-<ul>
-<li>容易整合</li>
-<li>统一的数据访问方式</li>
-<li>兼容 Hive</li>
-<li>标准的数据连接</li>
-</ul>
-<ol start="6">
-<li>spark sql<br>spark-sql是一个Spark专属的SQL命令行交互工具，在使用spark-sql之前要把hive-site.xml 拷贝到Spark/Conf下，spark-sql和spark-shell用法一样，但是在引入外部依赖的时候，spark-sql需要用–jars和–driver-class-path同时引入依赖才不会报错</li>
-<li>持久化<br>在spark-sql中的持久化Table命令是: cache table xxx，清除持久化 uncache table xxx<br>spark-SQL中的cache和uncache都是eager的，立即执行的<br>考点：RDD和SparkSQL的cache有什么区别？<br>RDD中的cache是lazy的 spark-SQL中的cache是eager的</li>
-<li>遗留问题<br>–files/–jars 传进去的东西清不掉</li>
-</ol>
-<h4 id="SparkSession"><a href="#SparkSession" class="headerlink" title="SparkSession"></a>SparkSession</h4><p>SparkSession是Spark 2.0引如的新概念。SparkSession为用户提供了统一的切入点，来让用户学习spark的各项功能。</p>
-<p>在spark的早期版本中，SparkContext是spark的主要切入点，由于RDD是主要的API，我们通过sparkcontext来创建和操作RDD。对于每个其他的API，我们需要使用不同的context。例如，对于Streming，我们需要使用StreamingContext；对于sql，使用sqlContext；对于Hive，使用hiveContext。但是随着DataSet和DataFrame的API逐渐成为标准的API，就需要为他们建立接入点。所以在spark2.0中，引入SparkSession作为DataSet和DataFrame API的切入点，SparkSession封装了SparkConf、SparkContext和SQLContext。为了向后兼容，SQLContext和HiveContext也被保存下来。</p>
-<p>SparkSession实质上是SQLContext和HiveContext的组合（未来可能还会加上StreamingContext），所以在SQLContext和HiveContext上可用的API在SparkSession上同样是可以使用的。SparkSession内部封装了sparkContext，所以计算实际上是由sparkContext完成的。</p>
-<p>特点：</p>
-<ol>
-<li>为用户提供一个统一的切入点使用Spark 各项功能</li>
-<li>允许用户通过它调用 DataFrame 和 Dataset 相关 API 来编写程序</li>
-<li>减少了用户需要了解的一些概念，可以很容易的与 Spark 进行交互</li>
-<li>与 Spark 交互之时不需要显示的创建 SparkConf, SparkContext 以及 SQlContext，这些对象已经封闭在 SparkSession 中</li>
-</ol>
-<h4 id="DataFrame"><a href="#DataFrame" class="headerlink" title="DataFrame"></a>DataFrame</h4><p>在Spark中，DataFrame是一种以RDD为基础的分布式数据集，类似于传统数据库中的二维表格。DataFrame与RDD的主要区别在于，前者带有schema元信息，即DataFrame所表示的二维表数据集的每一列都带有名称和类型。这使得Spark SQL得以洞察更多的结构信息，从而对藏于DataFrame背后的数据源以及作用于DataFrame之上的变换进行了针对性的优化，最终达到大幅提升运行时效率的目标。反观RDD，由于无从得知所存数据元素的具体内部结构，Spark Core只能在stage层面进行简单、通用的流水线优化。</p>
-<p><img src="/2020/07/10/SparkSQL/RDD%E5%92%8CDataFrame%E7%9A%84%E5%AD%98%E5%82%A8%E5%86%85%E5%AE%B9%E6%AF%94%E8%BE%83.png" alt="RDD和DataFrame的存储内容比较"></p>
-<h4 id="DataFrame的read和write"><a href="#DataFrame的read和write" class="headerlink" title="DataFrame的read和write"></a>DataFrame的read和write</h4><h5 id="json"><a href="#json" class="headerlink" title="json"></a>json</h5><ol>
-<li>数据的读取[DataFrameReader]<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">rdd2df</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.json"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">		<span class="comment">//  读取json数据</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read.format(<span class="string">"json"</span>).load(in)</span><br><span class="line">        <span class="comment">//  使用$"" 导入隐式转换</span></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        <span class="comment">//  可以使用UDF</span></span><br><span class="line">        df.select($<span class="string">"name"</span>,$<span class="string">"age"</span>).show(<span class="number">2</span>,<span class="literal">false</span>)</span><br><span class="line">        <span class="comment">//  不可以使用UDF 适合大部分场景</span></span><br><span class="line">        df.select(<span class="string">"name"</span>,<span class="string">"age"</span>).show()</span><br><span class="line">        <span class="comment">//  不推介，写着复杂</span></span><br><span class="line">        df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).show(<span class="number">2</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-select方法用于选择要输出的列，推介使用 $”col” 和 “col” 的方法</li>
-</ol>
-<ul>
-<li><ol>
-<li>使用select可以选取打印的列，空值为null</li>
-</ol>
-</li>
-<li><ol start="2">
-<li>show()默认打印20条数据，可以指定条数</li>
-</ol>
-</li>
-<li><ol start="3">
-<li>truncate默认为true，截取长度，可以设置为false<br>select方法有三种不同的写法，fliter也有<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).filter(<span class="symbol">'name</span> === <span class="string">"Andy"</span>).show()	<span class="comment">//推介使用</span></span><br><span class="line">df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).filter(df(<span class="string">"name"</span>) === <span class="string">"Andy"</span>).show()</span><br><span class="line">df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).filter(<span class="string">"name = 'Andy'"</span>).show()</span><br></pre></td></tr></table></figure>
-printSchema()方法可以查看数据的Schema信息<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">df.printSchema()</span><br><span class="line">------------------------------------------------</span><br><span class="line">root</span><br><span class="line"> |-- age: long (nullable = <span class="literal">true</span>)</span><br><span class="line"> |-- name: string (nullable = <span class="literal">true</span>)</span><br></pre></td></tr></table></figure>
-</li>
-</ol>
-</li>
-</ul>
-<ol start="2">
-<li>数据的存储[DataFrameWriter]<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> selectDf: <span class="type">DataFrame</span> = df.select($<span class="string">"name"</span>, $<span class="string">"age"</span>)</span><br><span class="line"><span class="comment">//  写出json数据</span></span><br><span class="line">selectDf.write.format(<span class="string">"json"</span>).mode(<span class="string">"overwrite"</span>).save(out)</span><br></pre></td></tr></table></figure>
-这里需要知道的一个概念是Save Modes<br>Save操作可以选择使用SaveMode，它指定目标如果存在，如何处理现有数据。重要的是要认识到，这些保存模式不利用任何锁定，也不是原子性的。此外，在执行覆盖时，在写入新数据之前将删除数据。<br><img src="/2020/07/10/SparkSQL/SaveMode.png" alt="SaveMode"></li>
-</ol>
-<h5 id="text"><a href="#text" class="headerlink" title="text"></a>text</h5><ol>
-<li>数据的读取<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2df</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">        <span class="comment">//DataFrame不能直接split，且调用map返回的是一个Dataset</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read.format(<span class="string">"text"</span>).load(in)</span><br><span class="line">        <span class="keyword">val</span> mapDF: <span class="type">Dataset</span>[(<span class="type">String</span>, <span class="type">String</span>)] = df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.toString().split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">        mapDF.show()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//DataFrame转换为RDD后，再toDF，返回的是一个DataFrame</span></span><br><span class="line">        <span class="keyword">val</span> mapRDD2DF: <span class="type">DataFrame</span> = df.rdd.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.toString().split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">        &#125;).toDF()</span><br><span class="line">        mapRDD2DF.show()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用textFile方法读取文本文件直接返回的是一个Dataset</span></span><br><span class="line">        <span class="keyword">val</span> ds: <span class="type">Dataset</span>[<span class="type">String</span>] = spark.read.textFile(in)</span><br><span class="line">        <span class="keyword">val</span> mapDs: <span class="type">Dataset</span>[(<span class="type">String</span>, <span class="type">String</span>)] = ds.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">        mapDs.show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-文本数据读进来的一行在一个字段里面，所以要使用map算子，在map中split</li>
-</ol>
-<ul>
-<li>直接read.format()读进来的是DataFrame，map中不能直接split</li>
-<li>DataFrame通过.rdd的方式转换成RDD，map中也不能直接split</li>
-<li>通过read.textFile()的方式读进来的是Dataset，map中可以split</li>
-</ul>
-<ol start="2">
-<li>数据的存储<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read.format(<span class="string">"text"</span>).load(in)</span><br><span class="line"><span class="keyword">val</span> mapDF = df.map(row =&gt; &#123;</span><br><span class="line">    <span class="keyword">val</span> words = row.toString().split(<span class="string">","</span>)</span><br><span class="line">    <span class="comment">// 拼接成一列</span></span><br><span class="line">    words(<span class="number">0</span>) +<span class="string">","</span>+words(<span class="number">1</span>)</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line">mapDF.write.format(<span class="string">"text"</span>).mode(<span class="string">"overwrite"</span>).save(out)</span><br></pre></td></tr></table></figure>
-文本数据写出去的时候</li>
-</ol>
-<ul>
-<li>不支持int类型，如果存在int类型，会报错，解决办法是toString，转换成字符串</li>
-<li>只能作为一列输出，如果是多列，会报错，解决办法是拼接起来，组成一列<br>文本数据压缩输出，只要是Spark支持的压缩的格式，都可以指定<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">mapDF.write</span><br><span class="line">    .format(<span class="string">"text"</span>)</span><br><span class="line">    <span class="comment">// 添加压缩操作</span></span><br><span class="line">    .option(<span class="string">"compression"</span>,<span class="string">"gzip"</span>)</span><br><span class="line">    .mode(<span class="string">"overwrite"</span>)</span><br><span class="line">    .save(out)</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<h5 id="csv"><a href="#csv" class="headerlink" title="csv"></a>csv</h5><ol>
-<li>数据的读取<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">csv2df</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.csv"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read</span><br><span class="line">            .format(<span class="string">"csv"</span>)</span><br><span class="line">            .option(<span class="string">"header"</span>, <span class="string">"true"</span>)</span><br><span class="line">            .option(<span class="string">"sep"</span>, <span class="string">";"</span>)</span><br><span class="line">            .option(<span class="string">"interSchema"</span>,<span class="string">"true"</span>)</span><br><span class="line">            .load(in)</span><br><span class="line">        df.show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-csv读取数据注意使用几个参数</li>
-</ol>
-<ul>
-<li>指定表头：option(“header”, “true”)</li>
-<li>指定分隔符：option(“sep”, “;”)</li>
-<li>类型自动推测：option(“interSchema”,”true”)</li>
-</ul>
-<h5 id="jdbc"><a href="#jdbc" class="headerlink" title="jdbc"></a>jdbc</h5><p>在操作jdbc之前要导入两个依赖，一个是mysql-jdbc，用来连接mysql，一个是config，用来解决硬编码的问题</p>
-<p>依赖：</p>
-<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.typesafe<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>config<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.2.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>mysql<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mysql-connector-java<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>5.1.38<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
-
-<p>application.conf文件</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">db.<span class="keyword">default</span>.driver=<span class="string">"com.mysql.jdbc.Driver"</span></span><br><span class="line">db.<span class="keyword">default</span>.url=<span class="string">"jdbc:mysql://hadoop/listener?characterEncoding=utf-8&amp;useSSL=false"</span></span><br><span class="line">db.<span class="keyword">default</span>.user=<span class="string">"root"</span></span><br><span class="line">db.<span class="keyword">default</span>.password=<span class="string">"root"</span></span><br><span class="line">db.<span class="keyword">default</span>.source=<span class="string">"dws_ad_phone_type_dist"</span></span><br><span class="line">db.<span class="keyword">default</span>.target=<span class="string">"dws_ad_phone_type_dist_1"</span></span><br><span class="line">db.<span class="keyword">default</span>.db=<span class="string">"access_dw"</span></span><br><span class="line"></span><br><span class="line"># Connection Pool settings</span><br><span class="line">db.<span class="keyword">default</span>.poolInitialSize=<span class="number">10</span></span><br><span class="line">db.<span class="keyword">default</span>.poolMaxSize=<span class="number">20</span></span><br><span class="line">db.<span class="keyword">default</span>.connectionTimeoutMillis=<span class="number">1000</span></span><br></pre></td></tr></table></figure>
-
-<ol>
-<li><p>数据的读取</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">mysql2df</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">		<span class="comment">//获取配置文件中的值，db.default开头</span></span><br><span class="line">        <span class="keyword">val</span> conf = <span class="type">ConfigFactory</span>.load()</span><br><span class="line">        <span class="keyword">val</span> driver = conf.getString(<span class="string">"db.default.driver"</span>)</span><br><span class="line">        <span class="keyword">val</span> url = conf.getString(<span class="string">"db.default.url"</span>)</span><br><span class="line">        <span class="keyword">val</span> user = conf.getString(<span class="string">"db.default.user"</span>)</span><br><span class="line">        <span class="keyword">val</span> password = conf.getString(<span class="string">"db.default.password"</span>)</span><br><span class="line">        <span class="keyword">val</span> source = conf.getString(<span class="string">"db.default.source"</span>)</span><br><span class="line">        <span class="keyword">val</span> target = conf.getString(<span class="string">"db.default.target"</span>)</span><br><span class="line">        <span class="keyword">val</span> db = conf.getString(<span class="string">"db.default.db"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//读取数据库的内容</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read</span><br><span class="line">            .format(<span class="string">"jdbc"</span>)</span><br><span class="line">            .option(<span class="string">"url"</span>, url)</span><br><span class="line">            .option(<span class="string">"dbtable"</span>, <span class="string">s"<span class="subst">$db</span>.<span class="subst">$source</span>"</span>)	<span class="comment">//库名.源表</span></span><br><span class="line">            .option(<span class="string">"user"</span>, user)</span><br><span class="line">            .option(<span class="string">"password"</span>, password)</span><br><span class="line">            .option(<span class="string">"driver"</span>, driver)</span><br><span class="line">            .load()</span><br><span class="line">        <span class="comment">//使用DataFrame创建临时表提供spark.sql查询</span></span><br><span class="line">        df.createOrReplaceTempView(<span class="string">"phone_type_dist"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//spark.sql写SQL返回一个DataFrame</span></span><br><span class="line">        <span class="keyword">val</span> sqlDF: <span class="type">DataFrame</span> = spark.sql(<span class="string">"select * from phone_type_dist where phoneSystemType = 'IOS'"</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>使用df.createOrReplaceTempView()方法创建一个DataFrame数据生成的临时表，提供spark.sql()使用SQL操作数据，返回的也是一个DataFrame</p>
-</li>
-<li><p>数据的存储</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//接着上面返回的sqlDF: DataFrame</span></span><br><span class="line">sqlDF.write</span><br><span class="line">    .format(<span class="string">"jdbc"</span>)</span><br><span class="line">    .option(<span class="string">"url"</span>, url)</span><br><span class="line">    .option(<span class="string">"dbtable"</span>, <span class="string">s"<span class="subst">$db</span>.<span class="subst">$target</span>"</span>)	<span class="comment">//库名.目标表</span></span><br><span class="line">    .option(<span class="string">"user"</span>, user)</span><br><span class="line">    .option(<span class="string">"password"</span>, password)</span><br><span class="line">    .option(<span class="string">"driver"</span>,driver)</span><br><span class="line">    .save()</span><br></pre></td></tr></table></figure></li>
-</ol>
-]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>SparkSQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Spark 多目录输出</title>
-    <url>/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/</url>
-    <content><![CDATA[<h5 id="实现多目录输出自定义类"><a href="#实现多目录输出自定义类" class="headerlink" title="实现多目录输出自定义类"></a>实现多目录输出自定义类</h5><a id="more"></a>
-
-<hr>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.hadoop.io.<span class="type">NullWritable</span></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.mapred.lib.<span class="type">MultipleTextOutputFormat</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyMultipleTextOutputFormat</span> <span class="keyword">extends</span> <span class="title">MultipleTextOutputFormat</span>[<span class="type">Any</span>,<span class="type">Any</span>] </span>&#123;</span><br><span class="line">    <span class="comment">//生成最终生成的key的类型，这里不要，给Null</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualKey</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = <span class="type">NullWritable</span>.get()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成最终生成的value的类型，这里是String</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = &#123;</span><br><span class="line">        value.asInstanceOf[<span class="type">String</span>]</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成文件名</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateFileNameForKeyValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>, name: <span class="type">String</span>): <span class="type">String</span> = &#123;</span><br><span class="line">        <span class="string">s"<span class="subst">$key</span>/<span class="subst">$name</span>"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h5 id="主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数"><a href="#主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数" class="headerlink" title="主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数"></a>主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">MultipleDirectory</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"spark-core/out"</span></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">        <span class="type">CheckHDFSOutPath</span>.ifExistsDeletePath(sc.hadoopConfiguration,out)</span><br><span class="line">        <span class="comment">//读取数组，转换成键值对的格式</span></span><br><span class="line">        <span class="keyword">val</span> lines = sc.textFile(<span class="string">"spark-core/ip/access-result/*"</span>)</span><br><span class="line">        <span class="keyword">val</span> mapRDD: <span class="type">RDD</span>[(<span class="type">String</span>, <span class="type">String</span>)] = lines.map(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = line.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">12</span>), line)</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="comment">//多目录保存文件</span></span><br><span class="line">        mapRDD.saveAsHadoopFile(out,</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">MyMultipleTextOutputFormat</span>])</span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h5 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h5><p><img src="/2020/07/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA.jpg" alt="多目录输出"></p>
-]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>RowKey设计原则、解决RowKey热点问题、RowKey设计实践</title>
     <url>/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/</url>
     <content><![CDATA[<h5 id="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"><a href="#HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。" class="headerlink" title="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"></a>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</h5><h5 id="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："><a href="#作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：" class="headerlink" title="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："></a>作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：</h5><a id="more"></a>
@@ -368,172 +195,9 @@ csv读取数据注意使用几个参数</li>
         <category>HBase</category>
       </categories>
       <tags>
-        <tag>HBase</tag>
         <tag>基本概念</tag>
+        <tag>HBase</tag>
         <tag>常用命令</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 数据倾斜</title>
-    <url>/2020/06/21/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
-    <content><![CDATA[<h4 id="Hive数据倾斜问题-大表Join大表-大表Join小表-group-By"><a href="#Hive数据倾斜问题-大表Join大表-大表Join小表-group-By" class="headerlink" title="Hive数据倾斜问题   大表Join大表   大表Join小表   group By"></a>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</h4><hr>
-<a id="more"></a>
-
-<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
-<ol>
-<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>两个表的bucket数量相等</li>
-<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
-<li>必须是应用在bucket mapjoin 的场景中</li>
-<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
-<li>hive.enforce.sorting 设置为true</li>
-<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
-<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li>案例<ol>
-<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
-domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
-<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-</li>
-</ol>
-<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
-<p>user表为用户基本表，domain为用户访问域名的宽表</p>
-<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
-<ol>
-<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
-<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
-<ol>
-<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
-<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
-</ol>
-<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
-<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
-<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
-        <tag>数据倾斜</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 基本概念 Hive的部署 Hive的常用命令</title>
-    <url>/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<h4 id="Hive基本概念"><a href="#Hive基本概念" class="headerlink" title="Hive基本概念"></a>Hive基本概念</h4><p><a href="http://hive.apache.org" target="_blank" rel="noopener">Hive官网</a></p>
-<p>The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data already in storage. A command line tool and JDBC driver are provided to connect users to Hive.</p>
-<hr>
-<a id="more"></a>
-
-<h4 id="什么是Hive"><a href="#什么是Hive" class="headerlink" title="什么是Hive"></a>什么是Hive</h4><p>Hive由Facebook开源，用于解决海量结构化日志的数据统计问题。</p>
-<p>Hive是基于Hadoop的一个数据仓库工具，可以将结构化的数据文化映射为一张表，并提供类SQL查询功能。</p>
-<p>本质：将HQL/SQL转化成MapReduce程序</p>
-<ol>
-<li>Hive处理的数据存储在HDFS</li>
-<li>Hive底层执行引擎：MapReduce/Tez/Spark，只需要通过一个参数就能够切换底层的执行引擎</li>
-<li>Hive作业提交到YARN上运行</li>
-</ol>
-<h4 id="Hive的优缺点"><a href="#Hive的优缺点" class="headerlink" title="Hive的优缺点"></a>Hive的优缺点</h4><p>优点：</p>
-<ol>
-<li>操作接口采用类SQL语法，提供快速开发的能力（简单、容易上手）</li>
-<li>避免了MapReduce编程，减少学习成本</li>
-<li>Hive的执行延迟比较高，因此Hive常用于离线分析，对实时性要求不高的场合</li>
-<li>Hive优势在于处理大数据，对于处理小数据没有优势，因为Hive的执行延迟比较高</li>
-<li>Hive支持用户自定义函数，用户可以根据自己的需求来实现自己的函数</li>
-</ol>
-<p>缺点：</p>
-<ol>
-<li>Hive的HQL表达能力有限<ol>
-<li>迭代式算法无法表达</li>
-<li>数据挖掘方面不擅长</li>
-</ol>
-</li>
-<li>Hive的效率比较低<ol>
-<li>Hive自动生成的MapReduce作业，通常不够智能化</li>
-<li>Hive调优比较困难，粒度较粗</li>
-</ol>
-</li>
-</ol>
-<h4 id="Hive的架构原理"><a href="#Hive的架构原理" class="headerlink" title="Hive的架构原理"></a>Hive的架构原理</h4><p><img src="/2020/06/20/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png" alt="Hive的架构"></p>
-<p>如上图所示，Hive通过给用户提供的一系列交互接口，接收到用户的指令（SQL），使用自己的Driver，结合元数据（MetaStore），将这些指令翻译成MapReduce，提交到Hadoop中执行，最后将执行返回的结果输出到用户交互接口。</p>
-<ol>
-<li>用户接口：Client<br>CLI(hive shell)、JDBC/ODBC(java访问hive)、WEBUI(浏览器访问hive)</li>
-<li>元数据：Meta store<br>元数据包括：表名、表所属的数据库（默认是default）、表的拥有者、列/分区字段、表的类型（是否是外部表）、表的数据所在目录等；<br>默认存储在自带的derby数据库中，推荐使用MySQL存储Meta store。</li>
-<li>Hadoop<br>使用HDFS进行存储，使用MapReduce进行计算</li>
-<li>驱动器：Driver<ol>
-<li>解析器（SQL Parser）：将SQL字符串转换成抽象语法树AST，这一步一般都用第三方工具库完成，比如antlr；对AST进行语法分析，比如表是否存在、字段是否存在、SQL语义是否有误。</li>
-<li>编译器（Physical Plan）：将AST编译生成逻辑执行计划。</li>
-<li>优化器（Query Optimizer）：对逻辑执行计划进行优化。</li>
-<li>执行器（Execution）：把逻辑执行计划转换成可以运行的物理计划，对于Hive来说，就是MR/Spark。</li>
-</ol>
-</li>
-</ol>
-<h4 id="Hive的部署"><a href="#Hive的部署" class="headerlink" title="Hive的部署"></a>Hive的部署</h4><p><a href="https://cwiki.apache.org/confluence/display/Hive/GettingStarted" target="_blank" rel="noopener">Hive的使用文档</a></p>
-<p>环境要求：</p>
-<ul>
-<li>JDK8</li>
-<li>Hadoop2.x</li>
-<li>Linux</li>
-<li>MySQL</li>
-</ul>
-<p>Hive版本选择：wget <a href="http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz</a></p>
-<h4 id="Hive安装步骤"><a href="#Hive安装步骤" class="headerlink" title="Hive安装步骤"></a>Hive安装步骤</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">解压：</span><br><span class="line">tar -zxvf hive-1.1.0-cdh5.16.2.tar.gz -C ~/app/</span><br><span class="line"></span><br><span class="line">设置软连接：</span><br><span class="line">ln -s hive-1.1.0-cdh5.16.2 hive</span><br></pre></td></tr></table></figure>
-
-<p>配置环境变量，建议普通用户的.bashrc文件，追加以下内容：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HIVE_HOME=/home/hadoop/app/hive</span><br><span class="line">export PATH=$HIVE_HOME/bin:$PATH</span><br></pre></td></tr></table></figure>
-
-<p>生效环境变量文件</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .bashrc</span><br></pre></td></tr></table></figure>
-
-<p>检查是否生效</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which hive</span><br></pre></td></tr></table></figure>
-
-<p>进入配置文件目录</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $HIVE_HOME/conf/</span><br><span class="line"></span><br><span class="line">vi hive-site.xml</span><br></pre></td></tr></table></figure>
-<p>编译以下内容</p>
-<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0"?&gt;</span></span><br><span class="line"><span class="meta">&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionURL<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>jdbc:mysql://hadoop001:3306/metadata_hive?createDatabaseIfNotExist=true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionDriverName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>com.mysql.jdbc.Driver<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionUserName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>root<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionPassword<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>123456<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.current.db<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.header<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
-<p>保存并退出。</p>
-<p>然后，拷贝MySQL驱动包到$HIVE_HOME/lib/下。</p>
-<p>最后，启动Hive（需要先启动HDFS和YARN）：hive</p>
-<h4 id="Hive常用命令"><a href="#Hive常用命令" class="headerlink" title="Hive常用命令"></a>Hive常用命令</h4><ul>
-<li>show databases; 查看数据库</li>
-<li>use default; 打开默认数据库</li>
-<li>create database company location ‘/user/company’; 创建库并指定hdfs路径</li>
-<li>alter database company set dbproperties(‘creator’ = ‘vinx’); 为数据库添加额外的描述信息</li>
-<li>drop database if exists company cascade; 删除不为空的数据库</li>
-<li>show tables; 查看所在数据库的所有表</li>
-<li>create table student(id int, name string); 创建一张表</li>
-<li>desc student; 查看表结构</li>
-<li>desc extended student; 查看表结构详细信息</li>
-<li>desc formatted student; 查看表结构的格式化信息</li>
-<li>insert into student values(1001, “zhangsan”); 向表中插入一条数据（慎用，会跑MR程序）</li>
-<li>select * from student; 查询表中数据</li>
-<li>!clear; 清空屏幕</li>
-<li>quit; 退出hive</li>
-<li>bin/hive -e “select * from student;” 不登录hive客户端直接操作hive</li>
-<li>bin/hive -f /home/vinx/shell/select_stu.sql 执行HQL文件</li>
-</ul>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>常用命令</tag>
-        <tag>Hive</tag>
       </tags>
   </entry>
   <entry>
@@ -728,6 +392,447 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Spark 多目录输出</title>
+    <url>/2018/12/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/</url>
+    <content><![CDATA[<h5 id="实现多目录输出自定义类"><a href="#实现多目录输出自定义类" class="headerlink" title="实现多目录输出自定义类"></a>实现多目录输出自定义类</h5><a id="more"></a>
+
+<hr>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.hadoop.io.<span class="type">NullWritable</span></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.mapred.lib.<span class="type">MultipleTextOutputFormat</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyMultipleTextOutputFormat</span> <span class="keyword">extends</span> <span class="title">MultipleTextOutputFormat</span>[<span class="type">Any</span>,<span class="type">Any</span>] </span>&#123;</span><br><span class="line">    <span class="comment">//生成最终生成的key的类型，这里不要，给Null</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualKey</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = <span class="type">NullWritable</span>.get()</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成最终生成的value的类型，这里是String</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateActualValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>): <span class="type">Any</span> = &#123;</span><br><span class="line">        value.asInstanceOf[<span class="type">String</span>]</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//生成文件名</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">generateFileNameForKeyValue</span></span>(key: <span class="type">Any</span>, value: <span class="type">Any</span>, name: <span class="type">String</span>): <span class="type">String</span> = &#123;</span><br><span class="line">        <span class="string">s"<span class="subst">$key</span>/<span class="subst">$name</span>"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数"><a href="#主类，使用saveAsHadoopFile-path-keyClass-valueClass-fm-runtimeClass-asInstanceOf-Class-F-方法保存数据，指定参数" class="headerlink" title="主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数"></a>主类，使用saveAsHadoopFile(path, keyClass, valueClass, fm.runtimeClass.asInstanceOf[Class[F]])方法保存数据，指定参数</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">MultipleDirectory</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"spark-core/out"</span></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">        <span class="type">CheckHDFSOutPath</span>.ifExistsDeletePath(sc.hadoopConfiguration,out)</span><br><span class="line">        <span class="comment">//读取数组，转换成键值对的格式</span></span><br><span class="line">        <span class="keyword">val</span> lines = sc.textFile(<span class="string">"spark-core/ip/access-result/*"</span>)</span><br><span class="line">        <span class="keyword">val</span> mapRDD: <span class="type">RDD</span>[(<span class="type">String</span>, <span class="type">String</span>)] = lines.map(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = line.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">12</span>), line)</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="comment">//多目录保存文件</span></span><br><span class="line">        mapRDD.saveAsHadoopFile(out,</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">String</span>],</span><br><span class="line">                                classOf[<span class="type">MyMultipleTextOutputFormat</span>])</span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="结果"><a href="#结果" class="headerlink" title="结果"></a>结果</h5><p><img src="/2018/12/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA.jpg" alt="多目录输出"></p>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark各个版本特性</title>
+    <url>/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/</url>
+    <content><![CDATA[<h4 id="Spark各个版本特性"><a href="#Spark各个版本特性" class="headerlink" title="Spark各个版本特性"></a>Spark各个版本特性</h4><hr>
+<a id="more"></a>
+
+<h3 id="各个版本特性（官方文档）"><a href="#各个版本特性（官方文档）" class="headerlink" title="各个版本特性（官方文档）"></a>各个版本特性（官方文档）</h3><p><a href="https://spark.apache.org/releases/" target="_blank" rel="noopener">https://spark.apache.org/releases/</a><br><a href="https://spark.apache.org/news/index.html" target="_blank" rel="noopener">https://spark.apache.org/news/index.html</a></p>
+<hr>
+<h3 id="Spark-0-6-x"><a href="#Spark-0-6-x" class="headerlink" title="Spark 0.6.x"></a>Spark 0.6.x</h3><p>Standalone部署模式进行了简化</p>
+<hr>
+<h3 id="Spark-0-7"><a href="#Spark-0-7" class="headerlink" title="Spark 0.7"></a>Spark 0.7</h3><p>Python API<br>增加Spark Streaming<br>支持maven build</p>
+<hr>
+<h3 id="Spark-0-8"><a href="#Spark-0-8" class="headerlink" title="Spark 0.8"></a>Spark 0.8</h3><p>支持MLlib库<br>hadoop yarn正式支持</p>
+<hr>
+<h3 id="Spark-0-9"><a href="#Spark-0-9" class="headerlink" title="Spark 0.9"></a>Spark 0.9</h3><p>用SparkConf类来配置SparkContext<br>spark streaming正式版发布<br>GraphX的测试版出现<br>mllib库升级，支持python<br>core升级</p>
+<hr>
+<h3 id="Spark-1-0"><a href="#Spark-1-0" class="headerlink" title="Spark 1.0"></a>Spark 1.0</h3><p>提出spark-submit脚本和history-server<br>yarn安全模式整合<br>spark sql被提出<br>java8的支持</p>
+<hr>
+<h3 id="Spark-1-1"><a href="#Spark-1-1" class="headerlink" title="Spark 1.1"></a>Spark 1.1</h3><p>spark增强了磁盘（非内存）的排序的速率</p>
+<hr>
+<h3 id="Spark-1-2"><a href="#Spark-1-2" class="headerlink" title="Spark 1.2"></a>Spark 1.2</h3><p>shuffle大升级<br>Graphx正式版发布</p>
+<hr>
+<h3 id="Spark-1-3"><a href="#Spark-1-3" class="headerlink" title="Spark 1.3"></a>Spark 1.3</h3><p>新增DataFrame API<br>Spark SQL正式脱离alpha版本</p>
+<hr>
+<h3 id="Spark-1-4"><a href="#Spark-1-4" class="headerlink" title="Spark 1.4"></a>Spark 1.4</h3><p>正式引入SparkR<br>Spark Core为应用提供了REST API来获取各种信息</p>
+<hr>
+<h3 id="Spark-1-5"><a href="#Spark-1-5" class="headerlink" title="Spark 1.5"></a>Spark 1.5</h3><p>Hive支持</p>
+<hr>
+<h3 id="Spark-1-6"><a href="#Spark-1-6" class="headerlink" title="Spark 1.6"></a>Spark 1.6</h3><p>新增Dataset API</p>
+<hr>
+<h3 id="Spark-2-0"><a href="#Spark-2-0" class="headerlink" title="Spark 2.0"></a>Spark 2.0</h3><p>用sparksession实现hivecontext和sqlcontext统一<br>合并dataframe和datasets</p>
+<hr>
+<h3 id="Spark-2-1"><a href="#Spark-2-1" class="headerlink" title="Spark 2.1"></a>Spark 2.1</h3><p>提升ORC格式文件的读写性能</p>
+<hr>
+<h3 id="Spark-2-2"><a href="#Spark-2-2" class="headerlink" title="Spark 2.2"></a>Spark 2.2</h3><p>Structured Streaming的生产环境支持已经就绪</p>
+<hr>
+<h3 id="Spark-2-3"><a href="#Spark-2-3" class="headerlink" title="Spark 2.3"></a>Spark 2.3</h3><p>Structured Streaming 引入了低延迟的连续处理<br>支持 stream-to-stream joins</p>
+<hr>
+<h3 id="Spark-2-4"><a href="#Spark-2-4" class="headerlink" title="Spark 2.4"></a>Spark 2.4</h3><p>Scala 2.12<br>添加了35个高阶函数</p>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark 序列化</title>
+    <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
+    <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
+
+<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
+<h3 id="Java-serialization"><a href="#Java-serialization" class="headerlink" title="Java serialization"></a>Java serialization</h3><p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
+<h3 id="Kryo-serialization"><a href="#Kryo-serialization" class="headerlink" title="Kryo serialization"></a>Kryo serialization</h3><p>Spark还可以使用Kryo库（版本4）来更快地序列化对象。Kryo比Java串行化（通常多达10倍）要快得多，也更紧凑，但是不支持所有可串行化类型，并且要求您提前注册您将在程序中使用的类，以获得最佳性能。</p>
+<p>您可以通过使用SparkConf初始化作业并调用conf.set（“ spark.serializer”，“ org.apache.spark.serializer.KryoSerializer”）来切换为使用Kryo。</p>
+<p>要向Kryo注册您自己的自定义类，请使用registerKryoClasses方法</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(...).setAppName(...)</span><br><span class="line">conf.registerKryoClasses(<span class="type">Array</span>(classOf[<span class="type">MyClass1</span>], classOf[<span class="type">MyClass2</span>]))</span><br><span class="line"><span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark DRR转DF的两种方式</title>
+    <url>/2018/10/16/Spark%20DRR%E8%BD%ACDF%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
+    <content><![CDATA[<h5 id="Spark-DRR转DF的两种方式分为编程方式和反射方式"><a href="#Spark-DRR转DF的两种方式分为编程方式和反射方式" class="headerlink" title="Spark DRR转DF的两种方式分为编程方式和反射方式"></a>Spark DRR转DF的两种方式分为编程方式和反射方式</h5><a id="more"></a>
+
+<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
+<p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
+<h3 id="编程方式将RDD转成DF"><a href="#编程方式将RDD转成DF" class="headerlink" title="编程方式将RDD转成DF"></a>编程方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">programmatically</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP1: RDD[String] ==&gt; RDD[Row]</span></span><br><span class="line">    <span class="keyword">val</span> infoRDD: <span class="type">RDD</span>[<span class="type">Row</span>] = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Row</span>(id, name, age)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP2: schema</span></span><br><span class="line">    <span class="keyword">val</span> schema = <span class="type">StructType</span>(</span><br><span class="line">      <span class="type">StructField</span>(<span class="string">"id"</span>, <span class="type">IntegerType</span>, <span class="literal">true</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"name"</span>, <span class="type">StringType</span>, <span class="literal">false</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"age"</span>, <span class="type">IntegerType</span>, <span class="literal">false</span>) :: <span class="type">Nil</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP3: createDataFrame</span></span><br><span class="line">    <span class="keyword">val</span> df = spark.createDataFrame(infoRDD, schema)</span><br><span class="line">    df.printSchema()</span><br><span class="line">    df.show()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="反射方式将RDD转成DF"><a href="#反射方式将RDD转成DF" class="headerlink" title="反射方式将RDD转成DF"></a>反射方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">reflection</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// RDD[String] =&gt; case class</span></span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Info</span>(id, name, age)</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line"></span><br><span class="line">    infoDF.printSchema()</span><br><span class="line">    infoDF.show()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Info</span>(<span class="params">id: <span class="type">Int</span>, name: <span class="type">String</span>, age: <span class="type">Int</span></span>)</span></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkSQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SparkSQL 做统计分析</title>
+    <url>/2018/10/11/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<h4 id="SparkSQL-做统计分析的方法、存储格式的转换"><a href="#SparkSQL-做统计分析的方法、存储格式的转换" class="headerlink" title="SparkSQL 做统计分析的方法、存储格式的转换"></a>SparkSQL 做统计分析的方法、存储格式的转换</h4><a id="more"></a>
+
+<hr>
+<h4 id="SparkSQL做统计分析"><a href="#SparkSQL做统计分析" class="headerlink" title="SparkSQL做统计分析"></a>SparkSQL做统计分析</h4><ol>
+<li>数据</li>
+<li>需求：求每个国家的每个域名的访问流量排名前2</li>
+<li>SQL实现<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">GroupTopN</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/data.json"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">		<span class="comment">//读取数据</span></span><br><span class="line">        <span class="keyword">val</span> ds = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        <span class="comment">//为生成需要的表格做准备</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = ds.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">3</span>), words(<span class="number">12</span>), words(<span class="number">15</span>).toLong)</span><br><span class="line">        &#125;).toDF(<span class="string">"country"</span>, <span class="string">"domain"</span>, <span class="string">"traffic"</span>)</span><br><span class="line"></span><br><span class="line">        df.createOrReplaceTempView(<span class="string">"access"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 每个国家的域名流量前2</span></span><br><span class="line">        <span class="keyword">val</span> topNSQL=<span class="string">""</span><span class="string">"select</span></span><br><span class="line"><span class="string">                      |	*</span></span><br><span class="line"><span class="string">                      |from (</span></span><br><span class="line"><span class="string">                      |		select</span></span><br><span class="line"><span class="string">                      |			t.*,row_number() over(partition by country order by sum_traffic desc) r</span></span><br><span class="line"><span class="string">                      |		from</span></span><br><span class="line"><span class="string">                      |			(</span></span><br><span class="line"><span class="string">                      |				select country,domain,sum(traffic) as sum_traffic from access group by country,domain</span></span><br><span class="line"><span class="string">                      |			) t</span></span><br><span class="line"><span class="string">                      |	    ) rt</span></span><br><span class="line"><span class="string">                      |where rt.r &lt;=2 "</span><span class="string">""</span>.stripMargin</span><br><span class="line">        spark.sql(topNSQL).show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>如果只要求traffic的降序，可以使用API直接写出来<br>分组，求和，别名，降序<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//traffic降序排序</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.functions._</span><br><span class="line">df.groupBy(<span class="string">"country"</span>,<span class="string">"domain"</span>).agg(sum(<span class="string">"traffic"</span>).as(<span class="string">"sum_traffic"</span>)).sort($<span class="string">"sum_traffic"</span>.desc).show()</span><br></pre></td></tr></table></figure>
+注意看源码中案例仿写</li>
+<li>结果展示<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|         country|           domain|sum_traffic|  r|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|            中国| www.bilibili.com|   <span class="number">24265886</span>|  <span class="number">1</span>|</span><br><span class="line">|            中国|www.ruozedata.com|    <span class="number">4187637</span>|  <span class="number">2</span>|</span><br><span class="line">|          利比亚| www.bilibili.com|      <span class="number">22816</span>|  <span class="number">1</span>|</span><br><span class="line">|          利比亚|  ruoze.ke.qq.com|      <span class="number">15970</span>|  <span class="number">2</span>|</span><br><span class="line">|            加纳| www.bilibili.com|     <span class="number">138659</span>|  <span class="number">1</span>|</span><br><span class="line">|            加纳|www.ruozedata.com|      <span class="number">17988</span>|  <span class="number">2</span>|</span><br><span class="line">|        利比里亚| www.bilibili.com|      <span class="number">20593</span>|  <span class="number">1</span>|</span><br><span class="line">|        利比里亚|  ruoze.ke.qq.com|       <span class="number">7466</span>|  <span class="number">2</span>|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="UDF函数"><a href="#UDF函数" class="headerlink" title="UDF函数"></a>UDF函数</h4><ol>
+<li><p>数据</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">蔡三	唱,跳,rap,篮球</span><br><span class="line">李四	唱</span><br><span class="line">王五	唱,跳</span><br></pre></td></tr></table></figure></li>
+<li><p>需求：求出每个人的爱好的个数<br>提供一个编程抽象（DataFrame） 并且作为分布式 SQL 查询引擎<br>DataFrame：它可以根据很多源进行构建，包括：结构化的数据文件，hive中的表，外部的关系型数据库，以及RDD</p>
+</li>
+<li><p>SQL实现</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">practice04</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> in = <span class="string">"data/data.txt"</span></span><br><span class="line">    <span class="keyword">val</span> session = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>)</span><br><span class="line">      .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">      .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">      .getOrCreate()</span><br><span class="line">    session.sparkContext.setLogLevel(<span class="string">"ERROR"</span>)</span><br><span class="line">    <span class="keyword">import</span> session.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> ds = session.read.textFile(in)</span><br><span class="line">    <span class="keyword">val</span> df = ds.map(row =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> words = row.split(<span class="string">"\t"</span>)</span><br><span class="line">      (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">    &#125;).toDF(<span class="string">"name"</span>, <span class="string">"fav"</span>)</span><br><span class="line"></span><br><span class="line">    session.udf.register(<span class="string">"length"</span>,(fav: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">      fav.split(<span class="string">","</span>).length</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    df.createOrReplaceTempView(<span class="string">"udf_fav"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> sql1 =</span><br><span class="line">      <span class="string">""</span><span class="string">"</span></span><br><span class="line"><span class="string">        |select</span></span><br><span class="line"><span class="string">        | name,</span></span><br><span class="line"><span class="string">        | fav,</span></span><br><span class="line"><span class="string">        | length(fav) fav_count</span></span><br><span class="line"><span class="string">        |from udf_fav</span></span><br><span class="line"><span class="string">        |"</span><span class="string">""</span>.stripMargin</span><br><span class="line">    session.sql(sql1).show()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>上面是使用SQL的解决方案，还可以使用API的方法</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//自定义的udf需要返回值</span></span><br><span class="line"><span class="keyword">val</span> loveLengthUDF: <span class="type">UserDefinedFunction</span> = spark.udf.register(<span class="string">"length"</span>, (love: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">    love.split(<span class="string">","</span>).length</span><br><span class="line">&#125;)</span><br><span class="line"><span class="comment">//df.select中传入UDF函数</span></span><br><span class="line">df.select($<span class="string">"name"</span>,$<span class="string">"love"</span>,loveLengthUDF($<span class="string">"love"</span>)).show()</span><br></pre></td></tr></table></figure></li>
+<li><p>结果展示</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----+--------------+---------+</span><br><span class="line">|name|           fav|fav_count|</span><br><span class="line">+----+--------------+---------+</span><br><span class="line">|蔡三|唱,跳,rap,篮球|        <span class="number">4</span>|</span><br><span class="line">|李四|            唱|        <span class="number">1</span>|</span><br><span class="line">|王五|         唱,跳|        <span class="number">2</span>|</span><br><span class="line">+----+--------------+---------+</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="存储格式的转换"><a href="#存储格式的转换" class="headerlink" title="存储格式的转换"></a>存储格式的转换</h4><p>Spark读text文件进行清洗，清洗完以后直接以我们想要的列式存储格式输出，如果按以前的方式要经过很多复杂的步骤</p>
+<p>用Spark的时候只需要在df.write.format(“orc”).mode().save()中指定格式即可，如orc，现在就很方便了，想转成什么格式，只要format支持就ok</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2orc</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//对文本文件做处理</span></span><br><span class="line">        df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>),words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">            .toDF(<span class="string">"name"</span>,<span class="string">"age"</span>)	<span class="comment">//这一步解决了数据没有表头的问题</span></span><br><span class="line">            .write</span><br><span class="line">            .mode(<span class="string">"overwrite"</span>)	<span class="comment">//save mode</span></span><br><span class="line">            .format(<span class="string">"orc"</span>)	<span class="comment">//save format</span></span><br><span class="line">            .save(out)	<span class="comment">//save path</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkSQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SparkSQL 基础</title>
+    <url>/2018/10/10/SparkSQL/</url>
+    <content><![CDATA[<h4 id="SparkSQL-基础内容"><a href="#SparkSQL-基础内容" class="headerlink" title="SparkSQL 基础内容"></a>SparkSQL 基础内容</h4><a id="more"></a>
+
+<hr>
+<h4 id="认识SparkSQL"><a href="#认识SparkSQL" class="headerlink" title="认识SparkSQL"></a>认识SparkSQL</h4><ol>
+<li>SparkSQL的版本变更<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">1.0以前：</span><br><span class="line">   Shark</span><br><span class="line">1.1.x开始：</span><br><span class="line">   SparkSQL(只是测试性的) SQL</span><br><span class="line">1.3.x:</span><br><span class="line">   SparkSQL(正式版本)+Dataframe</span><br><span class="line">1.5.x:</span><br><span class="line">   SparkSQL 钨丝计划</span><br><span class="line">1.6.x：</span><br><span class="line">   SparkSQL+DataFrame+DataSet(测试版本)</span><br><span class="line">2.x.x:</span><br><span class="line">   SparkSQL+DataFrame+DataSet(正式版本)</span><br><span class="line">   SparkSQL:还有其他的优化</span><br><span class="line">   StructuredStreaming(DataSet)</span><br></pre></td></tr></table></figure></li>
+<li>什么是SparkSQL?<br>spark SQL是spark的一个模块，主要用于进行结构化数据的处理。它提供的最核心的编程抽象就是DataFrame。</li>
+<li>SparkSQL的作用<br>提供一个编程抽象（DataFrame） 并且作为分布式 SQL 查询引擎<br>DataFrame：它可以根据很多源进行构建，包括：结构化的数据文件，hive中的表，外部的关系型数据库，以及RDD</li>
+<li>运行原理<br>将 Spark SQL 转化为 RDD， 然后提交到集群执行</li>
+<li>特点</li>
+</ol>
+<ul>
+<li>容易整合</li>
+<li>统一的数据访问方式</li>
+<li>兼容 Hive</li>
+<li>标准的数据连接</li>
+</ul>
+<ol start="6">
+<li>spark sql<br>spark-sql是一个Spark专属的SQL命令行交互工具，在使用spark-sql之前要把hive-site.xml 拷贝到Spark/Conf下，spark-sql和spark-shell用法一样，但是在引入外部依赖的时候，spark-sql需要用–jars和–driver-class-path同时引入依赖才不会报错</li>
+<li>持久化<br>在spark-sql中的持久化Table命令是: cache table xxx，清除持久化 uncache table xxx<br>spark-SQL中的cache和uncache都是eager的，立即执行的<br>考点：RDD和SparkSQL的cache有什么区别？<br>RDD中的cache是lazy的 spark-SQL中的cache是eager的</li>
+<li>遗留问题<br>–files/–jars 传进去的东西清不掉</li>
+</ol>
+<h4 id="SparkSession"><a href="#SparkSession" class="headerlink" title="SparkSession"></a>SparkSession</h4><p>SparkSession是Spark 2.0引如的新概念。SparkSession为用户提供了统一的切入点，来让用户学习spark的各项功能。</p>
+<p>在spark的早期版本中，SparkContext是spark的主要切入点，由于RDD是主要的API，我们通过sparkcontext来创建和操作RDD。对于每个其他的API，我们需要使用不同的context。例如，对于Streming，我们需要使用StreamingContext；对于sql，使用sqlContext；对于Hive，使用hiveContext。但是随着DataSet和DataFrame的API逐渐成为标准的API，就需要为他们建立接入点。所以在spark2.0中，引入SparkSession作为DataSet和DataFrame API的切入点，SparkSession封装了SparkConf、SparkContext和SQLContext。为了向后兼容，SQLContext和HiveContext也被保存下来。</p>
+<p>SparkSession实质上是SQLContext和HiveContext的组合（未来可能还会加上StreamingContext），所以在SQLContext和HiveContext上可用的API在SparkSession上同样是可以使用的。SparkSession内部封装了sparkContext，所以计算实际上是由sparkContext完成的。</p>
+<p>特点：</p>
+<ol>
+<li>为用户提供一个统一的切入点使用Spark 各项功能</li>
+<li>允许用户通过它调用 DataFrame 和 Dataset 相关 API 来编写程序</li>
+<li>减少了用户需要了解的一些概念，可以很容易的与 Spark 进行交互</li>
+<li>与 Spark 交互之时不需要显示的创建 SparkConf, SparkContext 以及 SQlContext，这些对象已经封闭在 SparkSession 中</li>
+</ol>
+<h4 id="DataFrame"><a href="#DataFrame" class="headerlink" title="DataFrame"></a>DataFrame</h4><p>在Spark中，DataFrame是一种以RDD为基础的分布式数据集，类似于传统数据库中的二维表格。DataFrame与RDD的主要区别在于，前者带有schema元信息，即DataFrame所表示的二维表数据集的每一列都带有名称和类型。这使得Spark SQL得以洞察更多的结构信息，从而对藏于DataFrame背后的数据源以及作用于DataFrame之上的变换进行了针对性的优化，最终达到大幅提升运行时效率的目标。反观RDD，由于无从得知所存数据元素的具体内部结构，Spark Core只能在stage层面进行简单、通用的流水线优化。</p>
+<p><img src="/2018/10/10/SparkSQL/RDD%E5%92%8CDataFrame%E7%9A%84%E5%AD%98%E5%82%A8%E5%86%85%E5%AE%B9%E6%AF%94%E8%BE%83.png" alt="RDD和DataFrame的存储内容比较"></p>
+<h4 id="DataFrame的read和write"><a href="#DataFrame的read和write" class="headerlink" title="DataFrame的read和write"></a>DataFrame的read和write</h4><h5 id="json"><a href="#json" class="headerlink" title="json"></a>json</h5><ol>
+<li>数据的读取[DataFrameReader]<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">rdd2df</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.json"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">		<span class="comment">//  读取json数据</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read.format(<span class="string">"json"</span>).load(in)</span><br><span class="line">        <span class="comment">//  使用$"" 导入隐式转换</span></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        <span class="comment">//  可以使用UDF</span></span><br><span class="line">        df.select($<span class="string">"name"</span>,$<span class="string">"age"</span>).show(<span class="number">2</span>,<span class="literal">false</span>)</span><br><span class="line">        <span class="comment">//  不可以使用UDF 适合大部分场景</span></span><br><span class="line">        df.select(<span class="string">"name"</span>,<span class="string">"age"</span>).show()</span><br><span class="line">        <span class="comment">//  不推介，写着复杂</span></span><br><span class="line">        df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).show(<span class="number">2</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+select方法用于选择要输出的列，推介使用 $”col” 和 “col” 的方法</li>
+</ol>
+<ul>
+<li><ol>
+<li>使用select可以选取打印的列，空值为null</li>
+</ol>
+</li>
+<li><ol start="2">
+<li>show()默认打印20条数据，可以指定条数</li>
+</ol>
+</li>
+<li><ol start="3">
+<li>truncate默认为true，截取长度，可以设置为false<br>select方法有三种不同的写法，fliter也有<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).filter(<span class="symbol">'name</span> === <span class="string">"Andy"</span>).show()	<span class="comment">//推介使用</span></span><br><span class="line">df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).filter(df(<span class="string">"name"</span>) === <span class="string">"Andy"</span>).show()</span><br><span class="line">df.select(df(<span class="string">"name"</span>),df(<span class="string">"age"</span>)).filter(<span class="string">"name = 'Andy'"</span>).show()</span><br></pre></td></tr></table></figure>
+printSchema()方法可以查看数据的Schema信息<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">df.printSchema()</span><br><span class="line">------------------------------------------------</span><br><span class="line">root</span><br><span class="line"> |-- age: long (nullable = <span class="literal">true</span>)</span><br><span class="line"> |-- name: string (nullable = <span class="literal">true</span>)</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+</ul>
+<ol start="2">
+<li>数据的存储[DataFrameWriter]<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> selectDf: <span class="type">DataFrame</span> = df.select($<span class="string">"name"</span>, $<span class="string">"age"</span>)</span><br><span class="line"><span class="comment">//  写出json数据</span></span><br><span class="line">selectDf.write.format(<span class="string">"json"</span>).mode(<span class="string">"overwrite"</span>).save(out)</span><br></pre></td></tr></table></figure>
+这里需要知道的一个概念是Save Modes<br>Save操作可以选择使用SaveMode，它指定目标如果存在，如何处理现有数据。重要的是要认识到，这些保存模式不利用任何锁定，也不是原子性的。此外，在执行覆盖时，在写入新数据之前将删除数据。<br><img src="/2018/10/10/SparkSQL/SaveMode.png" alt="SaveMode"></li>
+</ol>
+<h5 id="text"><a href="#text" class="headerlink" title="text"></a>text</h5><ol>
+<li>数据的读取<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2df</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">        <span class="comment">//DataFrame不能直接split，且调用map返回的是一个Dataset</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read.format(<span class="string">"text"</span>).load(in)</span><br><span class="line">        <span class="keyword">val</span> mapDF: <span class="type">Dataset</span>[(<span class="type">String</span>, <span class="type">String</span>)] = df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.toString().split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">        mapDF.show()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//DataFrame转换为RDD后，再toDF，返回的是一个DataFrame</span></span><br><span class="line">        <span class="keyword">val</span> mapRDD2DF: <span class="type">DataFrame</span> = df.rdd.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.toString().split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">        &#125;).toDF()</span><br><span class="line">        mapRDD2DF.show()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用textFile方法读取文本文件直接返回的是一个Dataset</span></span><br><span class="line">        <span class="keyword">val</span> ds: <span class="type">Dataset</span>[<span class="type">String</span>] = spark.read.textFile(in)</span><br><span class="line">        <span class="keyword">val</span> mapDs: <span class="type">Dataset</span>[(<span class="type">String</span>, <span class="type">String</span>)] = ds.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">        mapDs.show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+文本数据读进来的一行在一个字段里面，所以要使用map算子，在map中split</li>
+</ol>
+<ul>
+<li>直接read.format()读进来的是DataFrame，map中不能直接split</li>
+<li>DataFrame通过.rdd的方式转换成RDD，map中也不能直接split</li>
+<li>通过read.textFile()的方式读进来的是Dataset，map中可以split</li>
+</ul>
+<ol start="2">
+<li>数据的存储<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read.format(<span class="string">"text"</span>).load(in)</span><br><span class="line"><span class="keyword">val</span> mapDF = df.map(row =&gt; &#123;</span><br><span class="line">    <span class="keyword">val</span> words = row.toString().split(<span class="string">","</span>)</span><br><span class="line">    <span class="comment">// 拼接成一列</span></span><br><span class="line">    words(<span class="number">0</span>) +<span class="string">","</span>+words(<span class="number">1</span>)</span><br><span class="line">&#125;)</span><br><span class="line"></span><br><span class="line">mapDF.write.format(<span class="string">"text"</span>).mode(<span class="string">"overwrite"</span>).save(out)</span><br></pre></td></tr></table></figure>
+文本数据写出去的时候</li>
+</ol>
+<ul>
+<li>不支持int类型，如果存在int类型，会报错，解决办法是toString，转换成字符串</li>
+<li>只能作为一列输出，如果是多列，会报错，解决办法是拼接起来，组成一列<br>文本数据压缩输出，只要是Spark支持的压缩的格式，都可以指定<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">mapDF.write</span><br><span class="line">    .format(<span class="string">"text"</span>)</span><br><span class="line">    <span class="comment">// 添加压缩操作</span></span><br><span class="line">    .option(<span class="string">"compression"</span>,<span class="string">"gzip"</span>)</span><br><span class="line">    .mode(<span class="string">"overwrite"</span>)</span><br><span class="line">    .save(out)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h5 id="csv"><a href="#csv" class="headerlink" title="csv"></a>csv</h5><ol>
+<li>数据的读取<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">csv2df</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.csv"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read</span><br><span class="line">            .format(<span class="string">"csv"</span>)</span><br><span class="line">            .option(<span class="string">"header"</span>, <span class="string">"true"</span>)</span><br><span class="line">            .option(<span class="string">"sep"</span>, <span class="string">";"</span>)</span><br><span class="line">            .option(<span class="string">"interSchema"</span>,<span class="string">"true"</span>)</span><br><span class="line">            .load(in)</span><br><span class="line">        df.show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+csv读取数据注意使用几个参数</li>
+</ol>
+<ul>
+<li>指定表头：option(“header”, “true”)</li>
+<li>指定分隔符：option(“sep”, “;”)</li>
+<li>类型自动推测：option(“interSchema”,”true”)</li>
+</ul>
+<h5 id="jdbc"><a href="#jdbc" class="headerlink" title="jdbc"></a>jdbc</h5><p>在操作jdbc之前要导入两个依赖，一个是mysql-jdbc，用来连接mysql，一个是config，用来解决硬编码的问题</p>
+<p>依赖：</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.typesafe<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>config<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.2.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>mysql<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mysql-connector-java<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>5.1.38<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>application.conf文件</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">db.<span class="keyword">default</span>.driver=<span class="string">"com.mysql.jdbc.Driver"</span></span><br><span class="line">db.<span class="keyword">default</span>.url=<span class="string">"jdbc:mysql://hadoop/listener?characterEncoding=utf-8&amp;useSSL=false"</span></span><br><span class="line">db.<span class="keyword">default</span>.user=<span class="string">"root"</span></span><br><span class="line">db.<span class="keyword">default</span>.password=<span class="string">"root"</span></span><br><span class="line">db.<span class="keyword">default</span>.source=<span class="string">"dws_ad_phone_type_dist"</span></span><br><span class="line">db.<span class="keyword">default</span>.target=<span class="string">"dws_ad_phone_type_dist_1"</span></span><br><span class="line">db.<span class="keyword">default</span>.db=<span class="string">"access_dw"</span></span><br><span class="line"></span><br><span class="line"># Connection Pool settings</span><br><span class="line">db.<span class="keyword">default</span>.poolInitialSize=<span class="number">10</span></span><br><span class="line">db.<span class="keyword">default</span>.poolMaxSize=<span class="number">20</span></span><br><span class="line">db.<span class="keyword">default</span>.connectionTimeoutMillis=<span class="number">1000</span></span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><p>数据的读取</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">mysql2df</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">		<span class="comment">//获取配置文件中的值，db.default开头</span></span><br><span class="line">        <span class="keyword">val</span> conf = <span class="type">ConfigFactory</span>.load()</span><br><span class="line">        <span class="keyword">val</span> driver = conf.getString(<span class="string">"db.default.driver"</span>)</span><br><span class="line">        <span class="keyword">val</span> url = conf.getString(<span class="string">"db.default.url"</span>)</span><br><span class="line">        <span class="keyword">val</span> user = conf.getString(<span class="string">"db.default.user"</span>)</span><br><span class="line">        <span class="keyword">val</span> password = conf.getString(<span class="string">"db.default.password"</span>)</span><br><span class="line">        <span class="keyword">val</span> source = conf.getString(<span class="string">"db.default.source"</span>)</span><br><span class="line">        <span class="keyword">val</span> target = conf.getString(<span class="string">"db.default.target"</span>)</span><br><span class="line">        <span class="keyword">val</span> db = conf.getString(<span class="string">"db.default.db"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//读取数据库的内容</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = spark.read</span><br><span class="line">            .format(<span class="string">"jdbc"</span>)</span><br><span class="line">            .option(<span class="string">"url"</span>, url)</span><br><span class="line">            .option(<span class="string">"dbtable"</span>, <span class="string">s"<span class="subst">$db</span>.<span class="subst">$source</span>"</span>)	<span class="comment">//库名.源表</span></span><br><span class="line">            .option(<span class="string">"user"</span>, user)</span><br><span class="line">            .option(<span class="string">"password"</span>, password)</span><br><span class="line">            .option(<span class="string">"driver"</span>, driver)</span><br><span class="line">            .load()</span><br><span class="line">        <span class="comment">//使用DataFrame创建临时表提供spark.sql查询</span></span><br><span class="line">        df.createOrReplaceTempView(<span class="string">"phone_type_dist"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//spark.sql写SQL返回一个DataFrame</span></span><br><span class="line">        <span class="keyword">val</span> sqlDF: <span class="type">DataFrame</span> = spark.sql(<span class="string">"select * from phone_type_dist where phoneSystemType = 'IOS'"</span>)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>使用df.createOrReplaceTempView()方法创建一个DataFrame数据生成的临时表，提供spark.sql()使用SQL操作数据，返回的也是一个DataFrame</p>
+</li>
+<li><p>数据的存储</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//接着上面返回的sqlDF: DataFrame</span></span><br><span class="line">sqlDF.write</span><br><span class="line">    .format(<span class="string">"jdbc"</span>)</span><br><span class="line">    .option(<span class="string">"url"</span>, url)</span><br><span class="line">    .option(<span class="string">"dbtable"</span>, <span class="string">s"<span class="subst">$db</span>.<span class="subst">$target</span>"</span>)	<span class="comment">//库名.目标表</span></span><br><span class="line">    .option(<span class="string">"user"</span>, user)</span><br><span class="line">    .option(<span class="string">"password"</span>, password)</span><br><span class="line">    .option(<span class="string">"driver"</span>,driver)</span><br><span class="line">    .save()</span><br></pre></td></tr></table></figure></li>
+</ol>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkSQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 数据倾斜</title>
+    <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
+    <content><![CDATA[<h4 id="Hive数据倾斜问题-大表Join大表-大表Join小表-group-By"><a href="#Hive数据倾斜问题-大表Join大表-大表Join小表-group-By" class="headerlink" title="Hive数据倾斜问题   大表Join大表   大表Join小表   group By"></a>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</h4><hr>
+<a id="more"></a>
+
+<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
+<ol>
+<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>两个表的bucket数量相等</li>
+<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
+<li>必须是应用在bucket mapjoin 的场景中</li>
+<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
+<li>hive.enforce.sorting 设置为true</li>
+<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
+<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>案例<ol>
+<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
+domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
+<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+</li>
+</ol>
+<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
+<p>user表为用户基本表，domain为用户访问域名的宽表</p>
+<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
+<ol>
+<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
+<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
+<ol>
+<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
+<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
+</ol>
+<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
+<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
+<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+        <tag>数据倾斜</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 行列转换</title>
+    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
+    <content><![CDATA[<h5 id="Hive-行列转换"><a href="#Hive-行列转换" class="headerlink" title="Hive 行列转换"></a>Hive 行列转换</h5><a id="more"></a>
+
+<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
+<hr>
+<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 基本概念 Hive的部署 Hive的常用命令</title>
+    <url>/2018/07/14/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<h4 id="Hive基本概念"><a href="#Hive基本概念" class="headerlink" title="Hive基本概念"></a>Hive基本概念</h4><p><a href="http://hive.apache.org" target="_blank" rel="noopener">Hive官网</a></p>
+<p>The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data already in storage. A command line tool and JDBC driver are provided to connect users to Hive.</p>
+<hr>
+<a id="more"></a>
+
+<h4 id="什么是Hive"><a href="#什么是Hive" class="headerlink" title="什么是Hive"></a>什么是Hive</h4><p>Hive由Facebook开源，用于解决海量结构化日志的数据统计问题。</p>
+<p>Hive是基于Hadoop的一个数据仓库工具，可以将结构化的数据文化映射为一张表，并提供类SQL查询功能。</p>
+<p>本质：将HQL/SQL转化成MapReduce程序</p>
+<ol>
+<li>Hive处理的数据存储在HDFS</li>
+<li>Hive底层执行引擎：MapReduce/Tez/Spark，只需要通过一个参数就能够切换底层的执行引擎</li>
+<li>Hive作业提交到YARN上运行</li>
+</ol>
+<h4 id="Hive的优缺点"><a href="#Hive的优缺点" class="headerlink" title="Hive的优缺点"></a>Hive的优缺点</h4><p>优点：</p>
+<ol>
+<li>操作接口采用类SQL语法，提供快速开发的能力（简单、容易上手）</li>
+<li>避免了MapReduce编程，减少学习成本</li>
+<li>Hive的执行延迟比较高，因此Hive常用于离线分析，对实时性要求不高的场合</li>
+<li>Hive优势在于处理大数据，对于处理小数据没有优势，因为Hive的执行延迟比较高</li>
+<li>Hive支持用户自定义函数，用户可以根据自己的需求来实现自己的函数</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>Hive的HQL表达能力有限<ol>
+<li>迭代式算法无法表达</li>
+<li>数据挖掘方面不擅长</li>
+</ol>
+</li>
+<li>Hive的效率比较低<ol>
+<li>Hive自动生成的MapReduce作业，通常不够智能化</li>
+<li>Hive调优比较困难，粒度较粗</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的架构原理"><a href="#Hive的架构原理" class="headerlink" title="Hive的架构原理"></a>Hive的架构原理</h4><p><img src="/2018/07/14/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png" alt="Hive的架构"></p>
+<p>如上图所示，Hive通过给用户提供的一系列交互接口，接收到用户的指令（SQL），使用自己的Driver，结合元数据（MetaStore），将这些指令翻译成MapReduce，提交到Hadoop中执行，最后将执行返回的结果输出到用户交互接口。</p>
+<ol>
+<li>用户接口：Client<br>CLI(hive shell)、JDBC/ODBC(java访问hive)、WEBUI(浏览器访问hive)</li>
+<li>元数据：Meta store<br>元数据包括：表名、表所属的数据库（默认是default）、表的拥有者、列/分区字段、表的类型（是否是外部表）、表的数据所在目录等；<br>默认存储在自带的derby数据库中，推荐使用MySQL存储Meta store。</li>
+<li>Hadoop<br>使用HDFS进行存储，使用MapReduce进行计算</li>
+<li>驱动器：Driver<ol>
+<li>解析器（SQL Parser）：将SQL字符串转换成抽象语法树AST，这一步一般都用第三方工具库完成，比如antlr；对AST进行语法分析，比如表是否存在、字段是否存在、SQL语义是否有误。</li>
+<li>编译器（Physical Plan）：将AST编译生成逻辑执行计划。</li>
+<li>优化器（Query Optimizer）：对逻辑执行计划进行优化。</li>
+<li>执行器（Execution）：把逻辑执行计划转换成可以运行的物理计划，对于Hive来说，就是MR/Spark。</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的部署"><a href="#Hive的部署" class="headerlink" title="Hive的部署"></a>Hive的部署</h4><p><a href="https://cwiki.apache.org/confluence/display/Hive/GettingStarted" target="_blank" rel="noopener">Hive的使用文档</a></p>
+<p>环境要求：</p>
+<ul>
+<li>JDK8</li>
+<li>Hadoop2.x</li>
+<li>Linux</li>
+<li>MySQL</li>
+</ul>
+<p>Hive版本选择：wget <a href="http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz</a></p>
+<h4 id="Hive安装步骤"><a href="#Hive安装步骤" class="headerlink" title="Hive安装步骤"></a>Hive安装步骤</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">解压：</span><br><span class="line">tar -zxvf hive-1.1.0-cdh5.16.2.tar.gz -C ~/app/</span><br><span class="line"></span><br><span class="line">设置软连接：</span><br><span class="line">ln -s hive-1.1.0-cdh5.16.2 hive</span><br></pre></td></tr></table></figure>
+
+<p>配置环境变量，建议普通用户的.bashrc文件，追加以下内容：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HIVE_HOME=/home/hadoop/app/hive</span><br><span class="line">export PATH=$HIVE_HOME/bin:$PATH</span><br></pre></td></tr></table></figure>
+
+<p>生效环境变量文件</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .bashrc</span><br></pre></td></tr></table></figure>
+
+<p>检查是否生效</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which hive</span><br></pre></td></tr></table></figure>
+
+<p>进入配置文件目录</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $HIVE_HOME/conf/</span><br><span class="line"></span><br><span class="line">vi hive-site.xml</span><br></pre></td></tr></table></figure>
+<p>编译以下内容</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0"?&gt;</span></span><br><span class="line"><span class="meta">&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionURL<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>jdbc:mysql://hadoop001:3306/metadata_hive?createDatabaseIfNotExist=true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionDriverName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>com.mysql.jdbc.Driver<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionUserName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>root<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionPassword<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>123456<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.current.db<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.header<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>保存并退出。</p>
+<p>然后，拷贝MySQL驱动包到$HIVE_HOME/lib/下。</p>
+<p>最后，启动Hive（需要先启动HDFS和YARN）：hive</p>
+<h4 id="Hive常用命令"><a href="#Hive常用命令" class="headerlink" title="Hive常用命令"></a>Hive常用命令</h4><ul>
+<li>show databases; 查看数据库</li>
+<li>use default; 打开默认数据库</li>
+<li>create database company location ‘/user/company’; 创建库并指定hdfs路径</li>
+<li>alter database company set dbproperties(‘creator’ = ‘vinx’); 为数据库添加额外的描述信息</li>
+<li>drop database if exists company cascade; 删除不为空的数据库</li>
+<li>show tables; 查看所在数据库的所有表</li>
+<li>create table student(id int, name string); 创建一张表</li>
+<li>desc student; 查看表结构</li>
+<li>desc extended student; 查看表结构详细信息</li>
+<li>desc formatted student; 查看表结构的格式化信息</li>
+<li>insert into student values(1001, “zhangsan”); 向表中插入一条数据（慎用，会跑MR程序）</li>
+<li>select * from student; 查询表中数据</li>
+<li>!clear; 清空屏幕</li>
+<li>quit; 退出hive</li>
+<li>bin/hive -e “select * from student;” 不登录hive客户端直接操作hive</li>
+<li>bin/hive -f /home/vinx/shell/select_stu.sql 执行HQL文件</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>常用命令</tag>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hadoop 数据压缩</title>
     <url>/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/</url>
     <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
@@ -780,8 +885,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>常用命令</tag>
         <tag>Hadoop</tag>
+        <tag>常用命令</tag>
       </tags>
   </entry>
   <entry>
@@ -927,8 +1032,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+        <tag>基本概念</tag>
       </tags>
   </entry>
   <entry>
@@ -953,8 +1058,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+        <tag>基本概念</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -1006,8 +1111,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+        <tag>基本概念</tag>
       </tags>
   </entry>
   <entry>
@@ -1088,8 +1193,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+        <tag>基本概念</tag>
       </tags>
   </entry>
   <entry>

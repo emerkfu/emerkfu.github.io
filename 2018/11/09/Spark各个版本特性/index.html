@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Spark各个版本特性 | Emerk&#39;s blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Spark各个版本特性">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spark各个版本特性">
+<meta property="og:url" content="https://emerkfu.github.io/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="Spark各个版本特性">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-11-09T08:00:00.000Z">
+<meta property="article:modified_time" content="2020-12-03T13:01:09.205Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Spark">
+<meta name="twitter:card" content="summary">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Emerk&#39;s blog</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">knowledge is power</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://emerkfu.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-Spark各个版本特性" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/" class="article-date">
+  <time class="dt-published" datetime="2018-11-09T08:00:00.000Z" itemprop="datePublished">2018-11-09</time>
+  &nbsp;
+  
+          <!-- 不蒜子统计 -->
+          <span id="busuanzi_container_page_pv" style='display:none' class="article-date">
+                <i class="icon-smile icon"></i> 阅读数：<span id="busuanzi_value_page_pv"></span>次&nbsp;&nbsp;
+          </span>
+  
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Spark/">Spark</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Spark各个版本特性
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h4 id="Spark各个版本特性"><a href="#Spark各个版本特性" class="headerlink" title="Spark各个版本特性"></a>Spark各个版本特性</h4><hr>
+<a id="more"></a>
+
+<h3 id="各个版本特性（官方文档）"><a href="#各个版本特性（官方文档）" class="headerlink" title="各个版本特性（官方文档）"></a>各个版本特性（官方文档）</h3><p><a href="https://spark.apache.org/releases/" target="_blank" rel="noopener">https://spark.apache.org/releases/</a><br><a href="https://spark.apache.org/news/index.html" target="_blank" rel="noopener">https://spark.apache.org/news/index.html</a></p>
+<hr>
+<h3 id="Spark-0-6-x"><a href="#Spark-0-6-x" class="headerlink" title="Spark 0.6.x"></a>Spark 0.6.x</h3><p>Standalone部署模式进行了简化</p>
+<hr>
+<h3 id="Spark-0-7"><a href="#Spark-0-7" class="headerlink" title="Spark 0.7"></a>Spark 0.7</h3><p>Python API<br>增加Spark Streaming<br>支持maven build</p>
+<hr>
+<h3 id="Spark-0-8"><a href="#Spark-0-8" class="headerlink" title="Spark 0.8"></a>Spark 0.8</h3><p>支持MLlib库<br>hadoop yarn正式支持</p>
+<hr>
+<h3 id="Spark-0-9"><a href="#Spark-0-9" class="headerlink" title="Spark 0.9"></a>Spark 0.9</h3><p>用SparkConf类来配置SparkContext<br>spark streaming正式版发布<br>GraphX的测试版出现<br>mllib库升级，支持python<br>core升级</p>
+<hr>
+<h3 id="Spark-1-0"><a href="#Spark-1-0" class="headerlink" title="Spark 1.0"></a>Spark 1.0</h3><p>提出spark-submit脚本和history-server<br>yarn安全模式整合<br>spark sql被提出<br>java8的支持</p>
+<hr>
+<h3 id="Spark-1-1"><a href="#Spark-1-1" class="headerlink" title="Spark 1.1"></a>Spark 1.1</h3><p>spark增强了磁盘（非内存）的排序的速率</p>
+<hr>
+<h3 id="Spark-1-2"><a href="#Spark-1-2" class="headerlink" title="Spark 1.2"></a>Spark 1.2</h3><p>shuffle大升级<br>Graphx正式版发布</p>
+<hr>
+<h3 id="Spark-1-3"><a href="#Spark-1-3" class="headerlink" title="Spark 1.3"></a>Spark 1.3</h3><p>新增DataFrame API<br>Spark SQL正式脱离alpha版本</p>
+<hr>
+<h3 id="Spark-1-4"><a href="#Spark-1-4" class="headerlink" title="Spark 1.4"></a>Spark 1.4</h3><p>正式引入SparkR<br>Spark Core为应用提供了REST API来获取各种信息</p>
+<hr>
+<h3 id="Spark-1-5"><a href="#Spark-1-5" class="headerlink" title="Spark 1.5"></a>Spark 1.5</h3><p>Hive支持</p>
+<hr>
+<h3 id="Spark-1-6"><a href="#Spark-1-6" class="headerlink" title="Spark 1.6"></a>Spark 1.6</h3><p>新增Dataset API</p>
+<hr>
+<h3 id="Spark-2-0"><a href="#Spark-2-0" class="headerlink" title="Spark 2.0"></a>Spark 2.0</h3><p>用sparksession实现hivecontext和sqlcontext统一<br>合并dataframe和datasets</p>
+<hr>
+<h3 id="Spark-2-1"><a href="#Spark-2-1" class="headerlink" title="Spark 2.1"></a>Spark 2.1</h3><p>提升ORC格式文件的读写性能</p>
+<hr>
+<h3 id="Spark-2-2"><a href="#Spark-2-2" class="headerlink" title="Spark 2.2"></a>Spark 2.2</h3><p>Structured Streaming的生产环境支持已经就绪</p>
+<hr>
+<h3 id="Spark-2-3"><a href="#Spark-2-3" class="headerlink" title="Spark 2.3"></a>Spark 2.3</h3><p>Structured Streaming 引入了低延迟的连续处理<br>支持 stream-to-stream joins</p>
+<hr>
+<h3 id="Spark-2-4"><a href="#Spark-2-4" class="headerlink" title="Spark 2.4"></a>Spark 2.4</h3><p>Scala 2.12<br>添加了35个高阶函数</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://emerkfu.github.io/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/" data-id="cki8xkorr002e6sv7cqyc4c23" data-title="Spark各个版本特性" class="article-share-link">Share</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2018/12/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Spark 多目录输出
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Spark 序列化</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">分类</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/HBase/">HBase</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hadoop/">Hadoop</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hive/">Hive</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Hue/">Hue</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Kafka/">Kafka</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Nginx/">Nginx</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Scala/">Scala</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/Spark/">Spark</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/">生产配置</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/HBase/" rel="tag">HBase</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop/" rel="tag">Hadoop</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hadoop%E4%BC%98%E5%8C%96/" rel="tag">Hadoop优化</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hive/" rel="tag">Hive</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Hue/" rel="tag">Hue</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Kafka/" rel="tag">Kafka</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Nginx/" rel="tag">Nginx</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Scala/" rel="tag">Scala</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Shuffle/" rel="tag">Shuffle</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/SparkSQL/" rel="tag">SparkSQL</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/Yarn/" rel="tag">Yarn</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag">基本概念</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag">常用命令</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" rel="tag">数据倾斜</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/" rel="tag">生产配置</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/HBase/" style="font-size: 12px;">HBase</a> <a href="/tags/Hadoop/" style="font-size: 20px;">Hadoop</a> <a href="/tags/Hadoop%E4%BC%98%E5%8C%96/" style="font-size: 12px;">Hadoop优化</a> <a href="/tags/Hive/" style="font-size: 14px;">Hive</a> <a href="/tags/Hue/" style="font-size: 10px;">Hue</a> <a href="/tags/Kafka/" style="font-size: 14px;">Kafka</a> <a href="/tags/Nginx/" style="font-size: 10px;">Nginx</a> <a href="/tags/Scala/" style="font-size: 16px;">Scala</a> <a href="/tags/Shuffle/" style="font-size: 10px;">Shuffle</a> <a href="/tags/Spark/" style="font-size: 18px;">Spark</a> <a href="/tags/SparkSQL/" style="font-size: 14px;">SparkSQL</a> <a href="/tags/Yarn/" style="font-size: 10px;">Yarn</a> <a href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" style="font-size: 18px;">基本概念</a> <a href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" style="font-size: 14px;">常用命令</a> <a href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" style="font-size: 10px;">数据倾斜</a> <a href="/tags/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/" style="font-size: 10px;">生产配置</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/08/">2020年 08月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2020/06/">2020年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/04/">2019年 04月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">2019年 03月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/12/">2018年 12月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">2018年 11月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/10/">2018年 10月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/08/">2018年 08月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/07/">2018年 07月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/06/">2018年 06月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/05/">2018年 05月</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/03/">2018年 03月</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2020/08/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/">生产相关配置</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/">RowKey设计原则、解决RowKey热点问题、RowKey设计实践</a>
+          </li>
+        
+          <li>
+            <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">HBase 基本概念和使用</a>
+          </li>
+        
+          <li>
+            <a href="/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/">KafkaEagle安装部署</a>
+          </li>
+        
+          <li>
+            <a href="/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/">Kafka工作流程</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js">
+  </script>
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      Copyright &copy; 2012 - 2020 <a href="/" target="_blank">EmerkFu</a>.
+      &nbsp;
+      
+        <!-- 不蒜子统计 -->
+        <span id="busuanzi_container_site_pv">
+                本站总访问量<span id="busuanzi_value_site_pv"></span>次
+        </span>
+        <span class="post-meta-divider">|</span>
+        <span id="busuanzi_container_site_uv" style='display:none'>
+                本站访客数<span id="busuanzi_value_site_uv"></span>人
+        </span>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+      
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
