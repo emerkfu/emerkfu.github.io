@@ -368,9 +368,9 @@ csv读取数据注意使用几个参数</li>
         <category>HBase</category>
       </categories>
       <tags>
+        <tag>HBase</tag>
         <tag>基本概念</tag>
         <tag>常用命令</tag>
-        <tag>HBase</tag>
       </tags>
   </entry>
   <entry>
@@ -538,7 +538,7 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
   </entry>
   <entry>
     <title>Yarn 调度流程</title>
-    <url>/2020/06/20/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
+    <url>/2020/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
 <hr>
 <a id="more"></a>
@@ -558,7 +558,7 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <ul>
 <li>container - 虚拟概念，执行MR、Spark计算任务的最小单元</li>
 </ul>
-<h4 id="MR-on-YARN-调度流程"><a href="#MR-on-YARN-调度流程" class="headerlink" title="MR on YARN 调度流程"></a>MR on YARN 调度流程</h4><p><img src="/2020/06/20/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/mr-on-yarn.png" alt="MR on YARN 调度流程"></p>
+<h4 id="MR-on-YARN-调度流程"><a href="#MR-on-YARN-调度流程" class="headerlink" title="MR on YARN 调度流程"></a>MR on YARN 调度流程</h4><p><img src="/2020/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/mr-on-yarn.png" alt="MR on YARN 调度流程"></p>
 <h5 id="MR-on-YARN-调度过程描述："><a href="#MR-on-YARN-调度过程描述：" class="headerlink" title="MR on YARN 调度过程描述："></a>MR on YARN 调度过程描述：</h5><ol>
 <li>用户向YARN提交应用程序，其中包括ApplicationMaster程序、启动ApplicationMaster的命令等。</li>
 <li>RM为该job分配第一个container，运行job的ApplicationMaster。</li>
@@ -827,8 +827,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>常用命令</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -974,8 +974,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1000,8 +1000,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -1053,8 +1053,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1088,8 +1088,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
