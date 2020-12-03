@@ -22,9 +22,11 @@
       </tags>
   </entry>
   <entry>
-    <title>RowKey设计原则、解决RowKey热点问题、RowKey设计实践</title>
+    <title>RowKey设计原则、热点问题、设计实践</title>
     <url>/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/</url>
-    <content><![CDATA[<h5 id="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"><a href="#HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。" class="headerlink" title="HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。"></a>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</h5><h5 id="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："><a href="#作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询-Rowkey用来表示唯一一行记录-，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：" class="headerlink" title="作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明："></a>作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：</h5><a id="more"></a>
+    <content><![CDATA[<p>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</p>
+<p>作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：</p>
+<a id="more"></a>
 <p>假如有5个Rowkey：”012”, “0”, “123”, “234”, “3”，按ASCII字典排序后的结果为：”0”, “012”, “123”, “234”, “3”。（注：文末附常用ASCII码表）<br>Rowkey排序时会先比对两个Rowkey的第一个字节，如果相同，然后会比对第二个字节，依次类推… 对比到第X个字节时，已经超出了其中一个Rowkey的长度，短的Rowkey排在前面。<br>由于HBase是通过Rowkey查询的，一般Rowkey上都会存一些比较关键的检索信息，我们需要提前想好数据具体需要如何查询，根据查询方式进行数据存储格式的设计，要避免做全表扫描，因为效率特别低。</p>
 <hr>
 <h4 id="Rowkey设计原则"><a href="#Rowkey设计原则" class="headerlink" title="Rowkey设计原则"></a>Rowkey设计原则</h4><h5 id="Rowkey的唯一原则"><a href="#Rowkey的唯一原则" class="headerlink" title="Rowkey的唯一原则"></a>Rowkey的唯一原则</h5><p>必须在设计上保证其唯一性。由于在HBase中数据存储是Key-Value形式，若HBase中同一表插入相同Rowkey，则原先的数据会被覆盖掉(如果表的version设置为1的话)，所以务必保证Rowkey的唯一性</p>
