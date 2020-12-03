@@ -537,53 +537,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Yarn 调度流程</title>
-    <url>/2020/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
-<hr>
-<a id="more"></a>
-
-<hr>
-<h4 id="ResourceManager"><a href="#ResourceManager" class="headerlink" title="ResourceManager"></a>ResourceManager</h4><p>官网原文：</p>
-<p>The ResourceManager is the ultimate authority that arbitrates resources among all the applications in the system.</p>
-<p>The ResourceManager has two main components: Scheduler and ApplicationsManager.</p>
-<p>RM组成：</p>
-<ul>
-<li>Application Manager 应用程序管理器</li>
-<li>Resource Scheduler memory+cpu资源调度器</li>
-</ul>
-<h4 id="NodeManager"><a href="#NodeManager" class="headerlink" title="NodeManager"></a>NodeManager</h4><p>官网原文：</p>
-<p>The NodeManager is responsible for launching and managing containers on a node. Containers execute tasks as specified by the AppMaster.</p>
-<p>NM组成：</p>
-<ul>
-<li>container - 虚拟概念，执行MR、Spark计算任务的最小单元</li>
-</ul>
-<h4 id="MR-on-YARN-调度流程"><a href="#MR-on-YARN-调度流程" class="headerlink" title="MR on YARN 调度流程"></a>MR on YARN 调度流程</h4><p><img src="/2020/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/mr-on-yarn.png" alt="MR on YARN 调度流程"></p>
-<h5 id="MR-on-YARN-调度过程描述："><a href="#MR-on-YARN-调度过程描述：" class="headerlink" title="MR on YARN 调度过程描述："></a>MR on YARN 调度过程描述：</h5><ol>
-<li>用户向YARN提交应用程序，其中包括ApplicationMaster程序、启动ApplicationMaster的命令等。</li>
-<li>RM为该job分配第一个container，运行job的ApplicationMaster。</li>
-<li>App Master向Application Manager注册，这样就可以在RM WEB界面查询这个job的运行状态。</li>
-<li>App Master采用轮询的方式通过RPC协议向RM申请和领取资源。</li>
-<li>一旦App Master拿到资源，就对应的与NM通信，要求启动任务。</li>
-<li>NM为任务设置好运行环境（jar包等），将任务启动命令写在一个脚本里，并通过该脚本启动任务task。</li>
-<li>各个task通过RPC协议向App Master汇报自己的状态和进度，以此让App Master随时掌握各个task的运行状态，从而在task运行失败后重启任务。</li>
-<li>App Master向Application Manager注销且关闭自己。</li>
-</ol>
-<p>总的来说就是两步：</p>
-<ul>
-<li>启动App Master，申请资源；</li>
-<li>运行任务，直到任务运行完成。</li>
-</ul>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Yarn</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>KafkaEagle安装部署</title>
     <url>/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<h3 id="Kafka-Eagle安装部署"><a href="#Kafka-Eagle安装部署" class="headerlink" title="Kafka Eagle安装部署"></a>Kafka Eagle安装部署</h3><hr>
@@ -1055,6 +1008,53 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>基本概念</tag>
         <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Yarn 调度流程</title>
+    <url>/2018/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
+    <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
+<hr>
+<a id="more"></a>
+
+<hr>
+<h4 id="ResourceManager"><a href="#ResourceManager" class="headerlink" title="ResourceManager"></a>ResourceManager</h4><p>官网原文：</p>
+<p>The ResourceManager is the ultimate authority that arbitrates resources among all the applications in the system.</p>
+<p>The ResourceManager has two main components: Scheduler and ApplicationsManager.</p>
+<p>RM组成：</p>
+<ul>
+<li>Application Manager 应用程序管理器</li>
+<li>Resource Scheduler memory+cpu资源调度器</li>
+</ul>
+<h4 id="NodeManager"><a href="#NodeManager" class="headerlink" title="NodeManager"></a>NodeManager</h4><p>官网原文：</p>
+<p>The NodeManager is responsible for launching and managing containers on a node. Containers execute tasks as specified by the AppMaster.</p>
+<p>NM组成：</p>
+<ul>
+<li>container - 虚拟概念，执行MR、Spark计算任务的最小单元</li>
+</ul>
+<h4 id="MR-on-YARN-调度流程"><a href="#MR-on-YARN-调度流程" class="headerlink" title="MR on YARN 调度流程"></a>MR on YARN 调度流程</h4><p><img src="/2018/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/mr-on-yarn.png" alt="MR on YARN 调度流程"></p>
+<h5 id="MR-on-YARN-调度过程描述："><a href="#MR-on-YARN-调度过程描述：" class="headerlink" title="MR on YARN 调度过程描述："></a>MR on YARN 调度过程描述：</h5><ol>
+<li>用户向YARN提交应用程序，其中包括ApplicationMaster程序、启动ApplicationMaster的命令等。</li>
+<li>RM为该job分配第一个container，运行job的ApplicationMaster。</li>
+<li>App Master向Application Manager注册，这样就可以在RM WEB界面查询这个job的运行状态。</li>
+<li>App Master采用轮询的方式通过RPC协议向RM申请和领取资源。</li>
+<li>一旦App Master拿到资源，就对应的与NM通信，要求启动任务。</li>
+<li>NM为任务设置好运行环境（jar包等），将任务启动命令写在一个脚本里，并通过该脚本启动任务task。</li>
+<li>各个task通过RPC协议向App Master汇报自己的状态和进度，以此让App Master随时掌握各个task的运行状态，从而在task运行失败后重启任务。</li>
+<li>App Master向Application Manager注销且关闭自己。</li>
+</ol>
+<p>总的来说就是两步：</p>
+<ul>
+<li>启动App Master，申请资源；</li>
+<li>运行任务，直到任务运行完成。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>Yarn</tag>
       </tags>
   </entry>
   <entry>
