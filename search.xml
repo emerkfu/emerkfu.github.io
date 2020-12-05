@@ -3,7 +3,7 @@
   <entry>
     <title>生产相关配置</title>
     <url>/2020/08/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<h4 id="记录了生产的组件版本、数据量大小、提交方式、分配的资源数量"><a href="#记录了生产的组件版本、数据量大小、提交方式、分配的资源数量" class="headerlink" title="记录了生产的组件版本、数据量大小、提交方式、分配的资源数量"></a>记录了生产的组件版本、数据量大小、提交方式、分配的资源数量</h4><hr>
+    <content><![CDATA[<p>记录了生产的组件版本、数据量大小、提交方式、分配的资源数量</p>
 <a id="more"></a>
 <h3 id="用户行为分析（离线）"><a href="#用户行为分析（离线）" class="headerlink" title="用户行为分析（离线）"></a>用户行为分析（离线）</h3><h4 id="组件版本"><a href="#组件版本" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
 <h4 id="数据量大小"><a href="#数据量大小" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>用户表数据量    5000w<br>流水表        8e<br>一个block    80M左右</p>
