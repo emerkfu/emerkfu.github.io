@@ -197,8 +197,8 @@
         <category>HBase</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>HBase</tag>
+        <tag>基本概念</tag>
         <tag>常用命令</tag>
       </tags>
   </entry>
@@ -1170,8 +1170,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>常用命令</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1223,7 +1223,7 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 </ol>
 <p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
 <p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
-]]></content>
+<h4 id="小文件合并脚本"><a href="#小文件合并脚本" class="headerlink" title="小文件合并脚本"></a>小文件合并脚本</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> **.**.***</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.conf.<span class="type">Configuration</span></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.fs.&#123;<span class="type">FileStatus</span>, <span class="type">Path</span>&#125;</span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.<span class="type">SparkSession</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">MergerFile</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> spark: <span class="type">SparkSession</span> = <span class="type">SparkSession</span></span><br><span class="line">      .builder()</span><br><span class="line">      .appName(<span class="string">"mergeFile"</span>)</span><br><span class="line">      .enableHiveSupport()</span><br><span class="line">      .getOrCreate()</span><br><span class="line">    <span class="keyword">var</span> timestamp = <span class="type">System</span>.currentTimeMillis().toString</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> target = args(<span class="number">0</span>) <span class="comment">//待合并的文件夹</span></span><br><span class="line">    <span class="keyword">val</span> configuration = <span class="keyword">new</span> <span class="type">Configuration</span>()</span><br><span class="line">    <span class="keyword">val</span> output = <span class="keyword">new</span> <span class="type">Path</span>(target)</span><br><span class="line">    <span class="keyword">val</span> hdfs = output.getFileSystem(configuration)</span><br><span class="line">    <span class="keyword">val</span> status = hdfs.listStatus(output);</span><br><span class="line">    <span class="keyword">var</span> files: <span class="type">List</span>[<span class="type">FileStatus</span>] = <span class="type">List</span>.empty</span><br><span class="line">    <span class="keyword">var</span> paths: <span class="type">List</span>[<span class="type">String</span>] = <span class="type">List</span>.empty <span class="comment">//文件名字符串</span></span><br><span class="line">    <span class="keyword">var</span> length = <span class="number">0</span>l <span class="comment">//所有文件的大小</span></span><br><span class="line">    <span class="keyword">for</span> (fs &lt;- status) &#123;</span><br><span class="line">      <span class="keyword">if</span> (fs.getLen == <span class="number">0</span>) &#123; <span class="comment">//大小为0直接删除</span></span><br><span class="line">        hdfs.delete(fs.getPath, <span class="literal">true</span>)</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">if</span> (fs.getLen() &lt; <span class="number">234217728</span>) &#123; </span><br><span class="line">        <span class="comment">// 如果块大小&lt;100M（128M=134217728，选择234217728的原因是原文件未经过snappy压缩，输出是压缩的，所以适当放大了阈值）</span></span><br><span class="line">        paths :+= fs.getPath.toString</span><br><span class="line">        length += fs.getLen</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">val</span> mergeFilesCount = (length / <span class="number">1024</span> / <span class="number">1024</span> / <span class="number">128</span> / <span class="number">3</span> + <span class="number">1</span>).toInt <span class="comment">//合并后文件的个数</span></span><br><span class="line">    <span class="keyword">var</span> mergeFiles = spark.read.load(paths: _*).repartition(mergeFilesCount) <span class="comment">//128M一个</span></span><br><span class="line">    mergeFiles.write.parquet(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>)</span><br><span class="line">    <span class="keyword">val</span> resStatus = hdfs.listStatus(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>))</span><br><span class="line">    <span class="comment">//移动结果文件</span></span><br><span class="line">    <span class="keyword">for</span> (fs &lt;- resStatus) &#123;</span><br><span class="line">      <span class="keyword">if</span> (fs.getLen &gt; <span class="number">0</span>) &#123; <span class="comment">//排除spark自动生成的_success文件</span></span><br><span class="line">        hdfs.rename(fs.getPath, output)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    print(<span class="string">s"merge <span class="subst">$&#123;paths.size&#125;</span> files =&gt; <span class="subst">$mergeFilesCount</span> files"</span>)</span><br><span class="line">    <span class="comment">//删除临时目录</span></span><br><span class="line">    hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>), <span class="literal">true</span>)</span><br><span class="line">    <span class="comment">//删除原小文件</span></span><br><span class="line">    <span class="keyword">for</span> (fs &lt;- paths) &#123;</span><br><span class="line">      hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(fs), <span class="literal">true</span>)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>Hadoop</category>
       </categories>
@@ -1321,8 +1321,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1347,8 +1347,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -1400,8 +1400,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1479,8 +1479,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
