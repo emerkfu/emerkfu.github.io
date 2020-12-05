@@ -9,7 +9,7 @@
     
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>
-    归档: 2018 |  Emerk&#39;s blog
+    Flume架构基础 |  Emerk&#39;s blog
   </title>
   <meta name="generator" content="hexo-theme-ayer">
   
@@ -43,245 +43,190 @@
       
     <main class="content on">
       <section class="outer">
-  
-  <article class="articles">
+  <article
+  id="post-Flume架构基础"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
     
-    
-    <h1 class="page-type-title">2018</h1>
-    
-    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  Flume架构基础
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/" class="article-date">
+  <time datetime="2018-08-14T12:18:19.000Z" itemprop="datePublished">2018-08-14</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Flume/">Flume</a>
+  </div>
   
-  
-  
-  
-  
-  
-  <div class="archives-wrap">
-    <div class="archive-year-wrap">
-      <a href="/archives/2018" class="archive-year">2018</a>
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">985</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">3 分钟</span>
+        </span>
+    </span>
+</div>
+ 
     </div>
-    <div class="archives">
       
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/12/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/" class="archive-article-date">
-  <time datetime="2018-12-01T00:00:00.000Z" itemprop="datePublished">12/01</time>
-</a>
+    <div class="article-entry" itemprop="articleBody">
        
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/12/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/"
-    >Spark 多目录输出</a> 
-</h2>
+  <h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
+<a id="more"></a>
+<hr>
+<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
+<li>可以和任意存储进程集成。</li>
+<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
+<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
+</ol>
+<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
+<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
+<ul>
+<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
+</li>
+<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
+</li>
+<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
+</li>
+</ul>
+<ol>
+<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
+<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
+</ol>
+<ul>
+<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
+</li>
+<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
+</li>
+</ul>
+<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
+<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
+<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
+<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
+<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
+<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
+<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
+<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
  
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/" class="archive-article-date">
-  <time datetime="2018-11-09T08:00:00.000Z" itemprop="datePublished">11/09</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/"
-    >Spark各个版本特性</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/" class="archive-article-date">
-  <time datetime="2018-10-26T00:00:00.000Z" itemprop="datePublished">10/26</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/"
-    >Spark 序列化</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/10/16/Spark%20DRR%E8%BD%ACDF%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F/" class="archive-article-date">
-  <time datetime="2018-10-16T00:00:00.000Z" itemprop="datePublished">10/16</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/10/16/Spark%20DRR%E8%BD%ACDF%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F/"
-    >Spark DRR转DF的两种方式</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/10/11/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/" class="archive-article-date">
-  <time datetime="2018-10-11T13:00:00.000Z" itemprop="datePublished">10/11</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/10/11/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/"
-    >SparkSQL 做统计分析</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/10/10/SparkSQL/" class="archive-article-date">
-  <time datetime="2018-10-10T12:00:00.000Z" itemprop="datePublished">10/10</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/10/10/SparkSQL/"
-    >SparkSQL 基础</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/08/17/Flume%E6%A1%88%E4%BE%8B/" class="archive-article-date">
-  <time datetime="2018-08-17T12:18:19.000Z" itemprop="datePublished">08/17</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/08/17/Flume%E6%A1%88%E4%BE%8B/"
-    >Flume案例</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/08/15/Flume%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/" class="archive-article-date">
-  <time datetime="2018-08-15T12:18:19.000Z" itemprop="datePublished">08/15</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/08/15/Flume%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/"
-    >Flume安装部署</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/" class="archive-article-date">
-  <time datetime="2018-08-14T12:18:19.000Z" itemprop="datePublished">08/14</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/"
-    >Flume架构基础</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
-  
-  
-      <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      <a href="/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" class="archive-article-date">
-  <time datetime="2018-08-06T04:00:00.000Z" itemprop="datePublished">08/06</time>
-</a>
-       
-<h2 itemprop="name">
-  <a class="archive-article-title" href="/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/"
-    >Hive 数据倾斜</a> 
-</h2>
- 
-
-    </header>
-    
-    
-  </div>
-</article>
-      
+      <!-- reward -->
       
     </div>
-  </div>
-  
-  
-
-  
-  <nav class="page-nav">
     
-    <span class="page-number current">1</span><a class="page-number" href="/archives/2018/page/2/">2</a><a class="page-number" href="/archives/2018/page/3/">3</a><a class="extend next" rel="next" href="/archives/2018/page/2/">下一页</a>
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://emerkfu.github.io/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Flume/" rel="tag">Flume</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2018/08/15/Flume%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            Flume安装部署
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">Hive 数据倾斜</div>
+      </a>
+    
   </nav>
+
   
+   
+  
+</article>
+
 </section>
       <footer class="footer">
   <div class="outer">
