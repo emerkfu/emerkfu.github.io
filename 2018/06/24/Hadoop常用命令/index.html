@@ -74,7 +74,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> 字数统计:</span>
-            <span class="post-count">135</span>
+            <span class="post-count">136</span>
         </span>
     </span>
 
@@ -92,7 +92,8 @@
       
     <div class="article-entry" itemprop="articleBody">
        
-  <h4 id="Hadoop常用命令"><a href="#Hadoop常用命令" class="headerlink" title="Hadoop常用命令"></a>Hadoop常用命令</h4><a id="more"></a>
+  <p>Hadoop的常用命令</p>
+<a id="more"></a>
 
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure> 
       <!-- reward -->
@@ -181,9 +182,9 @@
       </a>
     
     
-      <a href="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/" class="article-nav-link">
+      <a href="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" class="article-nav-link">
         <strong class="article-nav-caption">下一篇</strong>
-        <div class="article-nav-title">Hadoop Block和副本数&amp;小文件问题</div>
+        <div class="article-nav-title">Hadoop HDFS架构 NameNode和DataNode工作机制</div>
       </a>
     
   </nav>

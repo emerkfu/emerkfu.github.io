@@ -92,7 +92,7 @@
       
     <div class="article-entry" itemprop="articleBody">
        
-  <h4 id="Hive数据倾斜问题-大表Join大表-大表Join小表-group-By"><a href="#Hive数据倾斜问题-大表Join大表-大表Join小表-group-By" class="headerlink" title="Hive数据倾斜问题   大表Join大表   大表Join小表   group By"></a>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</h4><hr>
+  <p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
 <a id="more"></a>
 
 <h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>

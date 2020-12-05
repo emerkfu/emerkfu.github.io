@@ -92,7 +92,8 @@
       
     <div class="article-entry" itemprop="articleBody">
        
-  <h5 id="Spark-DRR转DF的两种方式分为编程方式和反射方式"><a href="#Spark-DRR转DF的两种方式分为编程方式和反射方式" class="headerlink" title="Spark DRR转DF的两种方式分为编程方式和反射方式"></a>Spark DRR转DF的两种方式分为编程方式和反射方式</h5><a id="more"></a>
+  <p>Spark DRR转DF的两种方式分为编程方式和反射方式</p>
+<a id="more"></a>
 
 <p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
 <p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>

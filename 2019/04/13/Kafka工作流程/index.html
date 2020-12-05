@@ -92,7 +92,7 @@
       
     <div class="article-entry" itemprop="articleBody">
        
-  <h3 id="Kafka工作流程"><a href="#Kafka工作流程" class="headerlink" title="Kafka工作流程"></a>Kafka工作流程</h3><hr>
+  <p>Kafka工作流程的相关内容</p>
 <a id="more"></a>
 <h3 id="Kafka生产过程"><a href="#Kafka生产过程" class="headerlink" title="Kafka生产过程"></a>Kafka生产过程</h3><h4 id="写入方式"><a href="#写入方式" class="headerlink" title="写入方式"></a>写入方式</h4><p>producer采用推（push）模式将消息发布到broker，每条消息都被追加（append）到分区（patition）中，属于顺序写磁盘（顺序写磁盘效率比随机写内存要高，保障kafka吞吐率）。</p>
 <h4 id="分区（Partition）"><a href="#分区（Partition）" class="headerlink" title="分区（Partition）"></a>分区（Partition）</h4><p>Kafka集群有多个消息代理服务器（broker-server）组成，发布到Kafka集群的每条消息都有一个类别，用主题（topic）来表示。通常，不同应用产生不同类型的数据，可以设置不同的主题。一个主题一般会有多个消息的订阅者，当生产者发布消息到某个主题时，订阅了这个主题的消费者都可以接收到生成者写入的新消息。</p>

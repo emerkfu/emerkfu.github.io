@@ -74,7 +74,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> 字数统计:</span>
-            <span class="post-count">107</span>
+            <span class="post-count">111</span>
         </span>
     </span>
 
@@ -92,7 +92,8 @@
       
     <div class="article-entry" itemprop="articleBody">
        
-  <h5 id="Hive-行列转换"><a href="#Hive-行列转换" class="headerlink" title="Hive 行列转换"></a>Hive 行列转换</h5><a id="more"></a>
+  <p>Hive 行列转换的sql写法</p>
+<a id="more"></a>
 
 <h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
 <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>

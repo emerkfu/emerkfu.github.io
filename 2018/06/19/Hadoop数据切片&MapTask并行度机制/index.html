@@ -92,9 +92,9 @@
       
     <div class="article-entry" itemprop="articleBody">
        
-  <h4 id="Hadoop-数据切片-MapTask并行度"><a href="#Hadoop-数据切片-MapTask并行度" class="headerlink" title="Hadoop 数据切片 MapTask并行度"></a>Hadoop 数据切片 MapTask并行度</h4><hr>
+  <p>Hadoop 数据切片 MapTask并行度</p>
 <a id="more"></a>
-
+<hr>
 <h4 id="input-split与map-task的关系"><a href="#input-split与map-task的关系" class="headerlink" title="input split与map task的关系"></a>input split与map task的关系</h4><p>split数量和map task数量一一对应。</p>
 <p>下图是wordcount的流程：<br><img src="/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/wordcount-mr.png" alt="wordcount流程"></p>
 <p>可以看到，一个job的Map阶段map task并行度（个数），由客户端提交job时的切片个数决定。</p>
