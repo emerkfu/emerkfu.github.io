@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    SparkStreaming 进阶 |  Emerk&#39;s blog
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  
+<link rel="stylesheet" href="/dist/main.css">
+
+  
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+
+  
+<link rel="stylesheet" href="/css/custom.css">
+
+  
+  
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-SparkStreaming进阶"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  SparkStreaming 进阶
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/" class="article-date">
+  <time datetime="2019-04-17T11:00:00.000Z" itemprop="datePublished">2019-04-17</time>
+</a> 
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/Spark/">Spark</a>
+  </div>
+  
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">2.5k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">10 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
+<li>黑名单管理</li>
+<li>窗口</li>
+<li>闭包</li>
+<li>SS对接Kafka</li>
+<li>KafkaRDD</li>
+</ol>
+<a id="more"></a>
+<hr>
+<h4 id="黑名单管理"><a href="#黑名单管理" class="headerlink" title="黑名单管理"></a>黑名单管理</h4><p>Spark Streaming在计算流式数据时，有时候需要过滤一些数据，比如一些特殊的字段，或者利用爬虫爬取数据的恶意ip，又或者那些帮助某些无良商家刷广告的人，那么我们有一个黑名单，来过滤或者禁止他们的访问<br>思路：</p>
+<ol>
+<li>准备一个管理黑名单的文件，读进RDD作为key，并添加一个value值为true</li>
+<li>Spark Streaming接收流式数据，使用transform转换为RDD，拿到key用来做join，value为数据内容</li>
+<li>两个RDD做left join，并过滤掉value值为true的数据</li>
+</ol>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 读取黑名单数据，并做简单处理</span></span><br><span class="line">    <span class="keyword">val</span> blacks = <span class="type">List</span>(<span class="string">"tunan"</span>)</span><br><span class="line">    <span class="keyword">val</span> blackRDD = ssc.sparkContext.parallelize(blacks)</span><br><span class="line">    <span class="keyword">val</span> blackMapRDD = blackRDD.map((_,<span class="literal">true</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从socket拿到流式数据</span></span><br><span class="line">    <span class="keyword">val</span> stream = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 数据转换成RDD</span></span><br><span class="line">    stream.transform( rdd =&gt; &#123;</span><br><span class="line">        <span class="keyword">val</span> mapRDD= rdd.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            <span class="comment">// 拿到做join的key，value为数据内容</span></span><br><span class="line">            (words(<span class="number">0</span>), row)</span><br><span class="line">        &#125;)</span><br><span class="line">		<span class="comment">// 流式数据为基表，做left join</span></span><br><span class="line">        <span class="keyword">val</span> joinRDD = mapRDD.leftOuterJoin(blackMapRDD)</span><br><span class="line">		<span class="comment">// 过滤掉黑名单数据</span></span><br><span class="line">        <span class="keyword">val</span> filterRDD = joinRDD.filter(_._2._2.getOrElse(<span class="literal">false</span>) != <span class="literal">true</span>)</span><br><span class="line">        <span class="comment">// 返回数据内容</span></span><br><span class="line">        filterRDD.map(_._2._1)</span><br><span class="line">    &#125;).print()</span><br><span class="line">    </span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="SparkStreaming窗口"><a href="#SparkStreaming窗口" class="headerlink" title="SparkStreaming窗口"></a>SparkStreaming窗口</h4><p>Spark Streaming还提供了窗口计算功能，允许在数据的滑动窗口上应用转换操作。下图说明了滑动窗口的工作方式：</p>
+<p><img src="/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/streaming-dstream-window.png" alt="streaming dstream window"></p>
+<p>如图所示，每当窗口滑过originalDStream时，落在窗口内的源RDD被组合并被执行操作以产生windowedDStream的RDD。<br>在上面的例子中，操作应用于最近3个时间单位的数据，并以2个时间单位滑动。<br>这表明任何窗口操作都需要指定两个参数：</p>
+<ul>
+<li>窗口长度（windowlength） 窗口的时间长度（上图的示例中为：3）。</li>
+<li>滑动间隔（slidinginterval） 两次相邻的窗口操作的间隔（即每次滑动的时间长度）（上图示例中为：2）。<br>这两个参数必须是源DStream的批间隔的倍数（上图示例中为：1）。</li>
+</ul>
+<p>我们以一个例子来说明窗口操作。<br>对之前的单词计数的示例进行扩展，每10秒钟对过去30秒的数据进行wordcount。<br>为此，我们必须在最近30秒的pairs DStream数据中对(word, 1)键值对应用reduceByKey操作。<br>这是通过使用reduceByKeyAndWindow操作完成的。</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 执行wordcount</span></span><br><span class="line"><span class="keyword">val</span> words = lines.flatMap(_.split(<span class="string">" "</span>))</span><br><span class="line"><span class="keyword">val</span> wordPair = words.map(x =&gt; (x, <span class="number">1</span>))</span><br><span class="line"><span class="comment">//val wordCountResult = wordPair.reduceByKey(_ + _)</span></span><br><span class="line"><span class="keyword">val</span> wordCountResult = wordPair.reduceByKeyAndWindow(</span><br><span class="line">    (a: <span class="type">Int</span>, b: <span class="type">Int</span>) =&gt; (a + b), <span class="type">Seconds</span>(<span class="number">30</span>), <span class="type">Seconds</span>(<span class="number">10</span>)</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>一些常见的窗口操作如下表所示。所有这些操作都用到了上述两个参数：windowLength和slideInterval。</p>
+<ul>
+<li><p>window(windowLength, slideInterval)<br>基于源DStream产生的窗口化的批数据计算一个新的DStream</p>
+</li>
+<li><p>countByWindow(windowLength, slideInterval)<br>返回流中元素的一个滑动窗口数</p>
+</li>
+<li><p>reduceByWindow(func, windowLength, slideInterval)<br>返回一个单元素流。利用函数func聚集滑动时间间隔的流的元素创建这个单元素流。函数必须是相关联的以使计算能够正确的并行计算。</p>
+</li>
+<li><p>reduceByKeyAndWindow(func, windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。每一个key的值均由给定的reduce函数聚集起来。<br>注意：在默认情况下，这个算子利用了Spark默认的并发任务数去分组。你可以用numTasks参数设置不同的任务数</p>
+</li>
+<li><p>reduceByKeyAndWindow(func, invFunc, windowLength, slideInterval, [numTasks])<br>上述reduceByKeyAndWindow()的更高效的版本，其中使用前一窗口的reduce计算结果递增地计算每个窗口的reduce值。<br>这是通过对进入滑动窗口的新数据进行reduce操作，以及“逆减（inverse reducing）”离开窗口的旧数据来完成的。<br>一个例子是当窗口滑动时对键对应的值进行“一加一减”操作。<br>但是，它仅适用于“可逆减函数（invertible reduce functions）”，即具有相应“反减”功能的减函数（作为参数invFunc）。<br>像reduceByKeyAndWindow一样，通过可选参数可以配置reduce任务的数量。请注意，使用此操作必须启用检查点。</p>
+</li>
+<li><p>countByValueAndWindow(windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。<br>每个key的值都是它们在滑动窗口中出现的频率。</p>
+</li>
+</ul>
+<h4 id="闭包"><a href="#闭包" class="headerlink" title="闭包"></a>闭包</h4><p>Spark的难点之一是理解跨集群执行代码时变量和方法的范围和生命周期。在范围之外修改变量的RDD操作可能经常引起混淆。在下面的示例中，我们将查看使用foreach()递增计数器的代码，但是其他操作也可能出现类似的问题。</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> counter = <span class="number">0</span></span><br><span class="line"><span class="keyword">var</span> rdd = sc.parallelize(data)</span><br><span class="line"></span><br><span class="line"><span class="comment">// Wrong: Don't do this!!</span></span><br><span class="line">rdd.foreach(x =&gt; counter += x)</span><br><span class="line"></span><br><span class="line">println(<span class="string">"Counter value: "</span> + counter)</span><br></pre></td></tr></table></figure>
+
+<p>上述代码的行为是未定义的，可能无法按预期工作。为了执行作业，Spark将RDD操作的处理分解为tasks，每个任务由executor执行。在执行之前，Spark计算task的闭包。闭包是那些executor在RDD上执行其计算时必须可见的变量和方法(在本例中为foreach())。这个闭包被序列化并发送给每个executor 。</p>
+<p>闭包中发送给每个executor 的变量现在都是副本，因此，当在foreach函数中引用counter时，它不再是driver 上的计数器。在executors的内存中仍然有一个计数器，但它对executor不再可见!executor只看到来自序列化闭包的副本。因此，counter的最终值仍然是零，因为counter上的所有操作都引用了序列化闭包中的值。</p>
+<p>一般来说，像循环或局部定义方法这样的闭包结构不应该用来改变全局状态。Spark不保证闭包外部引用的对象的突变行为。一些这样做的代码可能在本地模式下工作，但那只是偶然的，而且这样的代码在分布式模式下不会像预期的那样工作。如果需要全局聚合，则使用Accumulator。</p>
+<h4 id="SparkStreaming对接Kafka"><a href="#SparkStreaming对接Kafka" class="headerlink" title="SparkStreaming对接Kafka"></a>SparkStreaming对接Kafka</h4><p>Kafka是一种高吞吐量的分布式发布订阅消息系统，它可以处理消费者在网站中的所有动作流数据。这种动作（网页浏览，搜索和其他用户的行动）是在现代网络上的许多社会功能的一个关键因素。这些数据通常是由于吞吐量的要求而通过处理日志和日志聚合来解决。 对于像Hadoop一样的日志数据和离线分析系统，但又要求实时处理的限制，这是一个可行的解决方案。Kafka的目的是通过Hadoop的并行加载机制来统一线上和离线的消息处理，也是为了通过集群来提供实时的消息。</p>
+<p>SS是Spark上的一个流式处理框架，可以面向海量数据实现高吞吐量、高容错的实时计算。SS支持多种类型数据源，包括Kafka、Flume、twitter、zeroMQ、Kinesis以及TCP sockets等。SS实时接收数据流，并按照一定的时间间隔将连续的数据流拆分成一批批离散的数据集；然后应用诸如map、reduce、join和window等丰富的API进行复杂的数据处理；最后提交给Spark引擎进行运算，得到批量结果数据，因此其也被称为准实时处理系统。而结果也能保存在很多地方，如HDFS，数据库等。另外SS也能和MLlib（机器学习）以及GraphX（图计算）完美融合。</p>
+<p>下面我们就来一个SS对接Kafka的案例</p>
+<p>Kafka Product API</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// 设置配置文件，这些配置文件都是源码中找的</span></span><br><span class="line">    <span class="keyword">val</span> props = <span class="keyword">new</span> <span class="type">Properties</span>()</span><br><span class="line">    props.put(<span class="string">"bootstrap.servers"</span>, <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>);</span><br><span class="line">    props.put(<span class="string">"acks"</span>, <span class="string">"all"</span>);</span><br><span class="line">    props.put(<span class="string">"key.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    props.put(<span class="string">"value.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    <span class="comment">// 创建producer</span></span><br><span class="line">    <span class="keyword">val</span> producer = <span class="keyword">new</span> <span class="type">KafkaProducer</span>[<span class="type">String</span>, <span class="type">String</span>](props)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 循环发送数据</span></span><br><span class="line">    <span class="keyword">for</span> (i &lt;- <span class="number">1</span> to <span class="number">100</span>)&#123;</span><br><span class="line">        <span class="keyword">val</span> par = i%<span class="number">3</span> <span class="comment">// 数组走的分区</span></span><br><span class="line">        producer.send(<span class="keyword">new</span> <span class="type">ProducerRecord</span>[<span class="type">String</span>, <span class="type">String</span>](<span class="string">"test"</span>,par,<span class="string">""</span>,<span class="type">Integer</span>.toString(i)));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 关闭producer</span></span><br><span class="line">    producer.close();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Spark Streaming Consumer</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建ssc</span></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 连接kafka配置参数</span></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 可以设置多个topic</span></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// 创建DirectStream</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 业务逻辑</span></span><br><span class="line">    stream.map(x =&gt; (x.value(),<span class="number">1</span>)).reduceByKey(_+_)</span><br><span class="line">    .foreachRDD(rdd =&gt; &#123;</span><br><span class="line">        <span class="comment">// 分区操作</span></span><br><span class="line">        rdd.foreachPartition(partition =&gt; &#123;</span><br><span class="line">            <span class="comment">// 一个分区连一个jedis</span></span><br><span class="line">            <span class="keyword">val</span> jedis = <span class="type">RedisUtils</span>.getJedis</span><br><span class="line">            partition.foreach(fields =&gt;&#123;</span><br><span class="line">                <span class="comment">// 保存到Hash中</span></span><br><span class="line">                jedis.hincrBy(<span class="string">"wc_redis"</span>,fields._1,fields._2)</span><br><span class="line">            &#125;)</span><br><span class="line">            <span class="comment">// 关闭连接</span></span><br><span class="line">            jedis.close()</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在，无论在哪里写进Kafka的数据，都可以从Spark Streaming的客户端写出来，我们这里保存的是Redis，保存在MySQL是同样的思路。</p>
+<h4 id="KafkaRDD"><a href="#KafkaRDD" class="headerlink" title="KafkaRDD"></a>KafkaRDD</h4><p>最后我们看一下如何在代码中拿到Kafka的Offset</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// stream不能做任何操作，否则得到的不是一个KafkaRDD</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 必须先拿到HasOffsetRanges，才能开始业务逻辑</span></span><br><span class="line">    stream.foreachRDD &#123; rdd =&gt;</span><br><span class="line">        <span class="comment">// 通过rdd.asInstanceOf[HasOffsetRanges]拿到KafkaRDD，它保存了每个分区的offset</span></span><br><span class="line">        <span class="keyword">val</span> offsetRanges = rdd.asInstanceOf[<span class="type">HasOffsetRanges</span>].offsetRanges</span><br><span class="line">        <span class="comment">// KafkaRDD维护了topic、partition、fromOffset、untilOffset</span></span><br><span class="line">        offsetRanges.foreach &#123; o =&gt;</span><br><span class="line">            println(<span class="string">s"<span class="subst">$&#123;o.topic&#125;</span> <span class="subst">$&#123;o.partition&#125;</span> <span class="subst">$&#123;o.fromOffset&#125;</span> <span class="subst">$&#123;o.untilOffset&#125;</span>"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意：</p>
+<ul>
+<li>对HasOffsetRanges的类型转换只有在对createDirectStream的结果调用的第一个方法中完成时才会成功，而不是在随后的方法链中。</li>
+<li>RDD分区和Kafka分区之间的一一映射会在RDD发生shuffle或者repartition操作之后改变，比如reduceByKey或window</li>
+</ul>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://emerkfu.github.io/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Spark/" rel="tag">Spark</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/SparkStreaming/" rel="tag">SparkStreaming</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            HBase 基本概念和使用
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">KafkaEagle安装部署</div>
+      </a>
+    
+  </nav>
+
+  
+   
+  
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2015-2020
+        <i class="ri-heart-fill heart_icon"></i> EmerkFu
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span></s>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src='https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914'></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="Emerk&#39;s blog"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+      <a class="nav-item-link" target="_blank" href="/atom.xml" title="RSS Feed">
+        <i class="ri-rss-line"></i>
+      </a>
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+
+<link rel="stylesheet" href="/css/clipboard.css">
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>

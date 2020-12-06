@@ -197,9 +197,86 @@
         <category>HBase</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>HBase</tag>
+        <tag>基本概念</tag>
         <tag>常用命令</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SparkStreaming 进阶</title>
+    <url>/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/</url>
+    <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
+<li>黑名单管理</li>
+<li>窗口</li>
+<li>闭包</li>
+<li>SS对接Kafka</li>
+<li>KafkaRDD</li>
+</ol>
+<a id="more"></a>
+<hr>
+<h4 id="黑名单管理"><a href="#黑名单管理" class="headerlink" title="黑名单管理"></a>黑名单管理</h4><p>Spark Streaming在计算流式数据时，有时候需要过滤一些数据，比如一些特殊的字段，或者利用爬虫爬取数据的恶意ip，又或者那些帮助某些无良商家刷广告的人，那么我们有一个黑名单，来过滤或者禁止他们的访问<br>思路：</p>
+<ol>
+<li>准备一个管理黑名单的文件，读进RDD作为key，并添加一个value值为true</li>
+<li>Spark Streaming接收流式数据，使用transform转换为RDD，拿到key用来做join，value为数据内容</li>
+<li>两个RDD做left join，并过滤掉value值为true的数据</li>
+</ol>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 读取黑名单数据，并做简单处理</span></span><br><span class="line">    <span class="keyword">val</span> blacks = <span class="type">List</span>(<span class="string">"tunan"</span>)</span><br><span class="line">    <span class="keyword">val</span> blackRDD = ssc.sparkContext.parallelize(blacks)</span><br><span class="line">    <span class="keyword">val</span> blackMapRDD = blackRDD.map((_,<span class="literal">true</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从socket拿到流式数据</span></span><br><span class="line">    <span class="keyword">val</span> stream = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 数据转换成RDD</span></span><br><span class="line">    stream.transform( rdd =&gt; &#123;</span><br><span class="line">        <span class="keyword">val</span> mapRDD= rdd.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            <span class="comment">// 拿到做join的key，value为数据内容</span></span><br><span class="line">            (words(<span class="number">0</span>), row)</span><br><span class="line">        &#125;)</span><br><span class="line">		<span class="comment">// 流式数据为基表，做left join</span></span><br><span class="line">        <span class="keyword">val</span> joinRDD = mapRDD.leftOuterJoin(blackMapRDD)</span><br><span class="line">		<span class="comment">// 过滤掉黑名单数据</span></span><br><span class="line">        <span class="keyword">val</span> filterRDD = joinRDD.filter(_._2._2.getOrElse(<span class="literal">false</span>) != <span class="literal">true</span>)</span><br><span class="line">        <span class="comment">// 返回数据内容</span></span><br><span class="line">        filterRDD.map(_._2._1)</span><br><span class="line">    &#125;).print()</span><br><span class="line">    </span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="SparkStreaming窗口"><a href="#SparkStreaming窗口" class="headerlink" title="SparkStreaming窗口"></a>SparkStreaming窗口</h4><p>Spark Streaming还提供了窗口计算功能，允许在数据的滑动窗口上应用转换操作。下图说明了滑动窗口的工作方式：</p>
+<p><img src="/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/streaming-dstream-window.png" alt="streaming dstream window"></p>
+<p>如图所示，每当窗口滑过originalDStream时，落在窗口内的源RDD被组合并被执行操作以产生windowedDStream的RDD。<br>在上面的例子中，操作应用于最近3个时间单位的数据，并以2个时间单位滑动。<br>这表明任何窗口操作都需要指定两个参数：</p>
+<ul>
+<li>窗口长度（windowlength） 窗口的时间长度（上图的示例中为：3）。</li>
+<li>滑动间隔（slidinginterval） 两次相邻的窗口操作的间隔（即每次滑动的时间长度）（上图示例中为：2）。<br>这两个参数必须是源DStream的批间隔的倍数（上图示例中为：1）。</li>
+</ul>
+<p>我们以一个例子来说明窗口操作。<br>对之前的单词计数的示例进行扩展，每10秒钟对过去30秒的数据进行wordcount。<br>为此，我们必须在最近30秒的pairs DStream数据中对(word, 1)键值对应用reduceByKey操作。<br>这是通过使用reduceByKeyAndWindow操作完成的。</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 执行wordcount</span></span><br><span class="line"><span class="keyword">val</span> words = lines.flatMap(_.split(<span class="string">" "</span>))</span><br><span class="line"><span class="keyword">val</span> wordPair = words.map(x =&gt; (x, <span class="number">1</span>))</span><br><span class="line"><span class="comment">//val wordCountResult = wordPair.reduceByKey(_ + _)</span></span><br><span class="line"><span class="keyword">val</span> wordCountResult = wordPair.reduceByKeyAndWindow(</span><br><span class="line">    (a: <span class="type">Int</span>, b: <span class="type">Int</span>) =&gt; (a + b), <span class="type">Seconds</span>(<span class="number">30</span>), <span class="type">Seconds</span>(<span class="number">10</span>)</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>一些常见的窗口操作如下表所示。所有这些操作都用到了上述两个参数：windowLength和slideInterval。</p>
+<ul>
+<li><p>window(windowLength, slideInterval)<br>基于源DStream产生的窗口化的批数据计算一个新的DStream</p>
+</li>
+<li><p>countByWindow(windowLength, slideInterval)<br>返回流中元素的一个滑动窗口数</p>
+</li>
+<li><p>reduceByWindow(func, windowLength, slideInterval)<br>返回一个单元素流。利用函数func聚集滑动时间间隔的流的元素创建这个单元素流。函数必须是相关联的以使计算能够正确的并行计算。</p>
+</li>
+<li><p>reduceByKeyAndWindow(func, windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。每一个key的值均由给定的reduce函数聚集起来。<br>注意：在默认情况下，这个算子利用了Spark默认的并发任务数去分组。你可以用numTasks参数设置不同的任务数</p>
+</li>
+<li><p>reduceByKeyAndWindow(func, invFunc, windowLength, slideInterval, [numTasks])<br>上述reduceByKeyAndWindow()的更高效的版本，其中使用前一窗口的reduce计算结果递增地计算每个窗口的reduce值。<br>这是通过对进入滑动窗口的新数据进行reduce操作，以及“逆减（inverse reducing）”离开窗口的旧数据来完成的。<br>一个例子是当窗口滑动时对键对应的值进行“一加一减”操作。<br>但是，它仅适用于“可逆减函数（invertible reduce functions）”，即具有相应“反减”功能的减函数（作为参数invFunc）。<br>像reduceByKeyAndWindow一样，通过可选参数可以配置reduce任务的数量。请注意，使用此操作必须启用检查点。</p>
+</li>
+<li><p>countByValueAndWindow(windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。<br>每个key的值都是它们在滑动窗口中出现的频率。</p>
+</li>
+</ul>
+<h4 id="闭包"><a href="#闭包" class="headerlink" title="闭包"></a>闭包</h4><p>Spark的难点之一是理解跨集群执行代码时变量和方法的范围和生命周期。在范围之外修改变量的RDD操作可能经常引起混淆。在下面的示例中，我们将查看使用foreach()递增计数器的代码，但是其他操作也可能出现类似的问题。</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">var</span> counter = <span class="number">0</span></span><br><span class="line"><span class="keyword">var</span> rdd = sc.parallelize(data)</span><br><span class="line"></span><br><span class="line"><span class="comment">// Wrong: Don't do this!!</span></span><br><span class="line">rdd.foreach(x =&gt; counter += x)</span><br><span class="line"></span><br><span class="line">println(<span class="string">"Counter value: "</span> + counter)</span><br></pre></td></tr></table></figure>
+
+<p>上述代码的行为是未定义的，可能无法按预期工作。为了执行作业，Spark将RDD操作的处理分解为tasks，每个任务由executor执行。在执行之前，Spark计算task的闭包。闭包是那些executor在RDD上执行其计算时必须可见的变量和方法(在本例中为foreach())。这个闭包被序列化并发送给每个executor 。</p>
+<p>闭包中发送给每个executor 的变量现在都是副本，因此，当在foreach函数中引用counter时，它不再是driver 上的计数器。在executors的内存中仍然有一个计数器，但它对executor不再可见!executor只看到来自序列化闭包的副本。因此，counter的最终值仍然是零，因为counter上的所有操作都引用了序列化闭包中的值。</p>
+<p>一般来说，像循环或局部定义方法这样的闭包结构不应该用来改变全局状态。Spark不保证闭包外部引用的对象的突变行为。一些这样做的代码可能在本地模式下工作，但那只是偶然的，而且这样的代码在分布式模式下不会像预期的那样工作。如果需要全局聚合，则使用Accumulator。</p>
+<h4 id="SparkStreaming对接Kafka"><a href="#SparkStreaming对接Kafka" class="headerlink" title="SparkStreaming对接Kafka"></a>SparkStreaming对接Kafka</h4><p>Kafka是一种高吞吐量的分布式发布订阅消息系统，它可以处理消费者在网站中的所有动作流数据。这种动作（网页浏览，搜索和其他用户的行动）是在现代网络上的许多社会功能的一个关键因素。这些数据通常是由于吞吐量的要求而通过处理日志和日志聚合来解决。 对于像Hadoop一样的日志数据和离线分析系统，但又要求实时处理的限制，这是一个可行的解决方案。Kafka的目的是通过Hadoop的并行加载机制来统一线上和离线的消息处理，也是为了通过集群来提供实时的消息。</p>
+<p>SS是Spark上的一个流式处理框架，可以面向海量数据实现高吞吐量、高容错的实时计算。SS支持多种类型数据源，包括Kafka、Flume、twitter、zeroMQ、Kinesis以及TCP sockets等。SS实时接收数据流，并按照一定的时间间隔将连续的数据流拆分成一批批离散的数据集；然后应用诸如map、reduce、join和window等丰富的API进行复杂的数据处理；最后提交给Spark引擎进行运算，得到批量结果数据，因此其也被称为准实时处理系统。而结果也能保存在很多地方，如HDFS，数据库等。另外SS也能和MLlib（机器学习）以及GraphX（图计算）完美融合。</p>
+<p>下面我们就来一个SS对接Kafka的案例</p>
+<p>Kafka Product API</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// 设置配置文件，这些配置文件都是源码中找的</span></span><br><span class="line">    <span class="keyword">val</span> props = <span class="keyword">new</span> <span class="type">Properties</span>()</span><br><span class="line">    props.put(<span class="string">"bootstrap.servers"</span>, <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>);</span><br><span class="line">    props.put(<span class="string">"acks"</span>, <span class="string">"all"</span>);</span><br><span class="line">    props.put(<span class="string">"key.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    props.put(<span class="string">"value.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    <span class="comment">// 创建producer</span></span><br><span class="line">    <span class="keyword">val</span> producer = <span class="keyword">new</span> <span class="type">KafkaProducer</span>[<span class="type">String</span>, <span class="type">String</span>](props)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 循环发送数据</span></span><br><span class="line">    <span class="keyword">for</span> (i &lt;- <span class="number">1</span> to <span class="number">100</span>)&#123;</span><br><span class="line">        <span class="keyword">val</span> par = i%<span class="number">3</span> <span class="comment">// 数组走的分区</span></span><br><span class="line">        producer.send(<span class="keyword">new</span> <span class="type">ProducerRecord</span>[<span class="type">String</span>, <span class="type">String</span>](<span class="string">"test"</span>,par,<span class="string">""</span>,<span class="type">Integer</span>.toString(i)));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 关闭producer</span></span><br><span class="line">    producer.close();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Spark Streaming Consumer</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建ssc</span></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 连接kafka配置参数</span></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 可以设置多个topic</span></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// 创建DirectStream</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 业务逻辑</span></span><br><span class="line">    stream.map(x =&gt; (x.value(),<span class="number">1</span>)).reduceByKey(_+_)</span><br><span class="line">    .foreachRDD(rdd =&gt; &#123;</span><br><span class="line">        <span class="comment">// 分区操作</span></span><br><span class="line">        rdd.foreachPartition(partition =&gt; &#123;</span><br><span class="line">            <span class="comment">// 一个分区连一个jedis</span></span><br><span class="line">            <span class="keyword">val</span> jedis = <span class="type">RedisUtils</span>.getJedis</span><br><span class="line">            partition.foreach(fields =&gt;&#123;</span><br><span class="line">                <span class="comment">// 保存到Hash中</span></span><br><span class="line">                jedis.hincrBy(<span class="string">"wc_redis"</span>,fields._1,fields._2)</span><br><span class="line">            &#125;)</span><br><span class="line">            <span class="comment">// 关闭连接</span></span><br><span class="line">            jedis.close()</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在，无论在哪里写进Kafka的数据，都可以从Spark Streaming的客户端写出来，我们这里保存的是Redis，保存在MySQL是同样的思路。</p>
+<h4 id="KafkaRDD"><a href="#KafkaRDD" class="headerlink" title="KafkaRDD"></a>KafkaRDD</h4><p>最后我们看一下如何在代码中拿到Kafka的Offset</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// stream不能做任何操作，否则得到的不是一个KafkaRDD</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 必须先拿到HasOffsetRanges，才能开始业务逻辑</span></span><br><span class="line">    stream.foreachRDD &#123; rdd =&gt;</span><br><span class="line">        <span class="comment">// 通过rdd.asInstanceOf[HasOffsetRanges]拿到KafkaRDD，它保存了每个分区的offset</span></span><br><span class="line">        <span class="keyword">val</span> offsetRanges = rdd.asInstanceOf[<span class="type">HasOffsetRanges</span>].offsetRanges</span><br><span class="line">        <span class="comment">// KafkaRDD维护了topic、partition、fromOffset、untilOffset</span></span><br><span class="line">        offsetRanges.foreach &#123; o =&gt;</span><br><span class="line">            println(<span class="string">s"<span class="subst">$&#123;o.topic&#125;</span> <span class="subst">$&#123;o.partition&#125;</span> <span class="subst">$&#123;o.fromOffset&#125;</span> <span class="subst">$&#123;o.untilOffset&#125;</span>"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意：</p>
+<ul>
+<li>对HasOffsetRanges的类型转换只有在对createDirectStream的结果调用的第一个方法中完成时才会成功，而不是在随后的方法链中。</li>
+<li>RDD分区和Kafka分区之间的一一映射会在RDD发生shuffle或者repartition操作之后改变，比如reduceByKey或window</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkStreaming</tag>
       </tags>
   </entry>
   <entry>
@@ -354,6 +431,101 @@
       </categories>
       <tags>
         <tag>Kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SparkStreaming 基础</title>
+    <url>/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/</url>
+    <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
+<li>SparkStreaming简介</li>
+<li>SparkStreaming的内部结构</li>
+<li>StreamingContext对象</li>
+<li>离散流（DStream）</li>
+<li>IDEA开发Spark Streaming</li>
+</ol>
+<a id="more"></a>
+<hr>
+<h4 id="SparkStreaming简介"><a href="#SparkStreaming简介" class="headerlink" title="SparkStreaming简介"></a>SparkStreaming简介</h4><p>Spark Streaming是核心Spark API的扩展，实现可扩展、高吞吐量、可容错的实时数据流处理。数据可以从诸如Kafka，Flume，Kinesis或TCP套接字等众多来源获取，并且可以使用由高级函数（如map，reduce，join和window）开发的复杂算法进行流数据处理。<br>最后，处理后的数据可以被推送到文件系统，数据库和实时仪表板。<br>而且还可以在数据流上应用Spark提供的机器学习和图处理算法。</p>
+<p><img src="/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/what-is-spark-streaming.png" alt="what is SparkStreaming"></p>
+<h4 id="SparkStreaming的内部结构"><a href="#SparkStreaming的内部结构" class="headerlink" title="SparkStreaming的内部结构"></a>SparkStreaming的内部结构</h4><p>在内部，它的工作原理如下。<br>Spark Streaming接收实时输入数据流，并将数据切分成批，然后由Spark引擎对其进行处理，最后生成“批”形式的结果流。</p>
+<p><img src="/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/streaming-batch-process.png" alt="streaming batch process"></p>
+<p>Spark Streaming将连续的数据流抽象为discretizedstream(DStream)。在内部，DStream由一个RDD序列表示。</p>
+<h4 id="StreamingContext对象"><a href="#StreamingContext对象" class="headerlink" title="StreamingContext对象"></a>StreamingContext对象</h4><p>初始化StreamingContext：<br>方式一，从SparkConf对象中创建：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//创建一个Context对象：StreamingContext</span></span><br><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setAppName(<span class="string">"MyNetworkWordCount"</span>).setMaster(<span class="string">"local[2]"</span>)</span><br><span class="line"><span class="comment">//指定批处理的时间间隔</span></span><br><span class="line"><span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br></pre></td></tr></table></figure>
+
+<p>方式二，从现有的SparkContext实例中创建：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(sc, <span class="type">Seconds</span>(<span class="number">1</span>))</span><br></pre></td></tr></table></figure>
+
+<p>说明：</p>
+<ul>
+<li>appName参数是应用程序在集群UI上显示的名称。</li>
+<li>master是Spark，Mesos或YARN集群的URL，或者一个特殊的“local [*]”字符串来让程序以本地模式运行。</li>
+<li>当在集群上运行程序时，不需要在程序中硬编码master参数，而是使用spark-submit提交应用程序并将master的URL以脚本参数的形式传入。但是，对于本地测试和单元测试，您可以通过“local[*]”来运行Spark Streaming程序（请确保本地系统中的cpu核心数够用）。</li>
+<li>StreamingContext会内在的创建一个SparkContext的实例（所有Spark功能的起始点），你可以通过ssc.sparkContext访问到这个实例。</li>
+<li>批处理的时间窗口长度必须根据应用程序的延迟要求和可用的集群资源进行设置。</li>
+</ul>
+<p>注意：</p>
+<ul>
+<li>一旦一个StreamingContext开始运作，就不能设置或添加新的流计算。</li>
+<li>一旦一个上下文被停止，它将无法重新启动。</li>
+<li>同一时刻，一个JVM中只能有一个StreamingContext处于活动状态。</li>
+<li>StreamingContext上的stop()方法也会停止SparkContext。 要仅停止StreamingContext（保持SparkContext活跃），请将stop() 方法的可选参数stopSparkContext设置为false。</li>
+<li>只要前一个StreamingContext在下一个StreamingContext被创建之前停止（不停止SparkContext），SparkContext就可以被重用来创建多个StreamingContext。</li>
+</ul>
+<h4 id="离散流（DStream）"><a href="#离散流（DStream）" class="headerlink" title="离散流（DStream）"></a>离散流（DStream）</h4><p>DiscretizedStream(DStream) 是Spark Streaming对流式数据的基本抽象。<br>它表示连续的数据流，这些连续的数据流可以是从数据源接收的输入数据流，也可以是通过对输入数据流执行转换操作而生成的经处理的数据流。<br>在内部，DStream由一系列连续的RDD表示，如下图：</p>
+<p><img src="/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/streaming-dstream-1.png" alt="streaming dstream 1"></p>
+<p>我们将一行行文本组成的流转换为单词流，具体做法为：将flatMap操作应用于名为lines的 DStream中的每个RDD上，以生成words DStream的RDD。如下图所示：<br><img src="/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/streaming-dstream-2.png" alt="streaming dstream 2"></p>
+<p>但是DStream和RDD也有区别，下面画图说明：<br><img src="/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/streaming-dstream-3.png" alt="streaming dstream 3"></p>
+<p><img src="/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/streaming-dstream-4.png" alt="streaming dstream 4"></p>
+<h4 id="IDEA开发SparkStreaming"><a href="#IDEA开发SparkStreaming" class="headerlink" title="IDEA开发SparkStreaming"></a>IDEA开发SparkStreaming</h4><p>要编写自己的Spark流程序，必须将以下依赖项添加到Maven项目中。</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.apache.spark<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spark-streaming_2.12<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>2.4.5<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">scope</span>&gt;</span>provided<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="SocketFile简单的单词计数"><a href="#SocketFile简单的单词计数" class="headerlink" title="SocketFile简单的单词计数"></a>SocketFile简单的单词计数</h5><ol>
+<li>实现代scala代码逻辑<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 拿到StreamingContext对象</span></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    dispose(ssc)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//开启StreamingContext</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">dispose</span></span>(ssc: <span class="type">StreamingContext</span>) = &#123;</span><br><span class="line">    <span class="comment">//输入记录</span></span><br><span class="line">    <span class="keyword">val</span> lines = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//逻辑处理</span></span><br><span class="line">    <span class="keyword">val</span> words = text.flatMap(_.split(<span class="string">" "</span>))</span><br><span class="line">    <span class="keyword">val</span> pair = words.map(x =&gt; (x, <span class="number">1</span>))</span><br><span class="line">    <span class="keyword">val</span> result = pair.reduceByKey(_ + _)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//输出记录</span></span><br><span class="line">    result.print()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>使用nc发送消息<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> nc -lk 9100</span></span><br><span class="line"></span><br><span class="line">hello world</span><br></pre></td></tr></table></figure></li>
+<li>客户端接收消息<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">...</span><br><span class="line">-------------------------------------------</span><br><span class="line">Time: 1357008430000 ms</span><br><span class="line">-------------------------------------------</span><br><span class="line">(hello,1)</span><br><span class="line">(world,1)</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>DStreams 是表示从源端接收的输入数据的数据流。<br>在这个简单的示例中，行是一个输入DStream，因为它表示从netcat服务器接收到的数据流。<br>每个输入DStream(本节后面讨论的文件流除外)都与接收方(Scala doc、Java doc)对象相关联，接收方接收来自源的数据并将其存储在Spark内存中进行处理。</p>
+<p>注意：<br>Spark流应用程序需要分配足够的Core来处理接收到的数据，以及运行接收方。<br>设置core的数量要大于Receivers的数量。</p>
+<h5 id="Checkpoint维护State"><a href="#Checkpoint维护State" class="headerlink" title="Checkpoint维护State"></a>Checkpoint维护State</h5><p>什么是updateStateByKey?</p>
+<ul>
+<li>updateStateByKey(func)可以返回一个新“state”的DStream，其中通过对键的前一个状态和键的新值应用给定的函数来更新每个键的状态。<br>这可以用来维护每个键的任意状态数据。</li>
+</ul>
+<p>什么是Checkpoint?</p>
+<ul>
+<li>Checkpoint可以通过在一个容错的、可靠的文件系统中设置一个目录来启用，Checkpoint信息将被保存到这个目录中。<br>这是通过使用streamingContext.checkpoint(checkpointDirectory)实现的。</li>
+</ul>
+<ol>
+<li><p>下面案例也是单词计数，只不过需求变成了求当天到现在为止的单词计数</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    dispose(ssc)</span><br><span class="line"></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 处理逻辑</span></span><br><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">dispose</span></span>(ssc: <span class="type">StreamingContext</span>) = &#123;</span><br><span class="line">    <span class="keyword">val</span> lines = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 设置checkpoint目录，保存offset</span></span><br><span class="line">    ssc.checkpoint(<span class="string">"./chk"</span>)</span><br><span class="line">    <span class="comment">// updateStateByKey：维护记录的state</span></span><br><span class="line">    lines.flatMap(_.split(<span class="string">" "</span>)).map((_, <span class="number">1</span>)).updateStateByKey(updateFunction)</span><br><span class="line">    .print()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 实现对新值和旧值的累加</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">updateFunction</span></span>(newValues: <span class="type">Seq</span>[<span class="type">Int</span>], oldValues: <span class="type">Option</span>[<span class="type">Int</span>]): <span class="type">Option</span>[<span class="type">Int</span>] = &#123;</span><br><span class="line">    <span class="keyword">val</span> curr = newValues.sum</span><br><span class="line">    <span class="keyword">val</span> old = oldValues.getOrElse(<span class="number">0</span>)</span><br><span class="line">    <span class="keyword">val</span> count = curr + old</span><br><span class="line">    <span class="type">Some</span>(count)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用nc发送消息</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> nc -lk 9100</span></span><br><span class="line"></span><br><span class="line">a a a b b c</span><br><span class="line">a a a b b c</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>客户端接收消息</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">-------------------------------------------</span><br><span class="line">Time: 1587439170000 ms</span><br><span class="line">-------------------------------------------</span><br><span class="line">(b,2)</span><br><span class="line">(a,3)</span><br><span class="line">(c,1)</span><br><span class="line"></span><br><span class="line">-------------------------------------------</span><br><span class="line">Time: 1587439175000 ms</span><br><span class="line">-------------------------------------------</span><br><span class="line">(b,4)</span><br><span class="line">(a,6)</span><br><span class="line">(c,2)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>上面的代码一直运行，结果可以一直累加，但是代码一旦停止运行，再次运行时，结果会不会接着上一次进行计算，上一次的计算结果丢失了，主要原因上每次程序运行都会初始化一个程序入口，而2次运行的程序入口不是同一个入口，所以会导致第一次计算的结果丢失。</p>
+<p>第一次的运算结果状态保存在Driver里面，所以我们如果想用上一次的计算结果，我们需要将上一次的Driver里面的运行结果状态取出来，而上面的代码有一个checkpoint方法，它会把上一次Driver里面的运算结果状态保存在checkpoint的目录里面，我们在第二次启动程序时，从checkpoint里面取出上一次的运行结果状态，把这次的Driver状态恢复成和上一次Driver一样的状态。</p>
+<h5 id="Checkpoint维护State-HA"><a href="#Checkpoint维护State-HA" class="headerlink" title="Checkpoint维护State HA"></a>Checkpoint维护State HA</h5><p>以下代码参考<a href="http://spark.apache.org/docs/latest/streaming-programming-guide.html#checkpointing" target="_blank" rel="noopener">官网</a><br>如果想让应用程序从驱动程序故障中恢复，我们应该重写代码，让它具备下面的功能</p>
+<ul>
+<li>当程序第一次启动时，它将创建一个新的StreamingContext，设置所有的流，然后调用start()。</li>
+<li>当程序在失败后重新启动时，它将从Checkpoint目录中的Checkpoint数据重新创建一个StreamingContext。</li>
+</ul>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> checkpoint = <span class="string">"./chk_v2"</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 拿到StreamingContext</span></span><br><span class="line">    <span class="keyword">val</span> ssc  = <span class="type">StreamingContext</span>.getOrCreate(checkpoint, functionToCreateContext)</span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 创建StreamingContext</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">functionToCreateContext</span></span>(): <span class="type">StreamingContext</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf,<span class="type">Seconds</span>(<span class="number">50000</span>))   <span class="comment">// new context</span></span><br><span class="line"></span><br><span class="line">    dispose(ssc)</span><br><span class="line"></span><br><span class="line">    ssc.checkpoint(checkpoint)   <span class="comment">// set checkpoint directory</span></span><br><span class="line">    ssc</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 处理具题的业务逻辑</span></span><br><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">dispose</span></span>(ssc: <span class="type">StreamingContext</span>) = &#123;</span><br><span class="line">    <span class="keyword">val</span> lines = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>) <span class="comment">// create DStreams</span></span><br><span class="line"></span><br><span class="line">    lines</span><br><span class="line">    .flatMap(_.split(<span class="string">" "</span>))</span><br><span class="line">    .map((_, <span class="number">1</span>))</span><br><span class="line">    .updateStateByKey(updateFunction)</span><br><span class="line">    .print()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 更新state</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">updateFunction</span></span>(newValues: <span class="type">Seq</span>[<span class="type">Int</span>], oldValues: <span class="type">Option</span>[<span class="type">Int</span>]): <span class="type">Option</span>[<span class="type">Int</span>] = &#123;</span><br><span class="line">    <span class="keyword">val</span> curr = newValues.sum</span><br><span class="line">    <span class="keyword">val</span> old = oldValues.getOrElse(<span class="number">0</span>)</span><br><span class="line">    <span class="keyword">val</span> count = curr + old</span><br><span class="line">    <span class="type">Some</span>(count)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="源码中维护State的方法"><a href="#源码中维护State的方法" class="headerlink" title="源码中维护State的方法"></a>源码中维护State的方法</h5><p>在阅读源码中的Example模块下Streaming下的StatefulNetworkWordCount object时，发现了一种维护State的写法</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 保存checkpoint</span></span><br><span class="line"><span class="keyword">val</span> checkpoint = <span class="string">"./chk_v3"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// 拿到 StreamingContext</span></span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="type">StreamingContext</span>.getOrCreate(checkpoint, functionToCreateContext)</span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建 StreamingContext</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">functionToCreateContext</span></span>(): <span class="type">StreamingContext</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line">    ssc.checkpoint(checkpoint)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 对记录做累加操作</span></span><br><span class="line">    <span class="keyword">val</span> mappingFunc = (word: <span class="type">String</span>, one: <span class="type">Option</span>[<span class="type">Int</span>], state: <span class="type">State</span>[<span class="type">Int</span>]) =&gt; &#123;</span><br><span class="line">        <span class="keyword">if</span>(state.isTimingOut())&#123;</span><br><span class="line">            println(<span class="string">"超时3秒没拿到数据"</span>)</span><br><span class="line">        &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">            <span class="keyword">val</span> sum = one.getOrElse(<span class="number">0</span>) + state.getOption.getOrElse(<span class="number">0</span>)</span><br><span class="line">            <span class="keyword">val</span> output = (word, sum)</span><br><span class="line">            state.update(sum)</span><br><span class="line">            output</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 逻辑处理</span></span><br><span class="line">    <span class="keyword">val</span> lines = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>)</span><br><span class="line">    lines</span><br><span class="line">    .flatMap(_.split(<span class="string">" "</span>))</span><br><span class="line">    .map((_,<span class="number">1</span>))</span><br><span class="line">    .mapWithState(<span class="type">StateSpec</span>.function(mappingFunc)</span><br><span class="line">                  .timeout(<span class="type">Seconds</span>(<span class="number">3</span>))</span><br><span class="line">                 ).print()</span><br><span class="line"></span><br><span class="line">    ssc</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkStreaming</tag>
       </tags>
   </entry>
   <entry>
@@ -1170,8 +1342,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>常用命令</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1324,8 +1496,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1350,8 +1522,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -1403,8 +1575,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1482,8 +1654,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
