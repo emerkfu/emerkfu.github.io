@@ -197,8 +197,8 @@
         <category>HBase</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>HBase</tag>
+        <tag>基本概念</tag>
         <tag>常用命令</tag>
       </tags>
   </entry>
@@ -1420,69 +1420,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>常用命令</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop Block和副本数&amp;小文件问题</title>
-    <url>/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
-    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
-<a id="more"></a>
-<hr>
-<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
-<p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
-<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
-<ol>
-<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
-<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
-<li>第三个副本：与第二个副本相同机架的不同节点上</li>
-<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
-</ol>
-<ul>
-<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
-<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
-</ul>
-<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
-<p>官网中的相应的默认参数如下：<br><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
-<p>可以看到，默认块大小为128M，默认副本数为3.</p>
-<p>这里会有一个常规的面试题：</p>
-<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
-<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
-<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
-<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
-<p>小文件的危害：</p>
-<ol>
-<li>HDFS不适合大量小文件的存储，因namenode将文件系统的元数据存放在内存中，因此存储的文件数目受限于 namenode的内存大小。HDFS中每个文件、目录、数据块占用150Bytes。如果存放的文件数目过多的话会占用很大的内存甚至撑爆内存。</li>
-<li>HDFS适用于高吞吐量，而不适合低时间延迟的访问。如果同时存入大量的小文件会花费很长的时间。</li>
-<li>流式读取的方式，不适合多用户写入，以及任意位置写入。如果访问小文件，则必须从一个datanode跳转到另外一个datanode，这样大大降低了读取性能。</li>
-</ol>
-<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
-<ol>
-<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS。</li>
-<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并。</li>
-</ol>
-<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
-<ol>
-<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
-<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
-<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
-<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
-</ol>
-<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
-<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
-<h4 id="小文件合并脚本"><a href="#小文件合并脚本" class="headerlink" title="小文件合并脚本"></a>小文件合并脚本</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.practice.spark</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.fs.&#123;<span class="type">FileSystem</span>, <span class="type">Path</span>&#125;</span><br><span class="line"><span class="keyword">import</span> org.apache.spark.internal.<span class="type">Logging</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.rdd.<span class="type">RDD</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.&#123;<span class="type">DataFrame</span>, <span class="type">SparkSession</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">miniFileMerge</span> <span class="keyword">extends</span> <span class="title">Logging</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> sparkSession = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>).appName(<span class="keyword">this</span>.getClass.getSimpleName).getOrCreate()</span><br><span class="line">    <span class="keyword">val</span> target = <span class="string">"hdfs://fushuaidate:9000/practice/minifilemerge"</span> <span class="comment">//待合并文件夹</span></span><br><span class="line">    <span class="keyword">val</span> output = <span class="keyword">new</span> <span class="type">Path</span>(target)</span><br><span class="line">    <span class="keyword">val</span> hdfs: <span class="type">FileSystem</span> = output.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)</span><br><span class="line">    <span class="keyword">val</span> partitions = makeCoalesce(hdfs, output, <span class="number">5</span>)</span><br><span class="line">    println(<span class="string">s"合并后文件数量为：<span class="subst">$partitions</span>"</span>)</span><br><span class="line">    <span class="keyword">val</span> paths: <span class="type">List</span>[<span class="type">String</span>] = getPaths(hdfs, output)</span><br><span class="line">    <span class="keyword">val</span> mergeFiles: <span class="type">RDD</span>[<span class="type">String</span>] = sparkSession.sparkContext.textFile(target).coalesce(partitions)</span><br><span class="line">    <span class="keyword">val</span> dataFrame = rddToDF(sparkSession, mergeFiles)</span><br><span class="line">    dataFrame.write.text(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>)</span><br><span class="line">    <span class="keyword">val</span> resStatus = hdfs.listStatus(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">//移动结果文件</span></span><br><span class="line">    resStatus.foreach(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">if</span> (x.getLen &gt; <span class="number">0</span>) &#123; <span class="comment">//排除spark自动生成的_success文件</span></span><br><span class="line">        hdfs.rename(x.getPath, output)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    println(<span class="string">s"merge <span class="subst">$&#123;paths.size&#125;</span> files =&gt; <span class="subst">$partitions</span> files"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除临时目录</span></span><br><span class="line">    hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>), <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除原小文件</span></span><br><span class="line">    paths.foreach(x =&gt; &#123;</span><br><span class="line">      hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(x), <span class="literal">true</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">makeCoalesce</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>, size: <span class="type">Int</span>): <span class="type">Int</span> = &#123;</span><br><span class="line">    <span class="keyword">var</span> num = <span class="number">0</span>L</span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      num += x.getLen</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">val</span> partitions = (num / <span class="number">1024</span> / <span class="number">1024</span> / size).toInt + <span class="number">1</span></span><br><span class="line">    logInfo(<span class="string">"分区数为："</span> + partitions)</span><br><span class="line">    partitions</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">getPaths</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>): <span class="type">List</span>[<span class="type">String</span>] = &#123;</span><br><span class="line">    <span class="keyword">var</span> paths: <span class="type">List</span>[<span class="type">String</span>] = <span class="type">List</span>.empty <span class="comment">//文件名字符串</span></span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      x.getLen</span><br><span class="line">      x.getPath</span><br><span class="line">      paths :+= x.getPath.toString</span><br><span class="line">      println(x.getLen + <span class="string">"|"</span> + x.getPath)</span><br><span class="line">    &#125;)</span><br><span class="line">    paths</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">rddToDF</span></span>(sparkSession: <span class="type">SparkSession</span>, rdd: <span class="type">RDD</span>[<span class="type">String</span>]): <span class="type">DataFrame</span> = &#123;</span><br><span class="line">    <span class="keyword">import</span> sparkSession.implicits._</span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">"\t"</span>)</span><br><span class="line">      <span class="keyword">val</span> date = splits(<span class="number">0</span>).trim</span><br><span class="line">      <span class="keyword">val</span> ip = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> domain = splits(<span class="number">6</span>).trim</span><br><span class="line">      date + <span class="string">"\t"</span> + ip + <span class="string">"\t"</span> + domain</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line">    infoDF</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="本地调试修改owner"><a href="#本地调试修改owner" class="headerlink" title="本地调试修改owner"></a>本地调试修改owner</h4><p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E6%9C%AC%E5%9C%B0%E8%B0%83%E8%AF%95%E4%BF%AE%E6%94%B9owner.png" alt="本地调试修改owner"></p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
         <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -1574,8 +1513,69 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop Block和副本数&amp;小文件问题</title>
+    <url>/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
+<a id="more"></a>
+<hr>
+<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
+<p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
+<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
+<ol>
+<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
+<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
+<li>第三个副本：与第二个副本相同机架的不同节点上</li>
+<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
+</ol>
+<ul>
+<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
+<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
+</ul>
+<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
+<p>官网中的相应的默认参数如下：<br><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
+<p>可以看到，默认块大小为128M，默认副本数为3.</p>
+<p>这里会有一个常规的面试题：</p>
+<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
+<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
+<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
+<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
+<p>小文件的危害：</p>
+<ol>
+<li>HDFS不适合大量小文件的存储，因namenode将文件系统的元数据存放在内存中，因此存储的文件数目受限于 namenode的内存大小。HDFS中每个文件、目录、数据块占用150Bytes。如果存放的文件数目过多的话会占用很大的内存甚至撑爆内存。</li>
+<li>HDFS适用于高吞吐量，而不适合低时间延迟的访问。如果同时存入大量的小文件会花费很长的时间。</li>
+<li>流式读取的方式，不适合多用户写入，以及任意位置写入。如果访问小文件，则必须从一个datanode跳转到另外一个datanode，这样大大降低了读取性能。</li>
+</ol>
+<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
+<ol>
+<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS。</li>
+<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并。</li>
+</ol>
+<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
+<ol>
+<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
+<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
+<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
+<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
+</ol>
+<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
+<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
+<h4 id="小文件合并脚本"><a href="#小文件合并脚本" class="headerlink" title="小文件合并脚本"></a>小文件合并脚本</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.practice.spark</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.fs.&#123;<span class="type">FileSystem</span>, <span class="type">Path</span>&#125;</span><br><span class="line"><span class="keyword">import</span> org.apache.spark.internal.<span class="type">Logging</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.rdd.<span class="type">RDD</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.&#123;<span class="type">DataFrame</span>, <span class="type">SparkSession</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">miniFileMerge</span> <span class="keyword">extends</span> <span class="title">Logging</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> sparkSession = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>).appName(<span class="keyword">this</span>.getClass.getSimpleName).getOrCreate()</span><br><span class="line">    <span class="keyword">val</span> target = <span class="string">"hdfs://fushuaidate:9000/practice/minifilemerge"</span> <span class="comment">//待合并文件夹</span></span><br><span class="line">    <span class="keyword">val</span> output = <span class="keyword">new</span> <span class="type">Path</span>(target)</span><br><span class="line">    <span class="keyword">val</span> hdfs: <span class="type">FileSystem</span> = output.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)</span><br><span class="line">    <span class="keyword">val</span> partitions = makeCoalesce(hdfs, output, <span class="number">5</span>)</span><br><span class="line">    println(<span class="string">s"合并后文件数量为：<span class="subst">$partitions</span>"</span>)</span><br><span class="line">    <span class="keyword">val</span> paths: <span class="type">List</span>[<span class="type">String</span>] = getPaths(hdfs, output)</span><br><span class="line">    <span class="keyword">val</span> mergeFiles: <span class="type">RDD</span>[<span class="type">String</span>] = sparkSession.sparkContext.textFile(target).coalesce(partitions)</span><br><span class="line">    <span class="keyword">val</span> dataFrame = rddToDF(sparkSession, mergeFiles)</span><br><span class="line">    dataFrame.write.text(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>)</span><br><span class="line">    <span class="keyword">val</span> resStatus = hdfs.listStatus(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">//移动结果文件</span></span><br><span class="line">    resStatus.foreach(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">if</span> (x.getLen &gt; <span class="number">0</span>) &#123; <span class="comment">//排除spark自动生成的_success文件</span></span><br><span class="line">        hdfs.rename(x.getPath, output)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    println(<span class="string">s"merge <span class="subst">$&#123;paths.size&#125;</span> files =&gt; <span class="subst">$partitions</span> files"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除临时目录</span></span><br><span class="line">    hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>), <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除原小文件</span></span><br><span class="line">    paths.foreach(x =&gt; &#123;</span><br><span class="line">      hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(x), <span class="literal">true</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">makeCoalesce</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>, size: <span class="type">Int</span>): <span class="type">Int</span> = &#123;</span><br><span class="line">    <span class="keyword">var</span> num = <span class="number">0</span>L</span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      num += x.getLen</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">val</span> partitions = (num / <span class="number">1024</span> / <span class="number">1024</span> / size).toInt + <span class="number">1</span></span><br><span class="line">    logInfo(<span class="string">"分区数为："</span> + partitions)</span><br><span class="line">    partitions</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">getPaths</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>): <span class="type">List</span>[<span class="type">String</span>] = &#123;</span><br><span class="line">    <span class="keyword">var</span> paths: <span class="type">List</span>[<span class="type">String</span>] = <span class="type">List</span>.empty <span class="comment">//文件名字符串</span></span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      x.getLen</span><br><span class="line">      x.getPath</span><br><span class="line">      paths :+= x.getPath.toString</span><br><span class="line">      println(x.getLen + <span class="string">"|"</span> + x.getPath)</span><br><span class="line">    &#125;)</span><br><span class="line">    paths</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">rddToDF</span></span>(sparkSession: <span class="type">SparkSession</span>, rdd: <span class="type">RDD</span>[<span class="type">String</span>]): <span class="type">DataFrame</span> = &#123;</span><br><span class="line">    <span class="keyword">import</span> sparkSession.implicits._</span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">"\t"</span>)</span><br><span class="line">      <span class="keyword">val</span> date = splits(<span class="number">0</span>).trim</span><br><span class="line">      <span class="keyword">val</span> ip = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> domain = splits(<span class="number">6</span>).trim</span><br><span class="line">      date + <span class="string">"\t"</span> + ip + <span class="string">"\t"</span> + domain</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line">    infoDF</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="本地调试修改owner"><a href="#本地调试修改owner" class="headerlink" title="本地调试修改owner"></a>本地调试修改owner</h4><p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E6%9C%AC%E5%9C%B0%E8%B0%83%E8%AF%95%E4%BF%AE%E6%94%B9owner.png" alt="本地调试修改owner"></p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -1600,8 +1600,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -1653,8 +1653,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1732,8 +1732,8 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
