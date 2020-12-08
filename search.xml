@@ -55,50 +55,141 @@
       </tags>
   </entry>
   <entry>
-    <title>Flume架构基础</title>
-    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
-    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
+    <title>HBase 基本概念和使用</title>
+    <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
+    <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
+<p>HBase是基于列的而不是基于行的模式。</p>
+<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
+<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
 <a id="more"></a>
+
 <hr>
-<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
-<li>可以和任意存储进程集成。</li>
-<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
-<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
+<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
+<li>监控RegionServer</li>
+<li>处理RegionServer故障转移</li>
+<li>处理元数据的变更</li>
+<li>处理region的分配或移除</li>
+<li>在空闲时间进行数据的负载均衡</li>
+<li>通过zookeeper发布自己的位置给客户端</li>
 </ol>
-<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
-<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
-<ul>
-<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
-</li>
-<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
-</li>
-<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
-</li>
+<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
+<li>负责存储HBase的实际数据</li>
+<li>处理分配给它的Region</li>
+<li>刷新缓存到HDFS</li>
+<li>维护HLog</li>
+<li>执行压缩</li>
+<li>负责处理Region分片</li>
+</ol>
+<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
+<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
+<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
 </ul>
+<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
+<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
+<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
+<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
+<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
+<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
+<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
+<ul>
+<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
+<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
+<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
+<li>Zookeeper中记录了-ROOT-表的location</li>
+<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
+</ul>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
+<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
+<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
+<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
+<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
+<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
 <ol>
-<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
-<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
+<li>管理用户对Table的增、删、改、查操作</li>
+<li>管理HRegionServer的负载均衡，调整Region分布</li>
+<li>在Region Split后，负责新Region的分配</li>
+<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
 </ol>
+<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
+<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
+<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
+<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
+<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
+<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
+<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
+<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
+<ol>
+<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
+<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
+</ol>
+<p>Zookeeper中hbase的节点的存储信息：</p>
 <ul>
-<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
+<li>rs：regionserver节点信息</li>
+<li>table-lock：hbase的除meta以外的所有表</li>
+<li>Table：hbase的所有的表</li>
+</ul>
+<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
+<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
+<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
+</ul>
+<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
+<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
+<li>进入HBase客户端命令行<br>bin/hbase shell</li>
+<li>查看帮助命令<br>hbase(main)&gt; help</li>
+<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
+<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
+</ul>
+<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
+<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
 </li>
-<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
+<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
+</li>
+<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
+</li>
+<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
+</li>
+<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
+</li>
+<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
+</li>
+<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
+</li>
+<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
+</li>
+<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
+</li>
+<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
+</li>
+<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
 </li>
 </ul>
-<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
-<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
-<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
-<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
-<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
-<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
-<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
-<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
+<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
+<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
+</li>
+<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
+</li>
+<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
+</li>
+<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
+</li>
+<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
+</li>
+<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
+</li>
+<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
+</li>
+<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
+</li>
+</ul>
 ]]></content>
       <categories>
-        <category>Flume</category>
+        <category>HBase</category>
       </categories>
       <tags>
-        <tag>Flume</tag>
+        <tag>HBase</tag>
+        <tag>基本概念</tag>
+        <tag>常用命令</tag>
       </tags>
   </entry>
   <entry>
@@ -278,141 +369,50 @@
       </tags>
   </entry>
   <entry>
-    <title>HBase 基本概念和使用</title>
-    <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
-    <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
-<p>HBase是基于列的而不是基于行的模式。</p>
-<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
-<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+    <title>Flume架构基础</title>
+    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
+    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
 <a id="more"></a>
-
 <hr>
-<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
-<li>监控RegionServer</li>
-<li>处理RegionServer故障转移</li>
-<li>处理元数据的变更</li>
-<li>处理region的分配或移除</li>
-<li>在空闲时间进行数据的负载均衡</li>
-<li>通过zookeeper发布自己的位置给客户端</li>
+<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
+<li>可以和任意存储进程集成。</li>
+<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
+<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
 </ol>
-<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
-<li>负责存储HBase的实际数据</li>
-<li>处理分配给它的Region</li>
-<li>刷新缓存到HDFS</li>
-<li>维护HLog</li>
-<li>执行压缩</li>
-<li>负责处理Region分片</li>
-</ol>
-<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
-<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
-<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
-</ul>
-<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
-<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
-<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
-<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
-<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
-<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
-<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
-<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
+<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
+<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
 <ul>
-<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
-<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
-<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
-<li>Zookeeper中记录了-ROOT-表的location</li>
-<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
+<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
+</li>
+<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
+</li>
+<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
+</li>
 </ul>
-<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
-<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
-<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
-<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
-<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
-<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
 <ol>
-<li>管理用户对Table的增、删、改、查操作</li>
-<li>管理HRegionServer的负载均衡，调整Region分布</li>
-<li>在Region Split后，负责新Region的分配</li>
-<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
+<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
+<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
 </ol>
-<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
-<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
-<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
-<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
-<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
-<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
-<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
-<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
-<ol>
-<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
-<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
-</ol>
-<p>Zookeeper中hbase的节点的存储信息：</p>
 <ul>
-<li>rs：regionserver节点信息</li>
-<li>table-lock：hbase的除meta以外的所有表</li>
-<li>Table：hbase的所有的表</li>
-</ul>
-<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
-<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
-<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
-</ul>
-<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
-<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
-<li>进入HBase客户端命令行<br>bin/hbase shell</li>
-<li>查看帮助命令<br>hbase(main)&gt; help</li>
-<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
-<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
-</ul>
-<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
-<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
+<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
 </li>
-<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
-</li>
-<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
-</li>
-<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
-</li>
-<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
-</li>
-<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
-</li>
-<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
-</li>
-<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
-</li>
-<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
-</li>
-<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
-</li>
-<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
+<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
 </li>
 </ul>
-<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
-<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
-</li>
-<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
-</li>
-<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
-</li>
-<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
-</li>
-<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
-</li>
-<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
-</li>
-<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
-</li>
-<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
-</li>
-</ul>
+<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
+<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
+<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
+<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
+<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
+<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
+<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
+<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
 ]]></content>
       <categories>
-        <category>HBase</category>
+        <category>Flume</category>
       </categories>
       <tags>
-        <tag>HBase</tag>
-        <tag>基本概念</tag>
-        <tag>常用命令</tag>
+        <tag>Flume</tag>
       </tags>
   </entry>
   <entry>
@@ -673,6 +673,21 @@
       </tags>
   </entry>
   <entry>
+    <title>HDFS 常用命令</title>
+    <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<p>Hadoop的常用命令</p>
+<a id="more"></a>
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">查看hdfs某路径的大小</span><br><span class="line">hadoop fs -du -s -h /</span><br><span class="line">hadoop fs -du -s /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>常用命令</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hadoop 数据切片 &amp; MapTask并行度机制</title>
     <url>/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&amp;MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/</url>
     <content><![CDATA[<p>Hadoop 数据切片 MapTask并行度</p>
@@ -721,125 +736,6 @@
       </categories>
       <tags>
         <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 基本概念 Hive的部署 Hive的常用命令</title>
-    <url>/2018/07/14/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<h4 id="Hive基本概念"><a href="#Hive基本概念" class="headerlink" title="Hive基本概念"></a>Hive基本概念</h4><p><a href="http://hive.apache.org" target="_blank" rel="noopener">Hive官网</a></p>
-<p>The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data already in storage. A command line tool and JDBC driver are provided to connect users to Hive.</p>
-<a id="more"></a>
-<hr>
-<h4 id="什么是Hive"><a href="#什么是Hive" class="headerlink" title="什么是Hive"></a>什么是Hive</h4><p>Hive由Facebook开源，用于解决海量结构化日志的数据统计问题。</p>
-<p>Hive是基于Hadoop的一个数据仓库工具，可以将结构化的数据文化映射为一张表，并提供类SQL查询功能。</p>
-<p>本质：将HQL/SQL转化成MapReduce程序</p>
-<ol>
-<li>Hive处理的数据存储在HDFS</li>
-<li>Hive底层执行引擎：MapReduce/Tez/Spark，只需要通过一个参数就能够切换底层的执行引擎</li>
-<li>Hive作业提交到YARN上运行</li>
-</ol>
-<h4 id="Hive的优缺点"><a href="#Hive的优缺点" class="headerlink" title="Hive的优缺点"></a>Hive的优缺点</h4><p>优点：</p>
-<ol>
-<li>操作接口采用类SQL语法，提供快速开发的能力（简单、容易上手）</li>
-<li>避免了MapReduce编程，减少学习成本</li>
-<li>Hive的执行延迟比较高，因此Hive常用于离线分析，对实时性要求不高的场合</li>
-<li>Hive优势在于处理大数据，对于处理小数据没有优势，因为Hive的执行延迟比较高</li>
-<li>Hive支持用户自定义函数，用户可以根据自己的需求来实现自己的函数</li>
-</ol>
-<p>缺点：</p>
-<ol>
-<li>Hive的HQL表达能力有限<ol>
-<li>迭代式算法无法表达</li>
-<li>数据挖掘方面不擅长</li>
-</ol>
-</li>
-<li>Hive的效率比较低<ol>
-<li>Hive自动生成的MapReduce作业，通常不够智能化</li>
-<li>Hive调优比较困难，粒度较粗</li>
-</ol>
-</li>
-</ol>
-<h4 id="Hive的架构原理"><a href="#Hive的架构原理" class="headerlink" title="Hive的架构原理"></a>Hive的架构原理</h4><p><img src="/2018/07/14/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png" alt="Hive的架构"></p>
-<p>如上图所示，Hive通过给用户提供的一系列交互接口，接收到用户的指令（SQL），使用自己的Driver，结合元数据（MetaStore），将这些指令翻译成MapReduce，提交到Hadoop中执行，最后将执行返回的结果输出到用户交互接口。</p>
-<ol>
-<li>用户接口：Client<br>CLI(hive shell)、JDBC/ODBC(java访问hive)、WEBUI(浏览器访问hive)</li>
-<li>元数据：Meta store<br>元数据包括：表名、表所属的数据库（默认是default）、表的拥有者、列/分区字段、表的类型（是否是外部表）、表的数据所在目录等；<br>默认存储在自带的derby数据库中，推荐使用MySQL存储Meta store。</li>
-<li>Hadoop<br>使用HDFS进行存储，使用MapReduce进行计算</li>
-<li>驱动器：Driver<ol>
-<li>解析器（SQL Parser）：将SQL字符串转换成抽象语法树AST，这一步一般都用第三方工具库完成，比如antlr；对AST进行语法分析，比如表是否存在、字段是否存在、SQL语义是否有误。</li>
-<li>编译器（Physical Plan）：将AST编译生成逻辑执行计划。</li>
-<li>优化器（Query Optimizer）：对逻辑执行计划进行优化。</li>
-<li>执行器（Execution）：把逻辑执行计划转换成可以运行的物理计划，对于Hive来说，就是MR/Spark。</li>
-</ol>
-</li>
-</ol>
-<h4 id="Hive的部署"><a href="#Hive的部署" class="headerlink" title="Hive的部署"></a>Hive的部署</h4><p><a href="https://cwiki.apache.org/confluence/display/Hive/GettingStarted" target="_blank" rel="noopener">Hive的使用文档</a></p>
-<p>环境要求：</p>
-<ul>
-<li>JDK8</li>
-<li>Hadoop2.x</li>
-<li>Linux</li>
-<li>MySQL</li>
-</ul>
-<p>Hive版本选择：wget <a href="http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz</a></p>
-<h4 id="Hive安装步骤"><a href="#Hive安装步骤" class="headerlink" title="Hive安装步骤"></a>Hive安装步骤</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">解压：</span><br><span class="line">tar -zxvf hive-1.1.0-cdh5.16.2.tar.gz -C ~/app/</span><br><span class="line"></span><br><span class="line">设置软连接：</span><br><span class="line">ln -s hive-1.1.0-cdh5.16.2 hive</span><br></pre></td></tr></table></figure>
-
-<p>配置环境变量，建议普通用户的.bashrc文件，追加以下内容：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HIVE_HOME=/home/hadoop/app/hive</span><br><span class="line">export PATH=$HIVE_HOME/bin:$PATH</span><br></pre></td></tr></table></figure>
-
-<p>生效环境变量文件</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .bashrc</span><br></pre></td></tr></table></figure>
-
-<p>检查是否生效</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which hive</span><br></pre></td></tr></table></figure>
-
-<p>进入配置文件目录</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $HIVE_HOME/conf/</span><br><span class="line"></span><br><span class="line">vi hive-site.xml</span><br></pre></td></tr></table></figure>
-<p>编译以下内容</p>
-<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0"?&gt;</span></span><br><span class="line"><span class="meta">&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionURL<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>jdbc:mysql://hadoop001:3306/metadata_hive?createDatabaseIfNotExist=true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionDriverName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>com.mysql.jdbc.Driver<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionUserName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>root<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionPassword<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>123456<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.current.db<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.header<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
-<p>保存并退出。</p>
-<p>然后，拷贝MySQL驱动包到$HIVE_HOME/lib/下。</p>
-<p>最后，启动Hive（需要先启动HDFS和YARN）：hive</p>
-<h4 id="Hive常用命令"><a href="#Hive常用命令" class="headerlink" title="Hive常用命令"></a>Hive常用命令</h4><ul>
-<li>show databases; 查看数据库</li>
-<li>use default; 打开默认数据库</li>
-<li>create database company location ‘/user/company’; 创建库并指定hdfs路径</li>
-<li>alter database company set dbproperties(‘creator’ = ‘vinx’); 为数据库添加额外的描述信息</li>
-<li>drop database if exists company cascade; 删除不为空的数据库</li>
-<li>show tables; 查看所在数据库的所有表</li>
-<li>create table student(id int, name string); 创建一张表</li>
-<li>desc student; 查看表结构</li>
-<li>desc extended student; 查看表结构详细信息</li>
-<li>desc formatted student; 查看表结构的格式化信息</li>
-<li>insert into student values(1001, “zhangsan”); 向表中插入一条数据（慎用，会跑MR程序）</li>
-<li>select * from student; 查询表中数据</li>
-<li>!clear; 清空屏幕</li>
-<li>quit; 退出hive</li>
-<li>bin/hive -e “select * from student;” 不登录hive客户端直接操作hive</li>
-<li>bin/hive -f /home/vinx/shell/select_stu.sql 执行HQL文件</li>
-</ul>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>常用命令</tag>
-        <tag>Hive</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>HDFS 常用命令</title>
-    <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<p>Hadoop的常用命令</p>
-<a id="more"></a>
-
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">查看hdfs某路径的大小</span><br><span class="line">hadoop fs -du -s -h /</span><br><span class="line">hadoop fs -du -s /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>常用命令</tag>
         <tag>Hadoop</tag>
       </tags>
   </entry>
@@ -902,6 +798,29 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Hive 行列转换</title>
+    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
+    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
+<a id="more"></a>
+
+<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
+<hr>
+<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hue 部署</title>
     <url>/2019/03/09/Hue_%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<h4 id="hue-3-9-0-cdh5-16-2-的部署"><a href="#hue-3-9-0-cdh5-16-2-的部署" class="headerlink" title="hue-3.9.0-cdh5.16.2 的部署"></a>hue-3.9.0-cdh5.16.2 的部署</h4><p>本文主要包括以下内容：</p>
@@ -938,29 +857,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </categories>
       <tags>
         <tag>Hue</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 行列转换</title>
-    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
-    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
-<a id="more"></a>
-
-<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
-<hr>
-<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
       </tags>
   </entry>
   <entry>
@@ -1080,6 +976,110 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </categories>
       <tags>
         <tag>Kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 基本概念 Hive的部署 Hive的常用命令</title>
+    <url>/2018/07/14/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<h4 id="Hive基本概念"><a href="#Hive基本概念" class="headerlink" title="Hive基本概念"></a>Hive基本概念</h4><p><a href="http://hive.apache.org" target="_blank" rel="noopener">Hive官网</a></p>
+<p>The Apache Hive ™ data warehouse software facilitates reading, writing, and managing large datasets residing in distributed storage using SQL. Structure can be projected onto data already in storage. A command line tool and JDBC driver are provided to connect users to Hive.</p>
+<a id="more"></a>
+<hr>
+<h4 id="什么是Hive"><a href="#什么是Hive" class="headerlink" title="什么是Hive"></a>什么是Hive</h4><p>Hive由Facebook开源，用于解决海量结构化日志的数据统计问题。</p>
+<p>Hive是基于Hadoop的一个数据仓库工具，可以将结构化的数据文化映射为一张表，并提供类SQL查询功能。</p>
+<p>本质：将HQL/SQL转化成MapReduce程序</p>
+<ol>
+<li>Hive处理的数据存储在HDFS</li>
+<li>Hive底层执行引擎：MapReduce/Tez/Spark，只需要通过一个参数就能够切换底层的执行引擎</li>
+<li>Hive作业提交到YARN上运行</li>
+</ol>
+<h4 id="Hive的优缺点"><a href="#Hive的优缺点" class="headerlink" title="Hive的优缺点"></a>Hive的优缺点</h4><p>优点：</p>
+<ol>
+<li>操作接口采用类SQL语法，提供快速开发的能力（简单、容易上手）</li>
+<li>避免了MapReduce编程，减少学习成本</li>
+<li>Hive的执行延迟比较高，因此Hive常用于离线分析，对实时性要求不高的场合</li>
+<li>Hive优势在于处理大数据，对于处理小数据没有优势，因为Hive的执行延迟比较高</li>
+<li>Hive支持用户自定义函数，用户可以根据自己的需求来实现自己的函数</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>Hive的HQL表达能力有限<ol>
+<li>迭代式算法无法表达</li>
+<li>数据挖掘方面不擅长</li>
+</ol>
+</li>
+<li>Hive的效率比较低<ol>
+<li>Hive自动生成的MapReduce作业，通常不够智能化</li>
+<li>Hive调优比较困难，粒度较粗</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的架构原理"><a href="#Hive的架构原理" class="headerlink" title="Hive的架构原理"></a>Hive的架构原理</h4><p><img src="/2018/07/14/Hive%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5Hive%E7%9A%84%E9%83%A8%E7%BD%B2Hive%E7%9A%84%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/hive-architecture.png" alt="Hive的架构"></p>
+<p>如上图所示，Hive通过给用户提供的一系列交互接口，接收到用户的指令（SQL），使用自己的Driver，结合元数据（MetaStore），将这些指令翻译成MapReduce，提交到Hadoop中执行，最后将执行返回的结果输出到用户交互接口。</p>
+<ol>
+<li>用户接口：Client<br>CLI(hive shell)、JDBC/ODBC(java访问hive)、WEBUI(浏览器访问hive)</li>
+<li>元数据：Meta store<br>元数据包括：表名、表所属的数据库（默认是default）、表的拥有者、列/分区字段、表的类型（是否是外部表）、表的数据所在目录等；<br>默认存储在自带的derby数据库中，推荐使用MySQL存储Meta store。</li>
+<li>Hadoop<br>使用HDFS进行存储，使用MapReduce进行计算</li>
+<li>驱动器：Driver<ol>
+<li>解析器（SQL Parser）：将SQL字符串转换成抽象语法树AST，这一步一般都用第三方工具库完成，比如antlr；对AST进行语法分析，比如表是否存在、字段是否存在、SQL语义是否有误。</li>
+<li>编译器（Physical Plan）：将AST编译生成逻辑执行计划。</li>
+<li>优化器（Query Optimizer）：对逻辑执行计划进行优化。</li>
+<li>执行器（Execution）：把逻辑执行计划转换成可以运行的物理计划，对于Hive来说，就是MR/Spark。</li>
+</ol>
+</li>
+</ol>
+<h4 id="Hive的部署"><a href="#Hive的部署" class="headerlink" title="Hive的部署"></a>Hive的部署</h4><p><a href="https://cwiki.apache.org/confluence/display/Hive/GettingStarted" target="_blank" rel="noopener">Hive的使用文档</a></p>
+<p>环境要求：</p>
+<ul>
+<li>JDK8</li>
+<li>Hadoop2.x</li>
+<li>Linux</li>
+<li>MySQL</li>
+</ul>
+<p>Hive版本选择：wget <a href="http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/cdh5/cdh/5/hive-1.1.0-cdh5.16.2.tar.gz</a></p>
+<h4 id="Hive安装步骤"><a href="#Hive安装步骤" class="headerlink" title="Hive安装步骤"></a>Hive安装步骤</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">解压：</span><br><span class="line">tar -zxvf hive-1.1.0-cdh5.16.2.tar.gz -C ~/app/</span><br><span class="line"></span><br><span class="line">设置软连接：</span><br><span class="line">ln -s hive-1.1.0-cdh5.16.2 hive</span><br></pre></td></tr></table></figure>
+
+<p>配置环境变量，建议普通用户的.bashrc文件，追加以下内容：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">export HIVE_HOME=/home/hadoop/app/hive</span><br><span class="line">export PATH=$HIVE_HOME/bin:$PATH</span><br></pre></td></tr></table></figure>
+
+<p>生效环境变量文件</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">source .bashrc</span><br></pre></td></tr></table></figure>
+
+<p>检查是否生效</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which hive</span><br></pre></td></tr></table></figure>
+
+<p>进入配置文件目录</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $HIVE_HOME/conf/</span><br><span class="line"></span><br><span class="line">vi hive-site.xml</span><br></pre></td></tr></table></figure>
+<p>编译以下内容</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0"?&gt;</span></span><br><span class="line"><span class="meta">&lt;?xml-stylesheet type="text/xsl" href="configuration.xsl"?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionURL<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>jdbc:mysql://hadoop001:3306/metadata_hive?createDatabaseIfNotExist=true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionDriverName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>com.mysql.jdbc.Driver<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionUserName<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>root<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">name</span>&gt;</span>javax.jdo.option.ConnectionPassword<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	  <span class="tag">&lt;<span class="name">value</span>&gt;</span>123456<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.current.db<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line">	</span><br><span class="line">	<span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">name</span>&gt;</span>hive.cli.print.header<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>保存并退出。</p>
+<p>然后，拷贝MySQL驱动包到$HIVE_HOME/lib/下。</p>
+<p>最后，启动Hive（需要先启动HDFS和YARN）：hive</p>
+<h4 id="Hive常用命令"><a href="#Hive常用命令" class="headerlink" title="Hive常用命令"></a>Hive常用命令</h4><ul>
+<li>show databases; 查看数据库</li>
+<li>use default; 打开默认数据库</li>
+<li>create database company location ‘/user/company’; 创建库并指定hdfs路径</li>
+<li>alter database company set dbproperties(‘creator’ = ‘vinx’); 为数据库添加额外的描述信息</li>
+<li>drop database if exists company cascade; 删除不为空的数据库</li>
+<li>show tables; 查看所在数据库的所有表</li>
+<li>create table student(id int, name string); 创建一张表</li>
+<li>desc student; 查看表结构</li>
+<li>desc extended student; 查看表结构详细信息</li>
+<li>desc formatted student; 查看表结构的格式化信息</li>
+<li>insert into student values(1001, “zhangsan”); 向表中插入一条数据（慎用，会跑MR程序）</li>
+<li>select * from student; 查询表中数据</li>
+<li>!clear; 清空屏幕</li>
+<li>quit; 退出hive</li>
+<li>bin/hive -e “select * from student;” 不登录hive客户端直接操作hive</li>
+<li>bin/hive -f /home/vinx/shell/select_stu.sql 执行HQL文件</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>常用命令</tag>
+        <tag>Hive</tag>
       </tags>
   </entry>
   <entry>
@@ -1271,24 +1271,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Scala 集合 Set</title>
-    <url>/2018/05/04/Scala_%E9%9B%86%E5%90%88_Set/</url>
-    <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中Set的说明</p>
-<a id="more"></a>
-<hr>
-<h4 id="Set"><a href="#Set" class="headerlink" title="Set"></a>Set</h4><p>Scala Set 数据不会重复</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="comment">//导包了是可mutable（可变的）</span></span><br><span class="line"></span><br><span class="line">scala&gt; <span class="keyword">val</span> s = <span class="type">Set</span>(<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>)</span><br><span class="line">s: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>)</span><br></pre></td></tr></table></figure>
-<h5 id="增加一个值，成功了返回值为true："><a href="#增加一个值，成功了返回值为true：" class="headerlink" title="增加一个值，成功了返回值为true："></a>增加一个值，成功了返回值为true：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s.add(<span class="number">10</span>)</span><br><span class="line">res14: <span class="type">Boolean</span> = <span class="literal">true</span></span><br></pre></td></tr></table></figure>
-<h5 id="多种增加值的方法："><a href="#多种增加值的方法：" class="headerlink" title="多种增加值的方法："></a>多种增加值的方法：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s += <span class="number">11</span></span><br><span class="line">res15: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += (<span class="number">12</span>)</span><br><span class="line">res16: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += <span class="number">12</span></span><br><span class="line">res17: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.add(<span class="number">12</span>)</span><br><span class="line">res18: <span class="type">Boolean</span> = <span class="literal">false</span></span><br><span class="line"><span class="comment">//此处因为12存在，所以不能增加了</span></span><br></pre></td></tr></table></figure>
-<h5 id="去掉一个值"><a href="#去掉一个值" class="headerlink" title="去掉一个值"></a>去掉一个值</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s -= <span class="number">12</span></span><br><span class="line">res19: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.remove(<span class="number">10</span>)</span><br><span class="line">res20: <span class="type">Boolean</span> = <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">scala&gt; s</span><br><span class="line">res21: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">11</span>)</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Scala</category>
-      </categories>
-      <tags>
-        <tag>Scala</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Scala 集合 Map</title>
     <url>/2018/05/03/Scala_%E9%9B%86%E5%90%88_Map/</url>
     <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中Map的说明</p>
@@ -1319,22 +1301,21 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Spark DRR转DF的两种方式</title>
-    <url>/2018/10/16/Spark%20DRR%E8%BD%ACDF%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
-    <content><![CDATA[<p>Spark DRR转DF的两种方式分为编程方式和反射方式</p>
+    <title>Scala 集合 Set</title>
+    <url>/2018/05/04/Scala_%E9%9B%86%E5%90%88_Set/</url>
+    <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中Set的说明</p>
 <a id="more"></a>
-
-<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
-<p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
-<h3 id="编程方式将RDD转成DF"><a href="#编程方式将RDD转成DF" class="headerlink" title="编程方式将RDD转成DF"></a>编程方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">programmatically</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP1: RDD[String] ==&gt; RDD[Row]</span></span><br><span class="line">    <span class="keyword">val</span> infoRDD: <span class="type">RDD</span>[<span class="type">Row</span>] = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Row</span>(id, name, age)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP2: schema</span></span><br><span class="line">    <span class="keyword">val</span> schema = <span class="type">StructType</span>(</span><br><span class="line">      <span class="type">StructField</span>(<span class="string">"id"</span>, <span class="type">IntegerType</span>, <span class="literal">true</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"name"</span>, <span class="type">StringType</span>, <span class="literal">false</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"age"</span>, <span class="type">IntegerType</span>, <span class="literal">false</span>) :: <span class="type">Nil</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP3: createDataFrame</span></span><br><span class="line">    <span class="keyword">val</span> df = spark.createDataFrame(infoRDD, schema)</span><br><span class="line">    df.printSchema()</span><br><span class="line">    df.show()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="反射方式将RDD转成DF"><a href="#反射方式将RDD转成DF" class="headerlink" title="反射方式将RDD转成DF"></a>反射方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">reflection</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// RDD[String] =&gt; case class</span></span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Info</span>(id, name, age)</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line"></span><br><span class="line">    infoDF.printSchema()</span><br><span class="line">    infoDF.show()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Info</span>(<span class="params">id: <span class="type">Int</span>, name: <span class="type">String</span>, age: <span class="type">Int</span></span>)</span></span><br></pre></td></tr></table></figure>]]></content>
+<hr>
+<h4 id="Set"><a href="#Set" class="headerlink" title="Set"></a>Set</h4><p>Scala Set 数据不会重复</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="comment">//导包了是可mutable（可变的）</span></span><br><span class="line"></span><br><span class="line">scala&gt; <span class="keyword">val</span> s = <span class="type">Set</span>(<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>)</span><br><span class="line">s: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>)</span><br></pre></td></tr></table></figure>
+<h5 id="增加一个值，成功了返回值为true："><a href="#增加一个值，成功了返回值为true：" class="headerlink" title="增加一个值，成功了返回值为true："></a>增加一个值，成功了返回值为true：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s.add(<span class="number">10</span>)</span><br><span class="line">res14: <span class="type">Boolean</span> = <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<h5 id="多种增加值的方法："><a href="#多种增加值的方法：" class="headerlink" title="多种增加值的方法："></a>多种增加值的方法：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s += <span class="number">11</span></span><br><span class="line">res15: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += (<span class="number">12</span>)</span><br><span class="line">res16: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += <span class="number">12</span></span><br><span class="line">res17: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.add(<span class="number">12</span>)</span><br><span class="line">res18: <span class="type">Boolean</span> = <span class="literal">false</span></span><br><span class="line"><span class="comment">//此处因为12存在，所以不能增加了</span></span><br></pre></td></tr></table></figure>
+<h5 id="去掉一个值"><a href="#去掉一个值" class="headerlink" title="去掉一个值"></a>去掉一个值</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s -= <span class="number">12</span></span><br><span class="line">res19: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.remove(<span class="number">10</span>)</span><br><span class="line">res20: <span class="type">Boolean</span> = <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">scala&gt; s</span><br><span class="line">res21: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">11</span>)</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
-        <category>Spark</category>
+        <category>Scala</category>
       </categories>
       <tags>
-        <tag>Spark</tag>
-        <tag>SparkSQL</tag>
+        <tag>Scala</tag>
       </tags>
   </entry>
   <entry>
@@ -1356,6 +1337,25 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </categories>
       <tags>
         <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark DRR转DF的两种方式</title>
+    <url>/2018/10/16/Spark%20DRR%E8%BD%ACDF%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
+    <content><![CDATA[<p>Spark DRR转DF的两种方式分为编程方式和反射方式</p>
+<a id="more"></a>
+
+<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
+<p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
+<h3 id="编程方式将RDD转成DF"><a href="#编程方式将RDD转成DF" class="headerlink" title="编程方式将RDD转成DF"></a>编程方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">programmatically</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP1: RDD[String] ==&gt; RDD[Row]</span></span><br><span class="line">    <span class="keyword">val</span> infoRDD: <span class="type">RDD</span>[<span class="type">Row</span>] = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Row</span>(id, name, age)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP2: schema</span></span><br><span class="line">    <span class="keyword">val</span> schema = <span class="type">StructType</span>(</span><br><span class="line">      <span class="type">StructField</span>(<span class="string">"id"</span>, <span class="type">IntegerType</span>, <span class="literal">true</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"name"</span>, <span class="type">StringType</span>, <span class="literal">false</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"age"</span>, <span class="type">IntegerType</span>, <span class="literal">false</span>) :: <span class="type">Nil</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP3: createDataFrame</span></span><br><span class="line">    <span class="keyword">val</span> df = spark.createDataFrame(infoRDD, schema)</span><br><span class="line">    df.printSchema()</span><br><span class="line">    df.show()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="反射方式将RDD转成DF"><a href="#反射方式将RDD转成DF" class="headerlink" title="反射方式将RDD转成DF"></a>反射方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">reflection</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// RDD[String] =&gt; case class</span></span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Info</span>(id, name, age)</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line"></span><br><span class="line">    infoDF.printSchema()</span><br><span class="line">    infoDF.show()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Info</span>(<span class="params">id: <span class="type">Int</span>, name: <span class="type">String</span>, age: <span class="type">Int</span></span>)</span></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkSQL</tag>
       </tags>
   </entry>
   <entry>
@@ -1434,6 +1434,49 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>Spark</tag>
         <tag>Spark监控</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>SparkSQL 做统计分析</title>
+    <url>/2018/10/11/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<p>SparkSQL 做统计分析的方法、存储格式的转换</p>
+<a id="more"></a>
+
+<hr>
+<h4 id="SparkSQL做统计分析"><a href="#SparkSQL做统计分析" class="headerlink" title="SparkSQL做统计分析"></a>SparkSQL做统计分析</h4><ol>
+<li>数据</li>
+<li>需求：求每个国家的每个域名的访问流量排名前2</li>
+<li>SQL实现<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">GroupTopN</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/data.json"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">		<span class="comment">//读取数据</span></span><br><span class="line">        <span class="keyword">val</span> ds = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        <span class="comment">//为生成需要的表格做准备</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = ds.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">3</span>), words(<span class="number">12</span>), words(<span class="number">15</span>).toLong)</span><br><span class="line">        &#125;).toDF(<span class="string">"country"</span>, <span class="string">"domain"</span>, <span class="string">"traffic"</span>)</span><br><span class="line"></span><br><span class="line">        df.createOrReplaceTempView(<span class="string">"access"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 每个国家的域名流量前2</span></span><br><span class="line">        <span class="keyword">val</span> topNSQL=<span class="string">""</span><span class="string">"select</span></span><br><span class="line"><span class="string">                      |	*</span></span><br><span class="line"><span class="string">                      |from (</span></span><br><span class="line"><span class="string">                      |		select</span></span><br><span class="line"><span class="string">                      |			t.*,row_number() over(partition by country order by sum_traffic desc) r</span></span><br><span class="line"><span class="string">                      |		from</span></span><br><span class="line"><span class="string">                      |			(</span></span><br><span class="line"><span class="string">                      |				select country,domain,sum(traffic) as sum_traffic from access group by country,domain</span></span><br><span class="line"><span class="string">                      |			) t</span></span><br><span class="line"><span class="string">                      |	    ) rt</span></span><br><span class="line"><span class="string">                      |where rt.r &lt;=2 "</span><span class="string">""</span>.stripMargin</span><br><span class="line">        spark.sql(topNSQL).show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+<li>如果只要求traffic的降序，可以使用API直接写出来<br>分组，求和，别名，降序<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//traffic降序排序</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.functions._</span><br><span class="line">df.groupBy(<span class="string">"country"</span>,<span class="string">"domain"</span>).agg(sum(<span class="string">"traffic"</span>).as(<span class="string">"sum_traffic"</span>)).sort($<span class="string">"sum_traffic"</span>.desc).show()</span><br></pre></td></tr></table></figure>
+注意看源码中案例仿写</li>
+<li>结果展示<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|         country|           domain|sum_traffic|  r|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|            中国| www.bilibili.com|   <span class="number">24265886</span>|  <span class="number">1</span>|</span><br><span class="line">|            中国|www.ruozedata.com|    <span class="number">4187637</span>|  <span class="number">2</span>|</span><br><span class="line">|          利比亚| www.bilibili.com|      <span class="number">22816</span>|  <span class="number">1</span>|</span><br><span class="line">|          利比亚|  ruoze.ke.qq.com|      <span class="number">15970</span>|  <span class="number">2</span>|</span><br><span class="line">|            加纳| www.bilibili.com|     <span class="number">138659</span>|  <span class="number">1</span>|</span><br><span class="line">|            加纳|www.ruozedata.com|      <span class="number">17988</span>|  <span class="number">2</span>|</span><br><span class="line">|        利比里亚| www.bilibili.com|      <span class="number">20593</span>|  <span class="number">1</span>|</span><br><span class="line">|        利比里亚|  ruoze.ke.qq.com|       <span class="number">7466</span>|  <span class="number">2</span>|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="UDF函数"><a href="#UDF函数" class="headerlink" title="UDF函数"></a>UDF函数</h4><ol>
+<li><p>数据</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">蔡三	唱,跳,rap,篮球</span><br><span class="line">李四	唱</span><br><span class="line">王五	唱,跳</span><br></pre></td></tr></table></figure></li>
+<li><p>需求：求出每个人的爱好的个数<br>提供一个编程抽象（DataFrame） 并且作为分布式 SQL 查询引擎<br>DataFrame：它可以根据很多源进行构建，包括：结构化的数据文件，hive中的表，外部的关系型数据库，以及RDD</p>
+</li>
+<li><p>SQL实现</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">practice04</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> in = <span class="string">"data/data.txt"</span></span><br><span class="line">    <span class="keyword">val</span> session = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>)</span><br><span class="line">      .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">      .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">      .getOrCreate()</span><br><span class="line">    session.sparkContext.setLogLevel(<span class="string">"ERROR"</span>)</span><br><span class="line">    <span class="keyword">import</span> session.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> ds = session.read.textFile(in)</span><br><span class="line">    <span class="keyword">val</span> df = ds.map(row =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> words = row.split(<span class="string">"\t"</span>)</span><br><span class="line">      (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">    &#125;).toDF(<span class="string">"name"</span>, <span class="string">"fav"</span>)</span><br><span class="line"></span><br><span class="line">    session.udf.register(<span class="string">"length"</span>,(fav: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">      fav.split(<span class="string">","</span>).length</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    df.createOrReplaceTempView(<span class="string">"udf_fav"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> sql1 =</span><br><span class="line">      <span class="string">""</span><span class="string">"</span></span><br><span class="line"><span class="string">        |select</span></span><br><span class="line"><span class="string">        | name,</span></span><br><span class="line"><span class="string">        | fav,</span></span><br><span class="line"><span class="string">        | length(fav) fav_count</span></span><br><span class="line"><span class="string">        |from udf_fav</span></span><br><span class="line"><span class="string">        |"</span><span class="string">""</span>.stripMargin</span><br><span class="line">    session.sql(sql1).show()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>上面是使用SQL的解决方案，还可以使用API的方法</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//自定义的udf需要返回值</span></span><br><span class="line"><span class="keyword">val</span> loveLengthUDF: <span class="type">UserDefinedFunction</span> = spark.udf.register(<span class="string">"length"</span>, (love: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">    love.split(<span class="string">","</span>).length</span><br><span class="line">&#125;)</span><br><span class="line"><span class="comment">//df.select中传入UDF函数</span></span><br><span class="line">df.select($<span class="string">"name"</span>,$<span class="string">"love"</span>,loveLengthUDF($<span class="string">"love"</span>)).show()</span><br></pre></td></tr></table></figure></li>
+<li><p>结果展示</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----+--------------+---------+</span><br><span class="line">|name|           fav|fav_count|</span><br><span class="line">+----+--------------+---------+</span><br><span class="line">|蔡三|唱,跳,rap,篮球|        <span class="number">4</span>|</span><br><span class="line">|李四|            唱|        <span class="number">1</span>|</span><br><span class="line">|王五|         唱,跳|        <span class="number">2</span>|</span><br><span class="line">+----+--------------+---------+</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="存储格式的转换"><a href="#存储格式的转换" class="headerlink" title="存储格式的转换"></a>存储格式的转换</h4><p>Spark读text文件进行清洗，清洗完以后直接以我们想要的列式存储格式输出，如果按以前的方式要经过很多复杂的步骤</p>
+<p>用Spark的时候只需要在df.write.format(“orc”).mode().save()中指定格式即可，如orc，现在就很方便了，想转成什么格式，只要format支持就ok</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2orc</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//对文本文件做处理</span></span><br><span class="line">        df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>),words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">            .toDF(<span class="string">"name"</span>,<span class="string">"age"</span>)	<span class="comment">//这一步解决了数据没有表头的问题</span></span><br><span class="line">            .write</span><br><span class="line">            .mode(<span class="string">"overwrite"</span>)	<span class="comment">//save mode</span></span><br><span class="line">            .format(<span class="string">"orc"</span>)	<span class="comment">//save format</span></span><br><span class="line">            .save(out)	<span class="comment">//save path</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkSQL</tag>
       </tags>
   </entry>
   <entry>
@@ -1550,46 +1593,127 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>SparkSQL 做统计分析</title>
-    <url>/2018/10/11/SparkSQL%E5%81%9A%E7%BB%9F%E8%AE%A1%E5%88%86%E6%9E%90/</url>
-    <content><![CDATA[<p>SparkSQL 做统计分析的方法、存储格式的转换</p>
+    <title>SparkStreaming 进阶</title>
+    <url>/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/</url>
+    <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
+<li>黑名单管理</li>
+<li>窗口</li>
+<li>闭包</li>
+<li>SS对接Kafka</li>
+<li>KafkaRDD</li>
+</ol>
 <a id="more"></a>
-
 <hr>
-<h4 id="SparkSQL做统计分析"><a href="#SparkSQL做统计分析" class="headerlink" title="SparkSQL做统计分析"></a>SparkSQL做统计分析</h4><ol>
-<li>数据</li>
-<li>需求：求每个国家的每个域名的访问流量排名前2</li>
-<li>SQL实现<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">GroupTopN</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/data.json"</span></span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line"></span><br><span class="line">		<span class="comment">//读取数据</span></span><br><span class="line">        <span class="keyword">val</span> ds = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        <span class="comment">//为生成需要的表格做准备</span></span><br><span class="line">        <span class="keyword">val</span> df: <span class="type">DataFrame</span> = ds.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">3</span>), words(<span class="number">12</span>), words(<span class="number">15</span>).toLong)</span><br><span class="line">        &#125;).toDF(<span class="string">"country"</span>, <span class="string">"domain"</span>, <span class="string">"traffic"</span>)</span><br><span class="line"></span><br><span class="line">        df.createOrReplaceTempView(<span class="string">"access"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 每个国家的域名流量前2</span></span><br><span class="line">        <span class="keyword">val</span> topNSQL=<span class="string">""</span><span class="string">"select</span></span><br><span class="line"><span class="string">                      |	*</span></span><br><span class="line"><span class="string">                      |from (</span></span><br><span class="line"><span class="string">                      |		select</span></span><br><span class="line"><span class="string">                      |			t.*,row_number() over(partition by country order by sum_traffic desc) r</span></span><br><span class="line"><span class="string">                      |		from</span></span><br><span class="line"><span class="string">                      |			(</span></span><br><span class="line"><span class="string">                      |				select country,domain,sum(traffic) as sum_traffic from access group by country,domain</span></span><br><span class="line"><span class="string">                      |			) t</span></span><br><span class="line"><span class="string">                      |	    ) rt</span></span><br><span class="line"><span class="string">                      |where rt.r &lt;=2 "</span><span class="string">""</span>.stripMargin</span><br><span class="line">        spark.sql(topNSQL).show()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-<li>如果只要求traffic的降序，可以使用API直接写出来<br>分组，求和，别名，降序<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//traffic降序排序</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.functions._</span><br><span class="line">df.groupBy(<span class="string">"country"</span>,<span class="string">"domain"</span>).agg(sum(<span class="string">"traffic"</span>).as(<span class="string">"sum_traffic"</span>)).sort($<span class="string">"sum_traffic"</span>.desc).show()</span><br></pre></td></tr></table></figure>
-注意看源码中案例仿写</li>
-<li>结果展示<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|         country|           domain|sum_traffic|  r|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br><span class="line">|            中国| www.bilibili.com|   <span class="number">24265886</span>|  <span class="number">1</span>|</span><br><span class="line">|            中国|www.ruozedata.com|    <span class="number">4187637</span>|  <span class="number">2</span>|</span><br><span class="line">|          利比亚| www.bilibili.com|      <span class="number">22816</span>|  <span class="number">1</span>|</span><br><span class="line">|          利比亚|  ruoze.ke.qq.com|      <span class="number">15970</span>|  <span class="number">2</span>|</span><br><span class="line">|            加纳| www.bilibili.com|     <span class="number">138659</span>|  <span class="number">1</span>|</span><br><span class="line">|            加纳|www.ruozedata.com|      <span class="number">17988</span>|  <span class="number">2</span>|</span><br><span class="line">|        利比里亚| www.bilibili.com|      <span class="number">20593</span>|  <span class="number">1</span>|</span><br><span class="line">|        利比里亚|  ruoze.ke.qq.com|       <span class="number">7466</span>|  <span class="number">2</span>|</span><br><span class="line">+----------------+-----------------+-----------+---+</span><br></pre></td></tr></table></figure>
-
-</li>
+<h4 id="黑名单管理"><a href="#黑名单管理" class="headerlink" title="黑名单管理"></a>黑名单管理</h4><p>Spark Streaming在计算流式数据时，有时候需要过滤一些数据，比如一些特殊的字段，或者利用爬虫爬取数据的恶意ip，又或者那些帮助某些无良商家刷广告的人，那么我们有一个黑名单，来过滤或者禁止他们的访问<br>思路：</p>
+<ol>
+<li>准备一个管理黑名单的文件，读进RDD作为key，并添加一个value值为true</li>
+<li>Spark Streaming接收流式数据，使用transform转换为RDD，拿到key用来做join，value为数据内容</li>
+<li>两个RDD做left join，并过滤掉value值为true的数据</li>
 </ol>
-<h4 id="UDF函数"><a href="#UDF函数" class="headerlink" title="UDF函数"></a>UDF函数</h4><ol>
-<li><p>数据</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">蔡三	唱,跳,rap,篮球</span><br><span class="line">李四	唱</span><br><span class="line">王五	唱,跳</span><br></pre></td></tr></table></figure></li>
-<li><p>需求：求出每个人的爱好的个数<br>提供一个编程抽象（DataFrame） 并且作为分布式 SQL 查询引擎<br>DataFrame：它可以根据很多源进行构建，包括：结构化的数据文件，hive中的表，外部的关系型数据库，以及RDD</p>
-</li>
-<li><p>SQL实现</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">practice04</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> in = <span class="string">"data/data.txt"</span></span><br><span class="line">    <span class="keyword">val</span> session = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>)</span><br><span class="line">      .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">      .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">      .getOrCreate()</span><br><span class="line">    session.sparkContext.setLogLevel(<span class="string">"ERROR"</span>)</span><br><span class="line">    <span class="keyword">import</span> session.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> ds = session.read.textFile(in)</span><br><span class="line">    <span class="keyword">val</span> df = ds.map(row =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> words = row.split(<span class="string">"\t"</span>)</span><br><span class="line">      (words(<span class="number">0</span>), words(<span class="number">1</span>))</span><br><span class="line">    &#125;).toDF(<span class="string">"name"</span>, <span class="string">"fav"</span>)</span><br><span class="line"></span><br><span class="line">    session.udf.register(<span class="string">"length"</span>,(fav: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">      fav.split(<span class="string">","</span>).length</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    df.createOrReplaceTempView(<span class="string">"udf_fav"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> sql1 =</span><br><span class="line">      <span class="string">""</span><span class="string">"</span></span><br><span class="line"><span class="string">        |select</span></span><br><span class="line"><span class="string">        | name,</span></span><br><span class="line"><span class="string">        | fav,</span></span><br><span class="line"><span class="string">        | length(fav) fav_count</span></span><br><span class="line"><span class="string">        |from udf_fav</span></span><br><span class="line"><span class="string">        |"</span><span class="string">""</span>.stripMargin</span><br><span class="line">    session.sql(sql1).show()</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>上面是使用SQL的解决方案，还可以使用API的方法</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">//自定义的udf需要返回值</span></span><br><span class="line"><span class="keyword">val</span> loveLengthUDF: <span class="type">UserDefinedFunction</span> = spark.udf.register(<span class="string">"length"</span>, (love: <span class="type">String</span>) =&gt; &#123;</span><br><span class="line">    love.split(<span class="string">","</span>).length</span><br><span class="line">&#125;)</span><br><span class="line"><span class="comment">//df.select中传入UDF函数</span></span><br><span class="line">df.select($<span class="string">"name"</span>,$<span class="string">"love"</span>,loveLengthUDF($<span class="string">"love"</span>)).show()</span><br></pre></td></tr></table></figure></li>
-<li><p>结果展示</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">+----+--------------+---------+</span><br><span class="line">|name|           fav|fav_count|</span><br><span class="line">+----+--------------+---------+</span><br><span class="line">|蔡三|唱,跳,rap,篮球|        <span class="number">4</span>|</span><br><span class="line">|李四|            唱|        <span class="number">1</span>|</span><br><span class="line">|王五|         唱,跳|        <span class="number">2</span>|</span><br><span class="line">+----+--------------+---------+</span><br></pre></td></tr></table></figure>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 读取黑名单数据，并做简单处理</span></span><br><span class="line">    <span class="keyword">val</span> blacks = <span class="type">List</span>(<span class="string">"tunan"</span>)</span><br><span class="line">    <span class="keyword">val</span> blackRDD = ssc.sparkContext.parallelize(blacks)</span><br><span class="line">    <span class="keyword">val</span> blackMapRDD = blackRDD.map((_,<span class="literal">true</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从socket拿到流式数据</span></span><br><span class="line">    <span class="keyword">val</span> stream = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 数据转换成RDD</span></span><br><span class="line">    stream.transform( rdd =&gt; &#123;</span><br><span class="line">        <span class="keyword">val</span> mapRDD= rdd.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            <span class="comment">// 拿到做join的key，value为数据内容</span></span><br><span class="line">            (words(<span class="number">0</span>), row)</span><br><span class="line">        &#125;)</span><br><span class="line">		<span class="comment">// 流式数据为基表，做left join</span></span><br><span class="line">        <span class="keyword">val</span> joinRDD = mapRDD.leftOuterJoin(blackMapRDD)</span><br><span class="line">		<span class="comment">// 过滤掉黑名单数据</span></span><br><span class="line">        <span class="keyword">val</span> filterRDD = joinRDD.filter(_._2._2.getOrElse(<span class="literal">false</span>) != <span class="literal">true</span>)</span><br><span class="line">        <span class="comment">// 返回数据内容</span></span><br><span class="line">        filterRDD.map(_._2._1)</span><br><span class="line">    &#125;).print()</span><br><span class="line">    </span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
+<h4 id="SparkStreaming窗口"><a href="#SparkStreaming窗口" class="headerlink" title="SparkStreaming窗口"></a>SparkStreaming窗口</h4><p>Spark Streaming还提供了窗口计算功能，允许在数据的滑动窗口上应用转换操作。下图说明了滑动窗口的工作方式：</p>
+<p><img src="/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/streaming-dstream-window.png" alt="streaming dstream window"></p>
+<p>如图所示，每当窗口滑过originalDStream时，落在窗口内的源RDD被组合并被执行操作以产生windowedDStream的RDD。<br>在上面的例子中，操作应用于最近3个时间单位的数据，并以2个时间单位滑动。<br>这表明任何窗口操作都需要指定两个参数：</p>
+<ul>
+<li>窗口长度（windowlength） 窗口的时间长度（上图的示例中为：3）。</li>
+<li>滑动间隔（slidinginterval） 两次相邻的窗口操作的间隔（即每次滑动的时间长度）（上图示例中为：2）。<br>这两个参数必须是源DStream的批间隔的倍数（上图示例中为：1）。</li>
+</ul>
+<p>我们以一个例子来说明窗口操作。<br>对之前的单词计数的示例进行扩展，每10秒钟对过去30秒的数据进行wordcount。<br>为此，我们必须在最近30秒的pairs DStream数据中对(word, 1)键值对应用reduceByKey操作。<br>这是通过使用reduceByKeyAndWindow操作完成的。</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 执行wordcount</span></span><br><span class="line"><span class="keyword">val</span> words = lines.flatMap(_.split(<span class="string">" "</span>))</span><br><span class="line"><span class="keyword">val</span> wordPair = words.map(x =&gt; (x, <span class="number">1</span>))</span><br><span class="line"><span class="comment">//val wordCountResult = wordPair.reduceByKey(_ + _)</span></span><br><span class="line"><span class="keyword">val</span> wordCountResult = wordPair.reduceByKeyAndWindow(</span><br><span class="line">    (a: <span class="type">Int</span>, b: <span class="type">Int</span>) =&gt; (a + b), <span class="type">Seconds</span>(<span class="number">30</span>), <span class="type">Seconds</span>(<span class="number">10</span>)</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+
+<p>一些常见的窗口操作如下表所示。所有这些操作都用到了上述两个参数：windowLength和slideInterval。</p>
+<ul>
+<li><p>window(windowLength, slideInterval)<br>基于源DStream产生的窗口化的批数据计算一个新的DStream</p>
 </li>
-</ol>
-<h4 id="存储格式的转换"><a href="#存储格式的转换" class="headerlink" title="存储格式的转换"></a>存储格式的转换</h4><p>Spark读text文件进行清洗，清洗完以后直接以我们想要的列式存储格式输出，如果按以前的方式要经过很多复杂的步骤</p>
-<p>用Spark的时候只需要在df.write.format(“orc”).mode().save()中指定格式即可，如orc，现在就很方便了，想转成什么格式，只要format支持就ok</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">text2orc</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="keyword">val</span> spark = <span class="type">SparkSession</span></span><br><span class="line">            .builder()</span><br><span class="line">            .master(<span class="string">"local[2]"</span>)</span><br><span class="line">            .appName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">            .config(<span class="string">"spark.some.config.option"</span>, <span class="string">"some-value"</span>)</span><br><span class="line">            .getOrCreate()</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">val</span> in = <span class="string">"data/people.txt"</span></span><br><span class="line">        <span class="keyword">val</span> out = <span class="string">"out"</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> df = spark.read.textFile(in)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">import</span> spark.implicits._</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//对文本文件做处理</span></span><br><span class="line">        df.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            (words(<span class="number">0</span>),words(<span class="number">1</span>))</span><br><span class="line">        &#125;)</span><br><span class="line">            .toDF(<span class="string">"name"</span>,<span class="string">"age"</span>)	<span class="comment">//这一步解决了数据没有表头的问题</span></span><br><span class="line">            .write</span><br><span class="line">            .mode(<span class="string">"overwrite"</span>)	<span class="comment">//save mode</span></span><br><span class="line">            .format(<span class="string">"orc"</span>)	<span class="comment">//save format</span></span><br><span class="line">            .save(out)	<span class="comment">//save path</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+<li><p>countByWindow(windowLength, slideInterval)<br>返回流中元素的一个滑动窗口数</p>
+</li>
+<li><p>reduceByWindow(func, windowLength, slideInterval)<br>返回一个单元素流。利用函数func聚集滑动时间间隔的流的元素创建这个单元素流。函数必须是相关联的以使计算能够正确的并行计算。</p>
+</li>
+<li><p>reduceByKeyAndWindow(func, windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。每一个key的值均由给定的reduce函数聚集起来。<br>注意：在默认情况下，这个算子利用了Spark默认的并发任务数去分组。你可以用numTasks参数设置不同的任务数</p>
+</li>
+<li><p>reduceByKeyAndWindow(func, invFunc, windowLength, slideInterval, [numTasks])<br>上述reduceByKeyAndWindow()的更高效的版本，其中使用前一窗口的reduce计算结果递增地计算每个窗口的reduce值。<br>这是通过对进入滑动窗口的新数据进行reduce操作，以及“逆减（inverse reducing）”离开窗口的旧数据来完成的。<br>一个例子是当窗口滑动时对键对应的值进行“一加一减”操作。<br>但是，它仅适用于“可逆减函数（invertible reduce functions）”，即具有相应“反减”功能的减函数（作为参数invFunc）。<br>像reduceByKeyAndWindow一样，通过可选参数可以配置reduce任务的数量。请注意，使用此操作必须启用检查点。</p>
+</li>
+<li><p>countByValueAndWindow(windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。<br>每个key的值都是它们在滑动窗口中出现的频率。</p>
+</li>
+</ul>
+<h4 id="闭包"><a href="#闭包" class="headerlink" title="闭包"></a>闭包</h4><p>Spark的难点之一是理解跨集群执行代码时变量和方法的范围和生命周期。在范围之外修改变量的RDD操作可能经常引起混淆。在下面的示例中，我们将查看使用foreach()递增计数器的代码，但是其他操作也可能出现类似的问题。</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">var</span> counter = <span class="number">0</span></span><br><span class="line"><span class="keyword">var</span> rdd = sc.parallelize(data)</span><br><span class="line"></span><br><span class="line"><span class="comment">// Wrong: Don't do this!!</span></span><br><span class="line">rdd.foreach(x =&gt; counter += x)</span><br><span class="line"></span><br><span class="line">println(<span class="string">"Counter value: "</span> + counter)</span><br></pre></td></tr></table></figure>
+
+<p>上述代码的行为是未定义的，可能无法按预期工作。为了执行作业，Spark将RDD操作的处理分解为tasks，每个任务由executor执行。在执行之前，Spark计算task的闭包。闭包是那些executor在RDD上执行其计算时必须可见的变量和方法(在本例中为foreach())。这个闭包被序列化并发送给每个executor 。</p>
+<p>闭包中发送给每个executor 的变量现在都是副本，因此，当在foreach函数中引用counter时，它不再是driver 上的计数器。在executors的内存中仍然有一个计数器，但它对executor不再可见!executor只看到来自序列化闭包的副本。因此，counter的最终值仍然是零，因为counter上的所有操作都引用了序列化闭包中的值。</p>
+<p>一般来说，像循环或局部定义方法这样的闭包结构不应该用来改变全局状态。Spark不保证闭包外部引用的对象的突变行为。一些这样做的代码可能在本地模式下工作，但那只是偶然的，而且这样的代码在分布式模式下不会像预期的那样工作。如果需要全局聚合，则使用Accumulator。</p>
+<h4 id="SparkStreaming对接Kafka"><a href="#SparkStreaming对接Kafka" class="headerlink" title="SparkStreaming对接Kafka"></a>SparkStreaming对接Kafka</h4><p>Kafka是一种高吞吐量的分布式发布订阅消息系统，它可以处理消费者在网站中的所有动作流数据。这种动作（网页浏览，搜索和其他用户的行动）是在现代网络上的许多社会功能的一个关键因素。这些数据通常是由于吞吐量的要求而通过处理日志和日志聚合来解决。 对于像Hadoop一样的日志数据和离线分析系统，但又要求实时处理的限制，这是一个可行的解决方案。Kafka的目的是通过Hadoop的并行加载机制来统一线上和离线的消息处理，也是为了通过集群来提供实时的消息。</p>
+<p>SS是Spark上的一个流式处理框架，可以面向海量数据实现高吞吐量、高容错的实时计算。SS支持多种类型数据源，包括Kafka、Flume、twitter、zeroMQ、Kinesis以及TCP sockets等。SS实时接收数据流，并按照一定的时间间隔将连续的数据流拆分成一批批离散的数据集；然后应用诸如map、reduce、join和window等丰富的API进行复杂的数据处理；最后提交给Spark引擎进行运算，得到批量结果数据，因此其也被称为准实时处理系统。而结果也能保存在很多地方，如HDFS，数据库等。另外SS也能和MLlib（机器学习）以及GraphX（图计算）完美融合。</p>
+<p>下面我们就来一个SS对接Kafka的案例</p>
+<p>Kafka Product API</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// 设置配置文件，这些配置文件都是源码中找的</span></span><br><span class="line">    <span class="keyword">val</span> props = <span class="keyword">new</span> <span class="type">Properties</span>()</span><br><span class="line">    props.put(<span class="string">"bootstrap.servers"</span>, <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>);</span><br><span class="line">    props.put(<span class="string">"acks"</span>, <span class="string">"all"</span>);</span><br><span class="line">    props.put(<span class="string">"key.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    props.put(<span class="string">"value.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    <span class="comment">// 创建producer</span></span><br><span class="line">    <span class="keyword">val</span> producer = <span class="keyword">new</span> <span class="type">KafkaProducer</span>[<span class="type">String</span>, <span class="type">String</span>](props)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 循环发送数据</span></span><br><span class="line">    <span class="keyword">for</span> (i &lt;- <span class="number">1</span> to <span class="number">100</span>)&#123;</span><br><span class="line">        <span class="keyword">val</span> par = i%<span class="number">3</span> <span class="comment">// 数组走的分区</span></span><br><span class="line">        producer.send(<span class="keyword">new</span> <span class="type">ProducerRecord</span>[<span class="type">String</span>, <span class="type">String</span>](<span class="string">"test"</span>,par,<span class="string">""</span>,<span class="type">Integer</span>.toString(i)));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 关闭producer</span></span><br><span class="line">    producer.close();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Spark Streaming Consumer</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建ssc</span></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 连接kafka配置参数</span></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 可以设置多个topic</span></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// 创建DirectStream</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 业务逻辑</span></span><br><span class="line">    stream.map(x =&gt; (x.value(),<span class="number">1</span>)).reduceByKey(_+_)</span><br><span class="line">    .foreachRDD(rdd =&gt; &#123;</span><br><span class="line">        <span class="comment">// 分区操作</span></span><br><span class="line">        rdd.foreachPartition(partition =&gt; &#123;</span><br><span class="line">            <span class="comment">// 一个分区连一个jedis</span></span><br><span class="line">            <span class="keyword">val</span> jedis = <span class="type">RedisUtils</span>.getJedis</span><br><span class="line">            partition.foreach(fields =&gt;&#123;</span><br><span class="line">                <span class="comment">// 保存到Hash中</span></span><br><span class="line">                jedis.hincrBy(<span class="string">"wc_redis"</span>,fields._1,fields._2)</span><br><span class="line">            &#125;)</span><br><span class="line">            <span class="comment">// 关闭连接</span></span><br><span class="line">            jedis.close()</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在，无论在哪里写进Kafka的数据，都可以从Spark Streaming的客户端写出来，我们这里保存的是Redis，保存在MySQL是同样的思路。</p>
+<h4 id="KafkaRDD"><a href="#KafkaRDD" class="headerlink" title="KafkaRDD"></a>KafkaRDD</h4><p>最后我们看一下如何在代码中拿到Kafka的Offset</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// stream不能做任何操作，否则得到的不是一个KafkaRDD</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 必须先拿到HasOffsetRanges，才能开始业务逻辑</span></span><br><span class="line">    stream.foreachRDD &#123; rdd =&gt;</span><br><span class="line">        <span class="comment">// 通过rdd.asInstanceOf[HasOffsetRanges]拿到KafkaRDD，它保存了每个分区的offset</span></span><br><span class="line">        <span class="keyword">val</span> offsetRanges = rdd.asInstanceOf[<span class="type">HasOffsetRanges</span>].offsetRanges</span><br><span class="line">        <span class="comment">// KafkaRDD维护了topic、partition、fromOffset、untilOffset</span></span><br><span class="line">        offsetRanges.foreach &#123; o =&gt;</span><br><span class="line">            println(<span class="string">s"<span class="subst">$&#123;o.topic&#125;</span> <span class="subst">$&#123;o.partition&#125;</span> <span class="subst">$&#123;o.fromOffset&#125;</span> <span class="subst">$&#123;o.untilOffset&#125;</span>"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意：</p>
+<ul>
+<li>对HasOffsetRanges的类型转换只有在对createDirectStream的结果调用的第一个方法中完成时才会成功，而不是在随后的方法链中。</li>
+<li>RDD分区和Kafka分区之间的一一映射会在RDD发生shuffle或者repartition操作之后改变，比如reduceByKey或window</li>
+</ul>
+]]></content>
       <categories>
         <category>Spark</category>
       </categories>
       <tags>
         <tag>Spark</tag>
-        <tag>SparkSQL</tag>
+        <tag>SparkStreaming</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark 各个版本特性</title>
+    <url>/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/</url>
+    <content><![CDATA[<p>Spark各个版本特性</p>
+<a id="more"></a>
+
+<h3 id="各个版本特性（官方文档）"><a href="#各个版本特性（官方文档）" class="headerlink" title="各个版本特性（官方文档）"></a>各个版本特性（官方文档）</h3><p><a href="https://spark.apache.org/releases/" target="_blank" rel="noopener">https://spark.apache.org/releases/</a><br><a href="https://spark.apache.org/news/index.html" target="_blank" rel="noopener">https://spark.apache.org/news/index.html</a></p>
+<hr>
+<h3 id="Spark-0-6-x"><a href="#Spark-0-6-x" class="headerlink" title="Spark 0.6.x"></a>Spark 0.6.x</h3><p>Standalone部署模式进行了简化</p>
+<hr>
+<h3 id="Spark-0-7"><a href="#Spark-0-7" class="headerlink" title="Spark 0.7"></a>Spark 0.7</h3><p>Python API<br>增加Spark Streaming<br>支持maven build</p>
+<hr>
+<h3 id="Spark-0-8"><a href="#Spark-0-8" class="headerlink" title="Spark 0.8"></a>Spark 0.8</h3><p>支持MLlib库<br>hadoop yarn正式支持</p>
+<hr>
+<h3 id="Spark-0-9"><a href="#Spark-0-9" class="headerlink" title="Spark 0.9"></a>Spark 0.9</h3><p>用SparkConf类来配置SparkContext<br>spark streaming正式版发布<br>GraphX的测试版出现<br>mllib库升级，支持python<br>core升级</p>
+<hr>
+<h3 id="Spark-1-0"><a href="#Spark-1-0" class="headerlink" title="Spark 1.0"></a>Spark 1.0</h3><p>提出spark-submit脚本和history-server<br>yarn安全模式整合<br>spark sql被提出<br>java8的支持</p>
+<hr>
+<h3 id="Spark-1-1"><a href="#Spark-1-1" class="headerlink" title="Spark 1.1"></a>Spark 1.1</h3><p>spark增强了磁盘（非内存）的排序的速率</p>
+<hr>
+<h3 id="Spark-1-2"><a href="#Spark-1-2" class="headerlink" title="Spark 1.2"></a>Spark 1.2</h3><p>shuffle大升级<br>Graphx正式版发布</p>
+<hr>
+<h3 id="Spark-1-3"><a href="#Spark-1-3" class="headerlink" title="Spark 1.3"></a>Spark 1.3</h3><p>新增DataFrame API<br>Spark SQL正式脱离alpha版本</p>
+<hr>
+<h3 id="Spark-1-4"><a href="#Spark-1-4" class="headerlink" title="Spark 1.4"></a>Spark 1.4</h3><p>正式引入SparkR<br>Spark Core为应用提供了REST API来获取各种信息</p>
+<hr>
+<h3 id="Spark-1-5"><a href="#Spark-1-5" class="headerlink" title="Spark 1.5"></a>Spark 1.5</h3><p>Hive支持</p>
+<hr>
+<h3 id="Spark-1-6"><a href="#Spark-1-6" class="headerlink" title="Spark 1.6"></a>Spark 1.6</h3><p>新增Dataset API</p>
+<hr>
+<h3 id="Spark-2-0"><a href="#Spark-2-0" class="headerlink" title="Spark 2.0"></a>Spark 2.0</h3><p>用sparksession实现hivecontext和sqlcontext统一<br>合并dataframe和datasets</p>
+<hr>
+<h3 id="Spark-2-1"><a href="#Spark-2-1" class="headerlink" title="Spark 2.1"></a>Spark 2.1</h3><p>提升ORC格式文件的读写性能</p>
+<hr>
+<h3 id="Spark-2-2"><a href="#Spark-2-2" class="headerlink" title="Spark 2.2"></a>Spark 2.2</h3><p>Structured Streaming的生产环境支持已经就绪</p>
+<hr>
+<h3 id="Spark-2-3"><a href="#Spark-2-3" class="headerlink" title="Spark 2.3"></a>Spark 2.3</h3><p>Structured Streaming 引入了低延迟的连续处理<br>支持 stream-to-stream joins</p>
+<hr>
+<h3 id="Spark-2-4"><a href="#Spark-2-4" class="headerlink" title="Spark 2.4"></a>Spark 2.4</h3><p>Scala 2.12<br>添加了35个高阶函数</p>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
       </tags>
   </entry>
   <entry>
@@ -1688,53 +1812,6 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>Spark 各个版本特性</title>
-    <url>/2018/11/09/Spark%E5%90%84%E4%B8%AA%E7%89%88%E6%9C%AC%E7%89%B9%E6%80%A7/</url>
-    <content><![CDATA[<p>Spark各个版本特性</p>
-<a id="more"></a>
-
-<h3 id="各个版本特性（官方文档）"><a href="#各个版本特性（官方文档）" class="headerlink" title="各个版本特性（官方文档）"></a>各个版本特性（官方文档）</h3><p><a href="https://spark.apache.org/releases/" target="_blank" rel="noopener">https://spark.apache.org/releases/</a><br><a href="https://spark.apache.org/news/index.html" target="_blank" rel="noopener">https://spark.apache.org/news/index.html</a></p>
-<hr>
-<h3 id="Spark-0-6-x"><a href="#Spark-0-6-x" class="headerlink" title="Spark 0.6.x"></a>Spark 0.6.x</h3><p>Standalone部署模式进行了简化</p>
-<hr>
-<h3 id="Spark-0-7"><a href="#Spark-0-7" class="headerlink" title="Spark 0.7"></a>Spark 0.7</h3><p>Python API<br>增加Spark Streaming<br>支持maven build</p>
-<hr>
-<h3 id="Spark-0-8"><a href="#Spark-0-8" class="headerlink" title="Spark 0.8"></a>Spark 0.8</h3><p>支持MLlib库<br>hadoop yarn正式支持</p>
-<hr>
-<h3 id="Spark-0-9"><a href="#Spark-0-9" class="headerlink" title="Spark 0.9"></a>Spark 0.9</h3><p>用SparkConf类来配置SparkContext<br>spark streaming正式版发布<br>GraphX的测试版出现<br>mllib库升级，支持python<br>core升级</p>
-<hr>
-<h3 id="Spark-1-0"><a href="#Spark-1-0" class="headerlink" title="Spark 1.0"></a>Spark 1.0</h3><p>提出spark-submit脚本和history-server<br>yarn安全模式整合<br>spark sql被提出<br>java8的支持</p>
-<hr>
-<h3 id="Spark-1-1"><a href="#Spark-1-1" class="headerlink" title="Spark 1.1"></a>Spark 1.1</h3><p>spark增强了磁盘（非内存）的排序的速率</p>
-<hr>
-<h3 id="Spark-1-2"><a href="#Spark-1-2" class="headerlink" title="Spark 1.2"></a>Spark 1.2</h3><p>shuffle大升级<br>Graphx正式版发布</p>
-<hr>
-<h3 id="Spark-1-3"><a href="#Spark-1-3" class="headerlink" title="Spark 1.3"></a>Spark 1.3</h3><p>新增DataFrame API<br>Spark SQL正式脱离alpha版本</p>
-<hr>
-<h3 id="Spark-1-4"><a href="#Spark-1-4" class="headerlink" title="Spark 1.4"></a>Spark 1.4</h3><p>正式引入SparkR<br>Spark Core为应用提供了REST API来获取各种信息</p>
-<hr>
-<h3 id="Spark-1-5"><a href="#Spark-1-5" class="headerlink" title="Spark 1.5"></a>Spark 1.5</h3><p>Hive支持</p>
-<hr>
-<h3 id="Spark-1-6"><a href="#Spark-1-6" class="headerlink" title="Spark 1.6"></a>Spark 1.6</h3><p>新增Dataset API</p>
-<hr>
-<h3 id="Spark-2-0"><a href="#Spark-2-0" class="headerlink" title="Spark 2.0"></a>Spark 2.0</h3><p>用sparksession实现hivecontext和sqlcontext统一<br>合并dataframe和datasets</p>
-<hr>
-<h3 id="Spark-2-1"><a href="#Spark-2-1" class="headerlink" title="Spark 2.1"></a>Spark 2.1</h3><p>提升ORC格式文件的读写性能</p>
-<hr>
-<h3 id="Spark-2-2"><a href="#Spark-2-2" class="headerlink" title="Spark 2.2"></a>Spark 2.2</h3><p>Structured Streaming的生产环境支持已经就绪</p>
-<hr>
-<h3 id="Spark-2-3"><a href="#Spark-2-3" class="headerlink" title="Spark 2.3"></a>Spark 2.3</h3><p>Structured Streaming 引入了低延迟的连续处理<br>支持 stream-to-stream joins</p>
-<hr>
-<h3 id="Spark-2-4"><a href="#Spark-2-4" class="headerlink" title="Spark 2.4"></a>Spark 2.4</h3><p>Scala 2.12<br>添加了35个高阶函数</p>
-]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spark 多目录输出</title>
     <url>/2018/12/01/Spark%E5%A4%9A%E7%9B%AE%E5%BD%95%E8%BE%93%E5%87%BA/</url>
     <content><![CDATA[<p>实现多目录输出自定义类</p>
@@ -1800,83 +1877,6 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>SparkStreaming 进阶</title>
-    <url>/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/</url>
-    <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
-<li>黑名单管理</li>
-<li>窗口</li>
-<li>闭包</li>
-<li>SS对接Kafka</li>
-<li>KafkaRDD</li>
-</ol>
-<a id="more"></a>
-<hr>
-<h4 id="黑名单管理"><a href="#黑名单管理" class="headerlink" title="黑名单管理"></a>黑名单管理</h4><p>Spark Streaming在计算流式数据时，有时候需要过滤一些数据，比如一些特殊的字段，或者利用爬虫爬取数据的恶意ip，又或者那些帮助某些无良商家刷广告的人，那么我们有一个黑名单，来过滤或者禁止他们的访问<br>思路：</p>
-<ol>
-<li>准备一个管理黑名单的文件，读进RDD作为key，并添加一个value值为true</li>
-<li>Spark Streaming接收流式数据，使用transform转换为RDD，拿到key用来做join，value为数据内容</li>
-<li>两个RDD做left join，并过滤掉value值为true的数据</li>
-</ol>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 读取黑名单数据，并做简单处理</span></span><br><span class="line">    <span class="keyword">val</span> blacks = <span class="type">List</span>(<span class="string">"tunan"</span>)</span><br><span class="line">    <span class="keyword">val</span> blackRDD = ssc.sparkContext.parallelize(blacks)</span><br><span class="line">    <span class="keyword">val</span> blackMapRDD = blackRDD.map((_,<span class="literal">true</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 从socket拿到流式数据</span></span><br><span class="line">    <span class="keyword">val</span> stream = ssc.socketTextStream(<span class="string">"hadoop"</span>, <span class="number">9100</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 数据转换成RDD</span></span><br><span class="line">    stream.transform( rdd =&gt; &#123;</span><br><span class="line">        <span class="keyword">val</span> mapRDD= rdd.map(row =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words = row.split(<span class="string">","</span>)</span><br><span class="line">            <span class="comment">// 拿到做join的key，value为数据内容</span></span><br><span class="line">            (words(<span class="number">0</span>), row)</span><br><span class="line">        &#125;)</span><br><span class="line">		<span class="comment">// 流式数据为基表，做left join</span></span><br><span class="line">        <span class="keyword">val</span> joinRDD = mapRDD.leftOuterJoin(blackMapRDD)</span><br><span class="line">		<span class="comment">// 过滤掉黑名单数据</span></span><br><span class="line">        <span class="keyword">val</span> filterRDD = joinRDD.filter(_._2._2.getOrElse(<span class="literal">false</span>) != <span class="literal">true</span>)</span><br><span class="line">        <span class="comment">// 返回数据内容</span></span><br><span class="line">        filterRDD.map(_._2._1)</span><br><span class="line">    &#125;).print()</span><br><span class="line">    </span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="SparkStreaming窗口"><a href="#SparkStreaming窗口" class="headerlink" title="SparkStreaming窗口"></a>SparkStreaming窗口</h4><p>Spark Streaming还提供了窗口计算功能，允许在数据的滑动窗口上应用转换操作。下图说明了滑动窗口的工作方式：</p>
-<p><img src="/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/streaming-dstream-window.png" alt="streaming dstream window"></p>
-<p>如图所示，每当窗口滑过originalDStream时，落在窗口内的源RDD被组合并被执行操作以产生windowedDStream的RDD。<br>在上面的例子中，操作应用于最近3个时间单位的数据，并以2个时间单位滑动。<br>这表明任何窗口操作都需要指定两个参数：</p>
-<ul>
-<li>窗口长度（windowlength） 窗口的时间长度（上图的示例中为：3）。</li>
-<li>滑动间隔（slidinginterval） 两次相邻的窗口操作的间隔（即每次滑动的时间长度）（上图示例中为：2）。<br>这两个参数必须是源DStream的批间隔的倍数（上图示例中为：1）。</li>
-</ul>
-<p>我们以一个例子来说明窗口操作。<br>对之前的单词计数的示例进行扩展，每10秒钟对过去30秒的数据进行wordcount。<br>为此，我们必须在最近30秒的pairs DStream数据中对(word, 1)键值对应用reduceByKey操作。<br>这是通过使用reduceByKeyAndWindow操作完成的。</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 执行wordcount</span></span><br><span class="line"><span class="keyword">val</span> words = lines.flatMap(_.split(<span class="string">" "</span>))</span><br><span class="line"><span class="keyword">val</span> wordPair = words.map(x =&gt; (x, <span class="number">1</span>))</span><br><span class="line"><span class="comment">//val wordCountResult = wordPair.reduceByKey(_ + _)</span></span><br><span class="line"><span class="keyword">val</span> wordCountResult = wordPair.reduceByKeyAndWindow(</span><br><span class="line">    (a: <span class="type">Int</span>, b: <span class="type">Int</span>) =&gt; (a + b), <span class="type">Seconds</span>(<span class="number">30</span>), <span class="type">Seconds</span>(<span class="number">10</span>)</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-
-<p>一些常见的窗口操作如下表所示。所有这些操作都用到了上述两个参数：windowLength和slideInterval。</p>
-<ul>
-<li><p>window(windowLength, slideInterval)<br>基于源DStream产生的窗口化的批数据计算一个新的DStream</p>
-</li>
-<li><p>countByWindow(windowLength, slideInterval)<br>返回流中元素的一个滑动窗口数</p>
-</li>
-<li><p>reduceByWindow(func, windowLength, slideInterval)<br>返回一个单元素流。利用函数func聚集滑动时间间隔的流的元素创建这个单元素流。函数必须是相关联的以使计算能够正确的并行计算。</p>
-</li>
-<li><p>reduceByKeyAndWindow(func, windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。每一个key的值均由给定的reduce函数聚集起来。<br>注意：在默认情况下，这个算子利用了Spark默认的并发任务数去分组。你可以用numTasks参数设置不同的任务数</p>
-</li>
-<li><p>reduceByKeyAndWindow(func, invFunc, windowLength, slideInterval, [numTasks])<br>上述reduceByKeyAndWindow()的更高效的版本，其中使用前一窗口的reduce计算结果递增地计算每个窗口的reduce值。<br>这是通过对进入滑动窗口的新数据进行reduce操作，以及“逆减（inverse reducing）”离开窗口的旧数据来完成的。<br>一个例子是当窗口滑动时对键对应的值进行“一加一减”操作。<br>但是，它仅适用于“可逆减函数（invertible reduce functions）”，即具有相应“反减”功能的减函数（作为参数invFunc）。<br>像reduceByKeyAndWindow一样，通过可选参数可以配置reduce任务的数量。请注意，使用此操作必须启用检查点。</p>
-</li>
-<li><p>countByValueAndWindow(windowLength, slideInterval, [numTasks])<br>应用到一个(K,V)对组成的DStream上，返回一个由(K,V)对组成的新的DStream。<br>每个key的值都是它们在滑动窗口中出现的频率。</p>
-</li>
-</ul>
-<h4 id="闭包"><a href="#闭包" class="headerlink" title="闭包"></a>闭包</h4><p>Spark的难点之一是理解跨集群执行代码时变量和方法的范围和生命周期。在范围之外修改变量的RDD操作可能经常引起混淆。在下面的示例中，我们将查看使用foreach()递增计数器的代码，但是其他操作也可能出现类似的问题。</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">var</span> counter = <span class="number">0</span></span><br><span class="line"><span class="keyword">var</span> rdd = sc.parallelize(data)</span><br><span class="line"></span><br><span class="line"><span class="comment">// Wrong: Don't do this!!</span></span><br><span class="line">rdd.foreach(x =&gt; counter += x)</span><br><span class="line"></span><br><span class="line">println(<span class="string">"Counter value: "</span> + counter)</span><br></pre></td></tr></table></figure>
-
-<p>上述代码的行为是未定义的，可能无法按预期工作。为了执行作业，Spark将RDD操作的处理分解为tasks，每个任务由executor执行。在执行之前，Spark计算task的闭包。闭包是那些executor在RDD上执行其计算时必须可见的变量和方法(在本例中为foreach())。这个闭包被序列化并发送给每个executor 。</p>
-<p>闭包中发送给每个executor 的变量现在都是副本，因此，当在foreach函数中引用counter时，它不再是driver 上的计数器。在executors的内存中仍然有一个计数器，但它对executor不再可见!executor只看到来自序列化闭包的副本。因此，counter的最终值仍然是零，因为counter上的所有操作都引用了序列化闭包中的值。</p>
-<p>一般来说，像循环或局部定义方法这样的闭包结构不应该用来改变全局状态。Spark不保证闭包外部引用的对象的突变行为。一些这样做的代码可能在本地模式下工作，但那只是偶然的，而且这样的代码在分布式模式下不会像预期的那样工作。如果需要全局聚合，则使用Accumulator。</p>
-<h4 id="SparkStreaming对接Kafka"><a href="#SparkStreaming对接Kafka" class="headerlink" title="SparkStreaming对接Kafka"></a>SparkStreaming对接Kafka</h4><p>Kafka是一种高吞吐量的分布式发布订阅消息系统，它可以处理消费者在网站中的所有动作流数据。这种动作（网页浏览，搜索和其他用户的行动）是在现代网络上的许多社会功能的一个关键因素。这些数据通常是由于吞吐量的要求而通过处理日志和日志聚合来解决。 对于像Hadoop一样的日志数据和离线分析系统，但又要求实时处理的限制，这是一个可行的解决方案。Kafka的目的是通过Hadoop的并行加载机制来统一线上和离线的消息处理，也是为了通过集群来提供实时的消息。</p>
-<p>SS是Spark上的一个流式处理框架，可以面向海量数据实现高吞吐量、高容错的实时计算。SS支持多种类型数据源，包括Kafka、Flume、twitter、zeroMQ、Kinesis以及TCP sockets等。SS实时接收数据流，并按照一定的时间间隔将连续的数据流拆分成一批批离散的数据集；然后应用诸如map、reduce、join和window等丰富的API进行复杂的数据处理；最后提交给Spark引擎进行运算，得到批量结果数据，因此其也被称为准实时处理系统。而结果也能保存在很多地方，如HDFS，数据库等。另外SS也能和MLlib（机器学习）以及GraphX（图计算）完美融合。</p>
-<p>下面我们就来一个SS对接Kafka的案例</p>
-<p>Kafka Product API</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// 设置配置文件，这些配置文件都是源码中找的</span></span><br><span class="line">    <span class="keyword">val</span> props = <span class="keyword">new</span> <span class="type">Properties</span>()</span><br><span class="line">    props.put(<span class="string">"bootstrap.servers"</span>, <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>);</span><br><span class="line">    props.put(<span class="string">"acks"</span>, <span class="string">"all"</span>);</span><br><span class="line">    props.put(<span class="string">"key.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    props.put(<span class="string">"value.serializer"</span>, <span class="string">"org.apache.kafka.common.serialization.StringSerializer"</span>);</span><br><span class="line">    <span class="comment">// 创建producer</span></span><br><span class="line">    <span class="keyword">val</span> producer = <span class="keyword">new</span> <span class="type">KafkaProducer</span>[<span class="type">String</span>, <span class="type">String</span>](props)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 循环发送数据</span></span><br><span class="line">    <span class="keyword">for</span> (i &lt;- <span class="number">1</span> to <span class="number">100</span>)&#123;</span><br><span class="line">        <span class="keyword">val</span> par = i%<span class="number">3</span> <span class="comment">// 数组走的分区</span></span><br><span class="line">        producer.send(<span class="keyword">new</span> <span class="type">ProducerRecord</span>[<span class="type">String</span>, <span class="type">String</span>](<span class="string">"test"</span>,par,<span class="string">""</span>,<span class="type">Integer</span>.toString(i)));</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 关闭producer</span></span><br><span class="line">    producer.close();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>Spark Streaming Consumer</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建ssc</span></span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 连接kafka配置参数</span></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 可以设置多个topic</span></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// 创建DirectStream</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line">    <span class="comment">// 业务逻辑</span></span><br><span class="line">    stream.map(x =&gt; (x.value(),<span class="number">1</span>)).reduceByKey(_+_)</span><br><span class="line">    .foreachRDD(rdd =&gt; &#123;</span><br><span class="line">        <span class="comment">// 分区操作</span></span><br><span class="line">        rdd.foreachPartition(partition =&gt; &#123;</span><br><span class="line">            <span class="comment">// 一个分区连一个jedis</span></span><br><span class="line">            <span class="keyword">val</span> jedis = <span class="type">RedisUtils</span>.getJedis</span><br><span class="line">            partition.foreach(fields =&gt;&#123;</span><br><span class="line">                <span class="comment">// 保存到Hash中</span></span><br><span class="line">                jedis.hincrBy(<span class="string">"wc_redis"</span>,fields._1,fields._2)</span><br><span class="line">            &#125;)</span><br><span class="line">            <span class="comment">// 关闭连接</span></span><br><span class="line">            jedis.close()</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>现在，无论在哪里写进Kafka的数据，都可以从Spark Streaming的客户端写出来，我们这里保存的是Redis，保存在MySQL是同样的思路。</p>
-<h4 id="KafkaRDD"><a href="#KafkaRDD" class="headerlink" title="KafkaRDD"></a>KafkaRDD</h4><p>最后我们看一下如何在代码中拿到Kafka的Offset</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(<span class="string">"local[2]"</span>).setAppName(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line">    <span class="keyword">val</span> ssc = <span class="keyword">new</span> <span class="type">StreamingContext</span>(conf, <span class="type">Seconds</span>(<span class="number">5</span>))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> kafkaParams = <span class="type">Map</span>[<span class="type">String</span>, <span class="type">Object</span>](</span><br><span class="line">        <span class="string">"bootstrap.servers"</span> -&gt; <span class="string">"hadoop:9090,hadoop:9091,hadoop:9092"</span>,</span><br><span class="line">        <span class="string">"key.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"value.deserializer"</span> -&gt; classOf[<span class="type">StringDeserializer</span>],</span><br><span class="line">        <span class="string">"group.id"</span> -&gt; <span class="string">"use_a_separate_group_id_for_each_stream"</span>,</span><br><span class="line">        <span class="string">"auto.offset.reset"</span> -&gt; <span class="string">"earliest"</span>, <span class="comment">//latest</span></span><br><span class="line">        <span class="string">"enable.auto.commit"</span> -&gt; (<span class="literal">false</span>: java.lang.<span class="type">Boolean</span>)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="keyword">val</span> topics = <span class="type">Array</span>(<span class="string">"test"</span>)</span><br><span class="line">    <span class="comment">// stream不能做任何操作，否则得到的不是一个KafkaRDD</span></span><br><span class="line">    <span class="keyword">val</span> stream = <span class="type">KafkaUtils</span>.createDirectStream[<span class="type">String</span>, <span class="type">String</span>](</span><br><span class="line">        ssc,</span><br><span class="line">        <span class="type">PreferConsistent</span>,</span><br><span class="line">        <span class="type">Subscribe</span>[<span class="type">String</span>, <span class="type">String</span>](topics, kafkaParams)</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 必须先拿到HasOffsetRanges，才能开始业务逻辑</span></span><br><span class="line">    stream.foreachRDD &#123; rdd =&gt;</span><br><span class="line">        <span class="comment">// 通过rdd.asInstanceOf[HasOffsetRanges]拿到KafkaRDD，它保存了每个分区的offset</span></span><br><span class="line">        <span class="keyword">val</span> offsetRanges = rdd.asInstanceOf[<span class="type">HasOffsetRanges</span>].offsetRanges</span><br><span class="line">        <span class="comment">// KafkaRDD维护了topic、partition、fromOffset、untilOffset</span></span><br><span class="line">        offsetRanges.foreach &#123; o =&gt;</span><br><span class="line">            println(<span class="string">s"<span class="subst">$&#123;o.topic&#125;</span> <span class="subst">$&#123;o.partition&#125;</span> <span class="subst">$&#123;o.fromOffset&#125;</span> <span class="subst">$&#123;o.untilOffset&#125;</span>"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 启动程序</span></span><br><span class="line">    ssc.start()</span><br><span class="line">    ssc.awaitTermination()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>注意：</p>
-<ul>
-<li>对HasOffsetRanges的类型转换只有在对createDirectStream的结果调用的第一个方法中完成时才会成功，而不是在随后的方法链中。</li>
-<li>RDD分区和Kafka分区之间的一一映射会在RDD发生shuffle或者repartition操作之后改变，比如reduceByKey或window</li>
-</ul>
-]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>SparkStreaming</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spark 序列化</title>
     <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
     <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
@@ -1892,27 +1892,6 @@ csv读取数据注意使用几个参数</li>
       </categories>
       <tags>
         <tag>Spark</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>生产相关配置</title>
-    <url>/2020/03/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>记录了生产的组件版本、数据量大小、提交方式、分配的资源数量</p>
-<a id="more"></a>
-<h3 id="用户行为分析（离线）"><a href="#用户行为分析（离线）" class="headerlink" title="用户行为分析（离线）"></a>用户行为分析（离线）</h3><h4 id="组件版本"><a href="#组件版本" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
-<h4 id="数据量大小"><a href="#数据量大小" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>用户表数据量    5000w<br>流水表        8e<br>一个block    80M左右</p>
-<h4 id="提交方式"><a href="#提交方式" class="headerlink" title="提交方式"></a>提交方式</h4><p>Spark on Yarn</p>
-<h4 id="分配的资源数量"><a href="#分配的资源数量" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
-<h3 id="数据中心预警平台（实时）"><a href="#数据中心预警平台（实时）" class="headerlink" title="数据中心预警平台（实时）"></a>数据中心预警平台（实时）</h3><h4 id="组件版本-1"><a href="#组件版本-1" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>Kafka    4.1.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
-<h4 id="数据量大小-1"><a href="#数据量大小-1" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>…</p>
-<h4 id="提交方式-1"><a href="#提交方式-1" class="headerlink" title="提交方式"></a>提交方式</h4><p>…</p>
-<h4 id="分配的资源数量-1"><a href="#分配的资源数量-1" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
-]]></content>
-      <categories>
-        <category>生产配置</category>
-      </categories>
-      <tags>
-        <tag>生产配置</tag>
       </tags>
   </entry>
   <entry>
@@ -1948,6 +1927,27 @@ csv读取数据注意使用几个参数</li>
       </categories>
       <tags>
         <tag>Kafka</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>生产相关配置</title>
+    <url>/2020/03/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>记录了生产的组件版本、数据量大小、提交方式、分配的资源数量</p>
+<a id="more"></a>
+<h3 id="用户行为分析（离线）"><a href="#用户行为分析（离线）" class="headerlink" title="用户行为分析（离线）"></a>用户行为分析（离线）</h3><h4 id="组件版本"><a href="#组件版本" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
+<h4 id="数据量大小"><a href="#数据量大小" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>用户表数据量    5000w<br>流水表        8e<br>一个block    80M左右</p>
+<h4 id="提交方式"><a href="#提交方式" class="headerlink" title="提交方式"></a>提交方式</h4><p>Spark on Yarn</p>
+<h4 id="分配的资源数量"><a href="#分配的资源数量" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
+<h3 id="数据中心预警平台（实时）"><a href="#数据中心预警平台（实时）" class="headerlink" title="数据中心预警平台（实时）"></a>数据中心预警平台（实时）</h3><h4 id="组件版本-1"><a href="#组件版本-1" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>Kafka    4.1.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
+<h4 id="数据量大小-1"><a href="#数据量大小-1" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>…</p>
+<h4 id="提交方式-1"><a href="#提交方式-1" class="headerlink" title="提交方式"></a>提交方式</h4><p>…</p>
+<h4 id="分配的资源数量-1"><a href="#分配的资源数量-1" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
+]]></content>
+      <categories>
+        <category>生产配置</category>
+      </categories>
+      <tags>
+        <tag>生产配置</tag>
       </tags>
   </entry>
 </search>
