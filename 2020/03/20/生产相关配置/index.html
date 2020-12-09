@@ -32,7 +32,7 @@
 <meta property="og:description" content="记录了生产的组件版本、数据量大小、提交方式、分配的资源数量">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2020-03-20T14:32:05.000Z">
-<meta property="article:modified_time" content="2020-12-07T15:43:15.617Z">
+<meta property="article:modified_time" content="2020-12-09T11:54:49.579Z">
 <meta property="article:author" content="EmerkFu">
 <meta property="article:tag" content="生产配置">
 <meta name="twitter:card" content="summary">
@@ -139,7 +139,7 @@
   </li>
         <li class="menu-item menu-item-tags">
 
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">20</span></a>
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">22</span></a>
 
   </li>
         <li class="menu-item menu-item-categories">
@@ -149,7 +149,7 @@
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">37</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">45</span></a>
 
   </li>
       <li class="menu-item menu-item-search">
@@ -195,7 +195,7 @@
 
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+    <div class="sidebar-inner sidebar-overview-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           文章目录
@@ -208,7 +208,6 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <section class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#用户行为分析（离线）"><span class="nav-number">1.</span> <span class="nav-text">用户行为分析（离线）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#组件版本"><span class="nav-number">1.1.</span> <span class="nav-text">组件版本</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#数据量大小"><span class="nav-number">1.2.</span> <span class="nav-text">数据量大小</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#提交方式"><span class="nav-number">1.3.</span> <span class="nav-text">提交方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#分配的资源数量"><span class="nav-number">1.4.</span> <span class="nav-text">分配的资源数量</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据中心预警平台（实时）"><span class="nav-number">2.</span> <span class="nav-text">数据中心预警平台（实时）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#组件版本-1"><span class="nav-number">2.1.</span> <span class="nav-text">组件版本</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#数据量大小-1"><span class="nav-number">2.2.</span> <span class="nav-text">数据量大小</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#提交方式-1"><span class="nav-number">2.3.</span> <span class="nav-text">提交方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#分配的资源数量-1"><span class="nav-number">2.4.</span> <span class="nav-text">分配的资源数量</span></a></li></ol></li></ol></div>
         </section>
         <!--/noindex-->
 
@@ -222,7 +221,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">37</span>
+          <span class="site-state-item-count">45</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -235,7 +234,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-count">22</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -327,17 +326,15 @@
     
     
     <div class="post-body" itemprop="articleBody">
-        <p>记录了生产的组件版本、数据量大小、提交方式、分配的资源数量</p>
-<a id="more"></a>
-<h3 id="用户行为分析（离线）"><a href="#用户行为分析（离线）" class="headerlink" title="用户行为分析（离线）"></a>用户行为分析（离线）</h3><h4 id="组件版本"><a href="#组件版本" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
-<h4 id="数据量大小"><a href="#数据量大小" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>用户表数据量    5000w<br>流水表        8e<br>一个block    80M左右</p>
-<h4 id="提交方式"><a href="#提交方式" class="headerlink" title="提交方式"></a>提交方式</h4><p>Spark on Yarn</p>
-<h4 id="分配的资源数量"><a href="#分配的资源数量" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
-<h3 id="数据中心预警平台（实时）"><a href="#数据中心预警平台（实时）" class="headerlink" title="数据中心预警平台（实时）"></a>数据中心预警平台（实时）</h3><h4 id="组件版本-1"><a href="#组件版本-1" class="headerlink" title="组件版本"></a>组件版本</h4><p>Hadoop    2.6.0<br>Spark    2.2.0<br>Kafka    4.1.0<br>hive    1.1.0<br>MySQL    5.1.x<br>jdk        1.8<br>Scala    2.12.10</p>
-<h4 id="数据量大小-1"><a href="#数据量大小-1" class="headerlink" title="数据量大小"></a>数据量大小</h4><p>…</p>
-<h4 id="提交方式-1"><a href="#提交方式-1" class="headerlink" title="提交方式"></a>提交方式</h4><p>…</p>
-<h4 id="分配的资源数量-1"><a href="#分配的资源数量-1" class="headerlink" title="分配的资源数量"></a>分配的资源数量</h4><p>…</p>
-
+        <div id="hexo-blog-encrypt" data-wpm="Oh, this is an invalid password. Check and try again, please." data-whm="OOPS, these decrypted content may changed, but you can still have a look.">
+  <div class="hbe-input-container">
+  <input type="password" id="hbePass" placeholder="" />
+    <label for="hbePass">请输入密码...</label>
+    <div class="bottom-line"></div>
+  </div>
+  <script id="hbeData" type="hbeData" data-hmacdigest="12f48c65f2c5486c83cc26f9ee1e7a0eb0129d98a457d457e757b7123d9c90fb">4b22066251ec3caa8554dd191db15cdae010c5ac6bc8435a0cfe738a4401ccaf7c2f9ccee75a95359144e85d16f029ce51028f3ca0ac57f1b98feeefde1ca74627ea2c338f5e2f5835fb75214b9ea81fc76196c2badf596e8a9ea7d98ab1d677b655171e114571c9b9b0b6fc289d52d7ecb21929a29b52a709f249ce80327a7c03ef70c41f9793be4411fb08e80b4a9476dd3f72f18127d5763ec1ffb25d0ea48d839473da4ff69681b04e7270dfabb2a96e1e8ef8dd5217f07ed573c51b9866deff1d376b35ace529dcd918309c66d2fef9ffd1999940d6d21c28bf369d4317e415646b77c44dfe1e5de144de92eed9bcc4a16b1ca444123f03f5d7857329b767d3334b6409f7480848a63b6161eb24973be3be76dc685fa893aad946478397f911723d4e3a98e8bde07c94ca4ce10140d1b7cc6129b51ed382e2072e7dc8d541cb10dc087020bcd0498da93c821e04e4fe50245836e6fa6ec7a7fd8bd1c211de0f4cefad9d0a89804f7677f073c406f1ec5ec9247d1bb330219090ab6d46c49668ad7102021ded5f753c28734a459584d47873864c816bf94bb59fe62e3fc8e5bd5b47c78f1e7eb57ca7d0c58128795737fb896c22ec917a1366be31e2049601621ffa503e98d1bfe128ceb109d83e11bea6213030d9fa48b9b91bcc777b557476c9aaf4fa2b0f4e67ccb52a4f67b607d1c8a6801fab4caec2d89ed1688f4ecdc420de6275dedfadf33348cdb377e8ed1cfac3d4e3ae5e083a4c5d4b67d41c89672b6af17aff062c91042f58e455fdbe751002a4db339c32c661ced2bb8470db1d97766945ab058924052a6053428ef9f41f86af03a487111ea86c9bdc354f8b7ab5d0f4d7d9f9a745911793b455302041727dd7b77efe8644642e51cc30f6b4576089dfc4a8a10ed8fc1e0dbb730455cc72d66c41bfb1b1e56c7b454947bea64d3c0264075c89c42c4fcc11dd7534a251eebefff4468fed8692d938bfdb01b1518d401421617c7510c204413241e1bc59049675ccbabc6c7be608b78411c3fc8cbef0e1c36c168a560ed8fb6a1879e9dc8034c9da5e3f5528221ca52ee4e9899797bc5cd843da4c1ef3400d25ace3259b6eb7e3525dfb47417b55006828e74430d56d94705baa1e6241449364ed45e92193ae540a943fa9655b44bb19f9372a4215fc97109aa3c66a11de063a0960f9a7e5e126de03c9dfac6c40c8b4f08b99c09b6fe8e653b603f6c098818a277ad47dfc6e30fa8b03fbb964945c43d8a13351aa3243128aa30596498dac872b5572ae4e1e945d53c353eddc16667ea5930137b96255a8ccc3ad7df1bc482a33d903ec399b6c41dd437407f876aac477d74f302fe79314db10234931d1ee54395dd044c17fc101fb9a73c59085ae9335acd7e9bce3ad2868e34be335e40eaa45fbe625334c3722146b7fe66ec800c77f323a2471d13f8b4b326d2e39ac98eaae8059f871fa04ef326de19aa6ffda59e2ec905f7f577569e5c488fd76d0800f763f0e6dbf27c179ed93eb2c8a81a55c88435b4237b789466773601be4c97e619bb7da075e6b7471c041b6e02579512e4178d600812025f21ed7d76d65fbf83f737c283395a9c2df078d806c2330c919ac635458cc6ef04f7dbdc8a3248dfebe5034c1a624ea4aa8fb83df375bb8e09430d8ef58023d3deb565aae122b9121b427dfe943a5123ff3743ededdcf5d5c7fc4ce5fdff61ddee42260ee22616b467ea5b57590bc10c03afce8b8f37f3ce5b525333e68c5e311de4988f959639e65e801fcb8f2e9e2970e37b09af97806d32971fb27a6d889da13a09a9b9dc3684381dfd3e0e0e7e3449bf8bbf23def53dc290ecf8d324ee8b12beff7149a0b0ff79c3a79ca75371b37e8cbbf3d0c3fafc2dc380b8e52d6ed3cb22d3e26dc27ebf7e7dd670837411554f850752f1f443108169e8a1c6d82a913c09377255b8f8c4cb08c7d517a04c8a89148eb302fe595bb17df8acb04fc50b6fdb904cccc1ee3656a1254a32490e00a92e3d38f36f158a46214fa2d12b13684b8c3c1d2bb6c8ddd8b3347abb5f58ec8f0870150cb2fbb84cbec90643346d687b91ad666c9bd0defe1665242bd2bd75c2f3602499de92bb3ae5273dbbe5c9556f79d399922c56f22778b041f2480c90bfebec0eea6c6cbab2aa40348222f6bfe522ed3c6f71e134cf057c53efc0f403b7679d0741cbfa17f5834e9f50ae5dca9aae2f2481b564b91398d6b3a4e82a69d10ffba32e8e1eb88913be7f917c402a959ec0b0ecb7df4733c2838c1d10370d4b081a2cd734ad3998f4db18bde5d6f18b08bf1d6d2e724efac5afdfb6f0542f57732df59ac355631e4ba0694b25cb0bc01e50d7091a8f610b6ad0624be46881ac0cfac5e981c58d1b7afe032998a564a994e09a8e42e4f32685ecb77c05d1c65a5b6120058c8a552a4d7a648cd9a2a7ae3ce09096452886542759d8ffe8bd3eab97325165f6432be03ac1a6fb7688c966f19b4b78ba0fe2d8c8c13fdb2803cdf44553638b2cf73d74eecb0ef8412346e43f4a1ba880acbea74421dcfb2903d222b6d04ed434ee8daa65172f11b0796b0abe0c8ba500f02a1b60270f1b0958e699726082ab19a9e3e5a75ef12d90cfbf444218e10744d4868f93966</script>
+</div>
+<script src="/lib/blog-encrypt.js"></script><link href="/css/blog-encrypt.css" rel="stylesheet" type="text/css">
     </div>
 
     
@@ -407,7 +404,7 @@
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
-  <span class="author" itemprop="copyrightHolder">本博客所有文章除特别声明外，著作权归作者所有，转载请注明出处。</span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
 </div>
 <div class="busuanzi-count">
     <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
