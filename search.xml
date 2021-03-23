@@ -55,6 +55,191 @@
       </tags>
   </entry>
   <entry>
+    <title>Flume架构基础</title>
+    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
+    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
+<a id="more"></a>
+<hr>
+<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
+<li>可以和任意存储进程集成。</li>
+<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
+<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
+</ol>
+<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
+<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
+<ul>
+<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
+</li>
+<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
+</li>
+<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
+</li>
+</ul>
+<ol>
+<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
+<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
+</ol>
+<ul>
+<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
+</li>
+<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
+</li>
+</ul>
+<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
+<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
+<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
+<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
+<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
+<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
+<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
+<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
+]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HBase 基本概念和使用</title>
+    <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
+    <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
+<p>HBase是基于列的而不是基于行的模式。</p>
+<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
+<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+<a id="more"></a>
+
+<hr>
+<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
+<li>监控RegionServer</li>
+<li>处理RegionServer故障转移</li>
+<li>处理元数据的变更</li>
+<li>处理region的分配或移除</li>
+<li>在空闲时间进行数据的负载均衡</li>
+<li>通过zookeeper发布自己的位置给客户端</li>
+</ol>
+<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
+<li>负责存储HBase的实际数据</li>
+<li>处理分配给它的Region</li>
+<li>刷新缓存到HDFS</li>
+<li>维护HLog</li>
+<li>执行压缩</li>
+<li>负责处理Region分片</li>
+</ol>
+<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
+<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
+<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
+</ul>
+<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
+<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
+<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
+<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
+<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
+<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
+<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
+<ul>
+<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
+<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
+<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
+<li>Zookeeper中记录了-ROOT-表的location</li>
+<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
+</ul>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
+<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
+<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
+<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
+<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
+<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
+<ol>
+<li>管理用户对Table的增、删、改、查操作</li>
+<li>管理HRegionServer的负载均衡，调整Region分布</li>
+<li>在Region Split后，负责新Region的分配</li>
+<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
+</ol>
+<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
+<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
+<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
+<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
+<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
+<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
+<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
+<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
+<ol>
+<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
+<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
+</ol>
+<p>Zookeeper中hbase的节点的存储信息：</p>
+<ul>
+<li>rs：regionserver节点信息</li>
+<li>table-lock：hbase的除meta以外的所有表</li>
+<li>Table：hbase的所有的表</li>
+</ul>
+<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
+<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
+<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
+</ul>
+<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
+<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
+<li>进入HBase客户端命令行<br>bin/hbase shell</li>
+<li>查看帮助命令<br>hbase(main)&gt; help</li>
+<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
+<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
+</ul>
+<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
+<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
+</li>
+<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
+</li>
+<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
+</li>
+<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
+</li>
+<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
+</li>
+<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
+</li>
+<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
+</li>
+<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
+</li>
+<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
+</li>
+<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
+</li>
+<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
+</li>
+</ul>
+<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
+<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
+</li>
+<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
+</li>
+<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
+</li>
+<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
+</li>
+<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
+</li>
+<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
+</li>
+<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
+</li>
+<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>HBase</category>
+      </categories>
+      <tags>
+        <tag>HBase</tag>
+        <tag>基本概念</tag>
+        <tag>常用命令</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Flume案例</title>
     <url>/2018/08/17/Flume%E6%A1%88%E4%BE%8B/</url>
     <content><![CDATA[<p>Flume的一些配置案例</p>
@@ -231,53 +416,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Flume架构基础</title>
-    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
-    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
-<a id="more"></a>
-<hr>
-<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
-<li>可以和任意存储进程集成。</li>
-<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
-<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
-</ol>
-<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
-<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
-<ul>
-<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
-</li>
-<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
-</li>
-<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
-</li>
-</ul>
-<ol>
-<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
-<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
-</ol>
-<ul>
-<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
-</li>
-<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
-</li>
-</ul>
-<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
-<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
-<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
-<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
-<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
-<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
-<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
-<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
-]]></content>
-      <categories>
-        <category>Flume</category>
-      </categories>
-      <tags>
-        <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>HDFS 读写流程</title>
     <url>/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<p>关于HDFS文件的读写流程</p>
@@ -307,146 +445,69 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
-    <title>HBase 基本概念和使用</title>
-    <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
-    <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
-<p>HBase是基于列的而不是基于行的模式。</p>
-<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
-<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+    <title>Hadoop Block和副本数&amp;小文件问题</title>
+    <url>/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
 <a id="more"></a>
-
 <hr>
-<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
-<li>监控RegionServer</li>
-<li>处理RegionServer故障转移</li>
-<li>处理元数据的变更</li>
-<li>处理region的分配或移除</li>
-<li>在空闲时间进行数据的负载均衡</li>
-<li>通过zookeeper发布自己的位置给客户端</li>
-</ol>
-<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
-<li>负责存储HBase的实际数据</li>
-<li>处理分配给它的Region</li>
-<li>刷新缓存到HDFS</li>
-<li>维护HLog</li>
-<li>执行压缩</li>
-<li>负责处理Region分片</li>
-</ol>
-<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
-<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
-<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
-</ul>
-<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
-<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
-<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
-<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
-<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
-<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
-<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
-<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
-<ul>
-<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
-<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
-<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
-<li>Zookeeper中记录了-ROOT-表的location</li>
-<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
-</ul>
-<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
-<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
-<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
-<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
-<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
-<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
+<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
+<p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
+<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
 <ol>
-<li>管理用户对Table的增、删、改、查操作</li>
-<li>管理HRegionServer的负载均衡，调整Region分布</li>
-<li>在Region Split后，负责新Region的分配</li>
-<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
+<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
+<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
+<li>第三个副本：与第二个副本相同机架的不同节点上</li>
+<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
 </ol>
-<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
-<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
-<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
-<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
-<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
-<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
-<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
-<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
-<ol>
-<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
-<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
-</ol>
-<p>Zookeeper中hbase的节点的存储信息：</p>
 <ul>
-<li>rs：regionserver节点信息</li>
-<li>table-lock：hbase的除meta以外的所有表</li>
-<li>Table：hbase的所有的表</li>
+<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
+<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
 </ul>
-<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
-<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
-<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
-</ul>
-<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
-<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
-<li>进入HBase客户端命令行<br>bin/hbase shell</li>
-<li>查看帮助命令<br>hbase(main)&gt; help</li>
-<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
-<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
-</ul>
-<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
-<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
-</li>
-<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
-</li>
-<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
-</li>
-<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
-</li>
-<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
-</li>
-<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
-</li>
-<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
-</li>
-<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
-</li>
-<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
-</li>
-<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
-</li>
-<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
-</li>
-</ul>
-<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
-<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
-</li>
-<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
-</li>
-<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
-</li>
-<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
-</li>
-<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
-</li>
-<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
-</li>
-<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
-</li>
-<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
-</li>
-</ul>
+<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
+<p>官网中的相应的默认参数如下：<br><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
+<p>可以看到，默认块大小为128M，默认副本数为3.</p>
+<p>这里会有一个常规的面试题：</p>
+<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
+<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
+<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
+<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
+<p>小文件的危害：</p>
+<ol>
+<li>HDFS不适合大量小文件的存储，因namenode将文件系统的元数据存放在内存中，因此存储的文件数目受限于 namenode的内存大小。HDFS中每个文件、目录、数据块占用150Bytes。如果存放的文件数目过多的话会占用很大的内存甚至撑爆内存。</li>
+<li>HDFS适用于高吞吐量，而不适合低时间延迟的访问。如果同时存入大量的小文件会花费很长的时间。</li>
+<li>流式读取的方式，不适合多用户写入，以及任意位置写入。如果访问小文件，则必须从一个datanode跳转到另外一个datanode，这样大大降低了读取性能。</li>
+</ol>
+<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
+<ol>
+<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS。</li>
+<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并。</li>
+</ol>
+<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
+<ol>
+<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
+<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
+<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
+<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
+</ol>
+<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
+<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
+<h4 id="小文件合并脚本"><a href="#小文件合并脚本" class="headerlink" title="小文件合并脚本"></a>小文件合并脚本</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.practice.spark</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.fs.&#123;<span class="type">FileSystem</span>, <span class="type">Path</span>&#125;</span><br><span class="line"><span class="keyword">import</span> org.apache.spark.internal.<span class="type">Logging</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.rdd.<span class="type">RDD</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.&#123;<span class="type">DataFrame</span>, <span class="type">SparkSession</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">miniFileMerge</span> <span class="keyword">extends</span> <span class="title">Logging</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> sparkSession = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>).appName(<span class="keyword">this</span>.getClass.getSimpleName).getOrCreate()</span><br><span class="line">    <span class="keyword">val</span> target = <span class="string">"hdfs://fushuaidate:9000/practice/minifilemerge"</span> <span class="comment">//待合并文件夹</span></span><br><span class="line">    <span class="keyword">val</span> output = <span class="keyword">new</span> <span class="type">Path</span>(target)</span><br><span class="line">    <span class="keyword">val</span> hdfs: <span class="type">FileSystem</span> = output.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)</span><br><span class="line">    <span class="keyword">val</span> partitions = makeCoalesce(hdfs, output, <span class="number">5</span>)</span><br><span class="line">    println(<span class="string">s"合并后文件数量为：<span class="subst">$partitions</span>"</span>)</span><br><span class="line">    <span class="keyword">val</span> paths: <span class="type">List</span>[<span class="type">String</span>] = getPaths(hdfs, output)</span><br><span class="line">    <span class="keyword">val</span> mergeFiles: <span class="type">RDD</span>[<span class="type">String</span>] = sparkSession.sparkContext.textFile(target).coalesce(partitions)</span><br><span class="line">    <span class="keyword">val</span> dataFrame = rddToDF(sparkSession, mergeFiles)</span><br><span class="line">    dataFrame.write.text(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>)</span><br><span class="line">    <span class="keyword">val</span> resStatus = hdfs.listStatus(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">//移动结果文件</span></span><br><span class="line">    resStatus.foreach(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">if</span> (x.getLen &gt; <span class="number">0</span>) &#123; <span class="comment">//排除spark自动生成的_success文件</span></span><br><span class="line">        hdfs.rename(x.getPath, output)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    println(<span class="string">s"merge <span class="subst">$&#123;paths.size&#125;</span> files =&gt; <span class="subst">$partitions</span> files"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除临时目录</span></span><br><span class="line">    hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>), <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除原小文件</span></span><br><span class="line">    paths.foreach(x =&gt; &#123;</span><br><span class="line">      hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(x), <span class="literal">true</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">makeCoalesce</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>, size: <span class="type">Int</span>): <span class="type">Int</span> = &#123;</span><br><span class="line">    <span class="keyword">var</span> num = <span class="number">0</span>L</span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      num += x.getLen</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">val</span> partitions = (num / <span class="number">1024</span> / <span class="number">1024</span> / size).toInt + <span class="number">1</span></span><br><span class="line">    logInfo(<span class="string">"分区数为："</span> + partitions)</span><br><span class="line">    partitions</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">getPaths</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>): <span class="type">List</span>[<span class="type">String</span>] = &#123;</span><br><span class="line">    <span class="keyword">var</span> paths: <span class="type">List</span>[<span class="type">String</span>] = <span class="type">List</span>.empty <span class="comment">//文件名字符串</span></span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      x.getLen</span><br><span class="line">      x.getPath</span><br><span class="line">      paths :+= x.getPath.toString</span><br><span class="line">      println(x.getLen + <span class="string">"|"</span> + x.getPath)</span><br><span class="line">    &#125;)</span><br><span class="line">    paths</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">rddToDF</span></span>(sparkSession: <span class="type">SparkSession</span>, rdd: <span class="type">RDD</span>[<span class="type">String</span>]): <span class="type">DataFrame</span> = &#123;</span><br><span class="line">    <span class="keyword">import</span> sparkSession.implicits._</span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">"\t"</span>)</span><br><span class="line">      <span class="keyword">val</span> date = splits(<span class="number">0</span>).trim</span><br><span class="line">      <span class="keyword">val</span> ip = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> domain = splits(<span class="number">6</span>).trim</span><br><span class="line">      date + <span class="string">"\t"</span> + ip + <span class="string">"\t"</span> + domain</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line">    infoDF</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="本地调试修改owner"><a href="#本地调试修改owner" class="headerlink" title="本地调试修改owner"></a>本地调试修改owner</h4><p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E6%9C%AC%E5%9C%B0%E8%B0%83%E8%AF%95%E4%BF%AE%E6%94%B9owner.png" alt="本地调试修改owner"></p>
 ]]></content>
       <categories>
-        <category>HBase</category>
+        <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
-        <tag>HBase</tag>
-        <tag>常用命令</tag>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -538,8 +599,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -564,8 +625,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
         <tag>Shuffle</tag>
       </tags>
   </entry>
@@ -612,67 +673,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Hadoop Block和副本数&amp;小文件问题</title>
-    <url>/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
-    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
-<a id="more"></a>
-<hr>
-<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
-<p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
-<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
-<ol>
-<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
-<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
-<li>第三个副本：与第二个副本相同机架的不同节点上</li>
-<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
-</ol>
-<ul>
-<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
-<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
-</ul>
-<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
-<p>官网中的相应的默认参数如下：<br><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
-<p>可以看到，默认块大小为128M，默认副本数为3.</p>
-<p>这里会有一个常规的面试题：</p>
-<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
-<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
-<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
-<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
-<p>小文件的危害：</p>
-<ol>
-<li>HDFS不适合大量小文件的存储，因namenode将文件系统的元数据存放在内存中，因此存储的文件数目受限于 namenode的内存大小。HDFS中每个文件、目录、数据块占用150Bytes。如果存放的文件数目过多的话会占用很大的内存甚至撑爆内存。</li>
-<li>HDFS适用于高吞吐量，而不适合低时间延迟的访问。如果同时存入大量的小文件会花费很长的时间。</li>
-<li>流式读取的方式，不适合多用户写入，以及任意位置写入。如果访问小文件，则必须从一个datanode跳转到另外一个datanode，这样大大降低了读取性能。</li>
-</ol>
-<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
-<ol>
-<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS。</li>
-<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并。</li>
-</ol>
-<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
-<ol>
-<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
-<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
-<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
-<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
-</ol>
-<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
-<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
-<h4 id="小文件合并脚本"><a href="#小文件合并脚本" class="headerlink" title="小文件合并脚本"></a>小文件合并脚本</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.practice.spark</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.fs.&#123;<span class="type">FileSystem</span>, <span class="type">Path</span>&#125;</span><br><span class="line"><span class="keyword">import</span> org.apache.spark.internal.<span class="type">Logging</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.rdd.<span class="type">RDD</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.&#123;<span class="type">DataFrame</span>, <span class="type">SparkSession</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">miniFileMerge</span> <span class="keyword">extends</span> <span class="title">Logging</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> sparkSession = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>).appName(<span class="keyword">this</span>.getClass.getSimpleName).getOrCreate()</span><br><span class="line">    <span class="keyword">val</span> target = <span class="string">"hdfs://fushuaidate:9000/practice/minifilemerge"</span> <span class="comment">//待合并文件夹</span></span><br><span class="line">    <span class="keyword">val</span> output = <span class="keyword">new</span> <span class="type">Path</span>(target)</span><br><span class="line">    <span class="keyword">val</span> hdfs: <span class="type">FileSystem</span> = output.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)</span><br><span class="line">    <span class="keyword">val</span> partitions = makeCoalesce(hdfs, output, <span class="number">5</span>)</span><br><span class="line">    println(<span class="string">s"合并后文件数量为：<span class="subst">$partitions</span>"</span>)</span><br><span class="line">    <span class="keyword">val</span> paths: <span class="type">List</span>[<span class="type">String</span>] = getPaths(hdfs, output)</span><br><span class="line">    <span class="keyword">val</span> mergeFiles: <span class="type">RDD</span>[<span class="type">String</span>] = sparkSession.sparkContext.textFile(target).coalesce(partitions)</span><br><span class="line">    <span class="keyword">val</span> dataFrame = rddToDF(sparkSession, mergeFiles)</span><br><span class="line">    dataFrame.write.text(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>)</span><br><span class="line">    <span class="keyword">val</span> resStatus = hdfs.listStatus(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">//移动结果文件</span></span><br><span class="line">    resStatus.foreach(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">if</span> (x.getLen &gt; <span class="number">0</span>) &#123; <span class="comment">//排除spark自动生成的_success文件</span></span><br><span class="line">        hdfs.rename(x.getPath, output)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    println(<span class="string">s"merge <span class="subst">$&#123;paths.size&#125;</span> files =&gt; <span class="subst">$partitions</span> files"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除临时目录</span></span><br><span class="line">    hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>), <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除原小文件</span></span><br><span class="line">    paths.foreach(x =&gt; &#123;</span><br><span class="line">      hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(x), <span class="literal">true</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">makeCoalesce</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>, size: <span class="type">Int</span>): <span class="type">Int</span> = &#123;</span><br><span class="line">    <span class="keyword">var</span> num = <span class="number">0</span>L</span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      num += x.getLen</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">val</span> partitions = (num / <span class="number">1024</span> / <span class="number">1024</span> / size).toInt + <span class="number">1</span></span><br><span class="line">    logInfo(<span class="string">"分区数为："</span> + partitions)</span><br><span class="line">    partitions</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">getPaths</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>): <span class="type">List</span>[<span class="type">String</span>] = &#123;</span><br><span class="line">    <span class="keyword">var</span> paths: <span class="type">List</span>[<span class="type">String</span>] = <span class="type">List</span>.empty <span class="comment">//文件名字符串</span></span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      x.getLen</span><br><span class="line">      x.getPath</span><br><span class="line">      paths :+= x.getPath.toString</span><br><span class="line">      println(x.getLen + <span class="string">"|"</span> + x.getPath)</span><br><span class="line">    &#125;)</span><br><span class="line">    paths</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">rddToDF</span></span>(sparkSession: <span class="type">SparkSession</span>, rdd: <span class="type">RDD</span>[<span class="type">String</span>]): <span class="type">DataFrame</span> = &#123;</span><br><span class="line">    <span class="keyword">import</span> sparkSession.implicits._</span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">"\t"</span>)</span><br><span class="line">      <span class="keyword">val</span> date = splits(<span class="number">0</span>).trim</span><br><span class="line">      <span class="keyword">val</span> ip = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> domain = splits(<span class="number">6</span>).trim</span><br><span class="line">      date + <span class="string">"\t"</span> + ip + <span class="string">"\t"</span> + domain</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line">    infoDF</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="本地调试修改owner"><a href="#本地调试修改owner" class="headerlink" title="本地调试修改owner"></a>本地调试修改owner</h4><p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E6%9C%AC%E5%9C%B0%E8%B0%83%E8%AF%95%E4%BF%AE%E6%94%B9owner.png" alt="本地调试修改owner"></p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>HDFS 常用命令</title>
     <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
     <content><![CDATA[<p>Hadoop的常用命令</p>
@@ -683,8 +683,66 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>常用命令</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 数据倾斜</title>
+    <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
+    <content><![CDATA[<p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
+<a id="more"></a>
+
+<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
+<ol>
+<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>两个表的bucket数量相等</li>
+<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
+<li>必须是应用在bucket mapjoin 的场景中</li>
+<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
+<li>hive.enforce.sorting 设置为true</li>
+<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
+<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>案例<ol>
+<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
+domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
+<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+</li>
+</ol>
+<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
+<p>user表为用户基本表，domain为用户访问域名的宽表</p>
+<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
+<ol>
+<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
+<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
+<ol>
+<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
+<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
+</ol>
+<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
+<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
+<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+        <tag>数据倾斜</tag>
       </tags>
   </entry>
   <entry>
@@ -735,8 +793,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -844,87 +902,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Hive 数据倾斜</title>
-    <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
-    <content><![CDATA[<p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
-<a id="more"></a>
-
-<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
-<ol>
-<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>两个表的bucket数量相等</li>
-<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
-<li>必须是应用在bucket mapjoin 的场景中</li>
-<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
-<li>hive.enforce.sorting 设置为true</li>
-<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
-<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li>案例<ol>
-<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
-domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
-<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-</li>
-</ol>
-<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
-<p>user表为用户基本表，domain为用户访问域名的宽表</p>
-<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
-<ol>
-<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
-<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
-<ol>
-<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
-<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
-</ol>
-<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
-<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
-<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
-        <tag>数据倾斜</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 行列转换</title>
-    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
-    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
-<a id="more"></a>
-
-<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
-<hr>
-<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hue 部署</title>
     <url>/2019/03/09/Hue_%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<h4 id="hue-3-9-0-cdh5-16-2-的部署"><a href="#hue-3-9-0-cdh5-16-2-的部署" class="headerlink" title="hue-3.9.0-cdh5.16.2 的部署"></a>hue-3.9.0-cdh5.16.2 的部署</h4><p>本文主要包括以下内容：</p>
@@ -964,39 +941,71 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>KafkaEagle安装部署</title>
-    <url>/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/</url>
-    <content><![CDATA[<p>Kafka Eagle安装部署和常用命令</p>
+    <title>Hive 行列转换</title>
+    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
+    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
 <a id="more"></a>
+
+<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
 <hr>
-<h4 id="kafka-zookeeper准备"><a href="#kafka-zookeeper准备" class="headerlink" title="kafka+zookeeper准备"></a>kafka+zookeeper准备</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这里假设你已经把kafka+zookeeper安装完成，但是需要注意的几点是：</span><br><span class="line">1.kafka需要开启JMX端口</span><br><span class="line">    找到kafka安装路径，进入到bin文件夹，修改下面的地方。</span><br><span class="line">    vi kafka-server-start.sh</span><br><span class="line">...</span><br><span class="line">if [ "x$KAFKA_HEAP_OPTS" = "x" ]; then</span><br><span class="line">    export KAFKA_HEAP_OPTS="-server -Xms2G -Xmx2G -XX:PermSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:ParallelGCThreads=8 -XX:ConcGCThreads=5 -XX:InitiatingHeapOccupancyPercent=70"</span><br><span class="line">    export JMX_PORT="9999"</span><br><span class="line">fi</span><br><span class="line">...</span><br><span class="line">    参考链接：[kafka添加jmx端口]:https://ke.smartloli.org/3.Manuals/11.Metrics.html</span><br><span class="line"></span><br><span class="line">2.了解kafka在zookeeper配置</span><br><span class="line">    需要查看kafka的server.properties配置</span><br><span class="line">    找到zookeeper.connect此项配置，这个是要配置到eagle里面的</span><br><span class="line">    此处假设zookeeper.connect=192.168.18.11:2181,192.168.18.12:2181,192.168.18.13:2181</span><br><span class="line">    ！！！PS:此处踩了坑，如果说这里的zookeeper地址后面加了其他路径，在kafka-eagle里面也要配置，</span><br><span class="line">    否则在kafka-eagle的Dashboard中无法读取到kafka的信息。比如我们有人安装的kafka集群里面就有    </span><br><span class="line">    192.168.18.11:2181/kafka1或者192.168.18.11:2181/kafka2这种地址。</span><br><span class="line">    如果你在安装kafka的时候没有配置多余路径，这样是最好的，如果有一定要加上。</span><br><span class="line"></span><br><span class="line">3.连通性测试</span><br><span class="line">  安装kafka-eagle的服务器，一定要提前测试是否能连接kafka注册的zookeeper端口</span><br><span class="line">  telnet 端口进行测试</span><br></pre></td></tr></table></figure>
-
-<h4 id="JDK环境准备"><a href="#JDK环境准备" class="headerlink" title="JDK环境准备"></a>JDK环境准备</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">此处就忽略不说了，kafka既然会安装，也是依赖JDK环境的。版本没要求，但是最好是1.7以上。</span><br><span class="line">echo $JAVA_HOME</span><br><span class="line">测试一下JDK环境是否安装成功</span><br></pre></td></tr></table></figure>
-
-<h4 id="开始安装kafka-eagle"><a href="#开始安装kafka-eagle" class="headerlink" title="开始安装kafka-eagle"></a>开始安装kafka-eagle</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">1.下载安装包</span><br><span class="line">软件安装目录建议按照自己的规范来，以后好找</span><br><span class="line">cd /tmp</span><br><span class="line">wget https://github.com/smartloli/kafka-eagle-bin/archive/v1.2.2.tar.gz</span><br><span class="line">tar zxf v1.2.2.tar.gz</span><br><span class="line">cd kafka-eagle-bin-1.2.2</span><br><span class="line">tar zxf kafka-eagle-web-1.2.2-bin.tar.gz -C /data/app/</span><br><span class="line">cd /data/app</span><br><span class="line">mv kafka-eagle-web-1.2.2 kafka-eagle</span><br><span class="line"></span><br><span class="line">2.环境配置</span><br><span class="line">vi /etc/profile</span><br><span class="line">export KE_HOME=/data/app/kafka-eagle</span><br><span class="line">export PATH=$PATH:$KE_HOME/bin</span><br><span class="line">ps:此处的KE_HOME按照自己实际安装的目录来，我安装在/data/app/kafka-eagle下面</span><br><span class="line">如果你是安装的其他目录，别忘了修改。</span><br><span class="line"></span><br><span class="line">3.配置修改</span><br><span class="line">cd $&#123;KE_HOME&#125;/conf</span><br><span class="line">vi system-config.properties</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> multi zookeeper&amp;kafka cluster list -- The client connection address of the Zookeeper cluster is <span class="built_in">set</span> here</span></span><br><span class="line"><span class="meta">#</span><span class="bash">如果只有一个集群的话，就写一个cluster1就行了</span></span><br><span class="line">kafka.eagle.zk.cluster.alias=cluster1,cluster2   </span><br><span class="line"><span class="meta">#</span><span class="bash">这里填上刚才上准备工作中的zookeeper.connect地址</span></span><br><span class="line">cluster1.zk.list=192.168.18.11:2181,192.168.18.12:2181,192.168.18.13:2181</span><br><span class="line"><span class="meta">#</span><span class="bash">如果多个集群，继续写，如果没有注释掉</span></span><br><span class="line">cluster2.zk.list=192.168.18.21:2181,192.168.18.22:2181,192.168.18.23:2181/kafka </span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> zk <span class="built_in">limit</span> -- Zookeeper cluster allows the number of clients to connect to</span></span><br><span class="line">kafka.zk.limit.size=25</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> kafka eagel webui port -- WebConsole port access address</span></span><br><span class="line">kafka.eagle.webui.port=8048     ###web界面地址端口</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> kafka offset storage -- Offset stored <span class="keyword">in</span> a Kafka cluster, <span class="keyword">if</span> stored <span class="keyword">in</span> the zookeeper, you can not use this option</span></span><br><span class="line">kafka.eagle.offset.storage=kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> delete kafka topic token -- Set to delete the topic token, so that administrators can have the right to delete</span></span><br><span class="line">kafka.eagle.topic.token=keadmin</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> kafka sasl authenticate, current support SASL_PLAINTEXT</span></span><br><span class="line"><span class="meta">#</span><span class="bash">如果kafka开启了sasl认证，需要在这个地方配置sasl认证文件</span></span><br><span class="line">kafka.eagle.sasl.enable=false</span><br><span class="line">kafka.eagle.sasl.protocol=SASL_PLAINTEXT</span><br><span class="line">kafka.eagle.sasl.mechanism=PLAIN</span><br><span class="line">kafka.eagle.sasl.client=/data/kafka-eagle/conf/kafka_client_jaas.conf</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">下面两项是配置数据库的，默认使用sqlite，如果量大，建议使用mysql，这里我使用的是sqlit</span></span><br><span class="line"><span class="meta">#</span><span class="bash">如果想使用mysql建议在文末查看官方文档</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> Default use sqlite to store data</span></span><br><span class="line">kafka.eagle.driver=org.sqlite.JDBC</span><br><span class="line"><span class="meta">#</span><span class="bash"> It is important to note that the <span class="string">'/hadoop/kafka-eagle/db'</span> path must exist.</span></span><br><span class="line">kafka.eagle.url=jdbc:sqlite:/data/app/kafka-eagle/db/ke.db   #这个地址，按照安装目录进行配置</span><br><span class="line">kafka.eagle.username=root</span><br><span class="line">kafka.eagle.password=smartloli</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> &lt;Optional&gt; <span class="built_in">set</span> mysql address</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.driver=com.mysql.jdbc.Driver</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.url=jdbc:mysql://127.0.0.1:3306/ke?useUnicode=<span class="literal">true</span>&amp;characterEncoding=UTF-8&amp;zeroDateTimeBehavior=convertToNull</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.username=root</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.password=smartloli</span></span><br></pre></td></tr></table></figure>
-
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">如果开启了sasl认证，需要自己去修改kafka-eagle目录下的conf/kafka_client_jaas.conf</span><br><span class="line">此处不多说</span><br></pre></td></tr></table></figure>
-
-<h4 id="启动kafka-eagle"><a href="#启动kafka-eagle" class="headerlink" title="启动kafka-eagle"></a>启动kafka-eagle</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $&#123;KE_HOME&#125;/bin</span><br><span class="line">chmod +x ke.sh</span><br><span class="line">./ke.sh start</span><br><span class="line">查看日志是否出问题</span><br><span class="line">tailf ../log/log.log</span><br><span class="line">如果没问题，则直接登录</span><br><span class="line">http://host:8048/ke</span><br><span class="line">默认用户名:admin</span><br><span class="line">默认密码:12345</span><br><span class="line">如果进入到一下界面，就说明你安装成功了！</span><br></pre></td></tr></table></figure>
-<p><img src="/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/01.png" alt="登陆界面"></p>
-<h4 id="问题汇总"><a href="#问题汇总" class="headerlink" title="问题汇总"></a>问题汇总</h4><p>ZKPoolUtils.localhost-startStop-1 - ERROR - Unable to connect to zookeeper server within timeout: 100000</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这个是网络问题，在kafka-eagle服务器上自己测试一下能否能telnet通配置的zk地址。</span><br><span class="line">cat system-config.properties|grep cluster1.zk.list</span><br><span class="line">测试这个配置的端口</span><br></pre></td></tr></table></figure>
-
-<p>ERROR - Get kafka consumer has error,msg is No resolvable bootstrap urls given in bootstrap.servers</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这个问题是配置的zk地址有问题，看看kafka配置的zk地址</span><br><span class="line">跟自己在eagle上配置的地址是否相同，有没有少目录或者端口配置。</span><br><span class="line">可以看看文章开头，kafka+zookeeper准备-了解kafka在zookeeper配置</span><br></pre></td></tr></table></figure>
-
-<p>zookeeper state changed (AuthFailed)</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这个问题有两种情况</span><br><span class="line">1.认证的问题，确认你配置的认证文件是否正确</span><br><span class="line">2.zk地址问题，看看kafka配置的zk地址，跟自己在eagle上配置的地址是否相同</span><br><span class="line">可以看看文章开头，kafka+zookeeper准备-了解kafka在zookeeper配置</span><br></pre></td></tr></table></figure>
-
-<h4 id="kafka-eagle使用"><a href="#kafka-eagle使用" class="headerlink" title="kafka-eagle使用"></a>kafka-eagle使用</h4><p>kafka-eagle 官方文档:    <a href="https://ke.smartloli.org/2.Install/2.Installing.html" target="_blank" rel="noopener">https://ke.smartloli.org/2.Install/2.Installing.html</a></p>
-<p>kafka-eagle 下载地址:    <a href="http://download.smartloli.org/" target="_blank" rel="noopener">http://download.smartloli.org/</a></p>
-<p>kafka-eagle git地址:        <a href="https://github.com/smartloli/kafka-eagle" target="_blank" rel="noopener">https://github.com/smartloli/kafka-eagle</a></p>
+<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
 ]]></content>
       <categories>
-        <category>Kafka</category>
+        <category>Hive</category>
       </categories>
       <tags>
-        <tag>Kafka</tag>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Nginx的简介、安装、常用操作</title>
+    <url>/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/</url>
+    <content><![CDATA[<h3 id="Nginx的功能介绍"><a href="#Nginx的功能介绍" class="headerlink" title="Nginx的功能介绍"></a>Nginx的功能介绍</h3><p>Nginx是一个轻量级、高性能、稳定性高、并发性好的HTTP和反向代理服务器。也是由于其的特性，其应用非常广。</p>
+<a id="more"></a>
+<hr>
+<h4 id="反向代理"><a href="#反向代理" class="headerlink" title="反向代理"></a>反向代理</h4><p>在说反向代理之前说一下正向代理：某些情况下，代理服务器代理我们用户去访问服务器，需要用户手动的设置代理服务器的ip和端口号。正向代理的最大特点是代理服务器在客户端。<br>反向代理是用来代理服务器的，代理服务器代理我们要访问的目标服务器。代理服务器接受请求，然后将请求转发给内部网络的服务器(集群化)，并将从服务器上得到的结果返回给客户端，此时代理服务器对外就表现为一个服务器。反向代理的最大特点是代理服务器在服务器端。<br><img src="/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx01.jpg" alt="Nginx反向代理"></p>
+<h4 id="负载均衡"><a href="#负载均衡" class="headerlink" title="负载均衡"></a>负载均衡</h4><p>负载均衡是在高并发情况下需要使用。其原理就是将数据流量分摊到多个服务器执行，减轻每台服务器的压力，多台服务器(集群)共同完成工作任务，从而提高了数据的吞吐量。<br>Nginx可使用的负载均衡策略有：轮询（默认）、权重、ip_hash、url_hash(第三方)、fair(第三方)<br><img src="/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx02.jpg" alt="Nginx负载均衡策略"><br>Ip hash算法，对客户端请求的ip进行hash操作，然后根据hash结果将同一个客户端ip的请求分发给同一台服务器进行处理，可以解决session不共享的问题。<br><img src="/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx03.jpg" alt="Nginx负载均衡策略"></p>
+<h4 id="动静分离"><a href="#动静分离" class="headerlink" title="动静分离"></a>动静分离</h4><p>Nginx提供的动静分离是指把动态请求和静态请求分离开，合适的服务器处理相应的请求，使整个服务器系统的性能、效率更高。<br>Nginx可以根据配置对不同的请求做不同转发，这是动态分离的基础。静态请求对应的静态资源可以直接放在Nginx上做缓冲，更好的做法是放在相应的缓冲服务器上。动态请求由相应的后端服务器处理。<br>常见的静态文件有js、css、html，常见的动态文件有jsp、servlet</p>
+<h3 id="Nginx的安装"><a href="#Nginx的安装" class="headerlink" title="Nginx的安装"></a>Nginx的安装</h3><h4 id="安装所需环境"><a href="#安装所需环境" class="headerlink" title="安装所需环境"></a>安装所需环境</h4><p>一. gcc 安装<br>安装 nginx 需要先将官网下载的源码进行编译，编译依赖 gcc 环境，如果没有 gcc 环境，则需要安装：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install gcc-c++</span><br></pre></td></tr></table></figure>
+<p>二. PCRE pcre-devel 安装<br>PCRE(Perl Compatible Regular Expressions) 是一个Perl库，包括 perl 兼容的正则表达式库。nginx 的 http 模块使用 pcre 来解析正则表达式，所以需要在 linux 上安装 pcre 库，pcre-devel 是使用 pcre 开发的一个二次开发库。nginx也需要此库。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y pcre pcre-devel</span><br></pre></td></tr></table></figure>
+<p>三. zlib 安装<br>zlib 库提供了很多种压缩和解压缩的方式， nginx 使用 zlib 对 http 包的内容进行 gzip ，所以需要在 Centos 上安装 zlib 库。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y zlib zlib-devel</span><br></pre></td></tr></table></figure>
+<p>四. OpenSSL 安装<br>OpenSSL 是一个强大的安全套接字层密码库，囊括主要的密码算法、常用的密钥和证书封装管理功能及 SSL 协议，并提供丰富的应用程序供测试或其它目的使用。<br>nginx 不仅支持 http 协议，还支持 https（即在ssl协议上传输http），所以需要在 Centos 安装 OpenSSL 库。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y openssl openssl-devel</span><br></pre></td></tr></table></figure>
+<p>五. 综合操作下载命令</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install gcc-c++ pcre pcre-devel zlib zlib-devel openssl openssl-devel -y</span><br></pre></td></tr></table></figure>
+<h4 id="下载安装Nginx"><a href="#下载安装Nginx" class="headerlink" title="下载安装Nginx"></a>下载安装Nginx</h4><ol>
+<li>官网下载.tar.gz安装包，地址：<a href="https://nginx.org/en/download.html" target="_blank" rel="noopener">https://nginx.org/en/download.html</a></li>
+<li>使用wget命令下载（推荐）。确保系统已经安装了wget，如果没有安装，执行 yum install wget 安装。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">wget -c https://nginx.org/download/nginx-1.12.0.tar.gz</span><br></pre></td></tr></table></figure></li>
+<li>解压<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tar -zxvf nginx-1.12.0.tar.gz -C ../app</span><br><span class="line">cd nginx-1.12.0</span><br></pre></td></tr></table></figure></li>
+<li>默认配置(默认是安装在/usr/local/nginx，不推介指定安装目录)<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./configure</span><br></pre></td></tr></table></figure></li>
+<li>编译安装(root用户)<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">make &amp;&amp; make install</span><br></pre></td></tr></table></figure></li>
+<li>查找安装路径<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">whereis nginx</span><br></pre></td></tr></table></figure>
+结果：/usr/local/nginx、</li>
+</ol>
+<h4 id="Nginx常用操作"><a href="#Nginx常用操作" class="headerlink" title="Nginx常用操作"></a>Nginx常用操作</h4><ol>
+<li>启动、停止nginx<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /usr/local/nginx/sbin/</span><br><span class="line">./nginx 	        #启动</span><br><span class="line">./nginx -s stop		#停止</span><br><span class="line">./nginx -s quit		#退出</span><br><span class="line">./nginx -s reload	#重新加载配置文件</span><br></pre></td></tr></table></figure>
+启动时报80端口被占用:nginx: [emerg] bind() to 0.0.0.0:80 failed (98: Address already in use)<br>解决办法：安装net-tool 包：yum install net-tools<br>命令详解：<br>./nginx -s quit:此方式停止步骤是待nginx进程处理任务完毕进行停止。<br>./nginx -s stop:此方式相当于先查出nginx进程id再使用kill命令强制杀掉进程。</li>
+<li>重启Nginx<br>对 nginx 进行重启相当于先停止再启动，即先执行停止命令再执行启动命令。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./nginx -s quit</span><br><span class="line">./nginx</span><br></pre></td></tr></table></figure></li>
+<li>重新加载配置文件<br>当 ngin x的配置文件 nginx.conf 修改后，要想让配置生效需要重启 nginx，使用-s reload不用先停止 ngin x再启动 nginx 即可将配置信息在 nginx 中生效。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./nginx -s reload</span><br></pre></td></tr></table></figure>
+启动成功后，可打开浏览器访问，默认端口80</li>
+<li>配置开机自启<br>即在rc.local增加启动代码就可以了。<br>vi /etc/rc.local<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">/usr/local/nginx/sbin/nginx</span><br></pre></td></tr></table></figure>
+设置执行权限：chmod 755 rc.local</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Nginx</category>
+      </categories>
+      <tags>
+        <tag>Nginx</tag>
       </tags>
   </entry>
   <entry>
@@ -1126,48 +1135,39 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Nginx的简介、安装、常用操作</title>
-    <url>/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/</url>
-    <content><![CDATA[<h3 id="Nginx的功能介绍"><a href="#Nginx的功能介绍" class="headerlink" title="Nginx的功能介绍"></a>Nginx的功能介绍</h3><p>Nginx是一个轻量级、高性能、稳定性高、并发性好的HTTP和反向代理服务器。也是由于其的特性，其应用非常广。</p>
+    <title>KafkaEagle安装部署</title>
+    <url>/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/</url>
+    <content><![CDATA[<p>Kafka Eagle安装部署和常用命令</p>
 <a id="more"></a>
 <hr>
-<h4 id="反向代理"><a href="#反向代理" class="headerlink" title="反向代理"></a>反向代理</h4><p>在说反向代理之前说一下正向代理：某些情况下，代理服务器代理我们用户去访问服务器，需要用户手动的设置代理服务器的ip和端口号。正向代理的最大特点是代理服务器在客户端。<br>反向代理是用来代理服务器的，代理服务器代理我们要访问的目标服务器。代理服务器接受请求，然后将请求转发给内部网络的服务器(集群化)，并将从服务器上得到的结果返回给客户端，此时代理服务器对外就表现为一个服务器。反向代理的最大特点是代理服务器在服务器端。<br><img src="/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx01.jpg" alt="Nginx反向代理"></p>
-<h4 id="负载均衡"><a href="#负载均衡" class="headerlink" title="负载均衡"></a>负载均衡</h4><p>负载均衡是在高并发情况下需要使用。其原理就是将数据流量分摊到多个服务器执行，减轻每台服务器的压力，多台服务器(集群)共同完成工作任务，从而提高了数据的吞吐量。<br>Nginx可使用的负载均衡策略有：轮询（默认）、权重、ip_hash、url_hash(第三方)、fair(第三方)<br><img src="/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx02.jpg" alt="Nginx负载均衡策略"><br>Ip hash算法，对客户端请求的ip进行hash操作，然后根据hash结果将同一个客户端ip的请求分发给同一台服务器进行处理，可以解决session不共享的问题。<br><img src="/2018/03/12/Nginx%E7%9A%84%E7%AE%80%E4%BB%8B%E3%80%81%E5%AE%89%E8%A3%85%E3%80%81%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C/Nginx03.jpg" alt="Nginx负载均衡策略"></p>
-<h4 id="动静分离"><a href="#动静分离" class="headerlink" title="动静分离"></a>动静分离</h4><p>Nginx提供的动静分离是指把动态请求和静态请求分离开，合适的服务器处理相应的请求，使整个服务器系统的性能、效率更高。<br>Nginx可以根据配置对不同的请求做不同转发，这是动态分离的基础。静态请求对应的静态资源可以直接放在Nginx上做缓冲，更好的做法是放在相应的缓冲服务器上。动态请求由相应的后端服务器处理。<br>常见的静态文件有js、css、html，常见的动态文件有jsp、servlet</p>
-<h3 id="Nginx的安装"><a href="#Nginx的安装" class="headerlink" title="Nginx的安装"></a>Nginx的安装</h3><h4 id="安装所需环境"><a href="#安装所需环境" class="headerlink" title="安装所需环境"></a>安装所需环境</h4><p>一. gcc 安装<br>安装 nginx 需要先将官网下载的源码进行编译，编译依赖 gcc 环境，如果没有 gcc 环境，则需要安装：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install gcc-c++</span><br></pre></td></tr></table></figure>
-<p>二. PCRE pcre-devel 安装<br>PCRE(Perl Compatible Regular Expressions) 是一个Perl库，包括 perl 兼容的正则表达式库。nginx 的 http 模块使用 pcre 来解析正则表达式，所以需要在 linux 上安装 pcre 库，pcre-devel 是使用 pcre 开发的一个二次开发库。nginx也需要此库。</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y pcre pcre-devel</span><br></pre></td></tr></table></figure>
-<p>三. zlib 安装<br>zlib 库提供了很多种压缩和解压缩的方式， nginx 使用 zlib 对 http 包的内容进行 gzip ，所以需要在 Centos 上安装 zlib 库。</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y zlib zlib-devel</span><br></pre></td></tr></table></figure>
-<p>四. OpenSSL 安装<br>OpenSSL 是一个强大的安全套接字层密码库，囊括主要的密码算法、常用的密钥和证书封装管理功能及 SSL 协议，并提供丰富的应用程序供测试或其它目的使用。<br>nginx 不仅支持 http 协议，还支持 https（即在ssl协议上传输http），所以需要在 Centos 安装 OpenSSL 库。</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install -y openssl openssl-devel</span><br></pre></td></tr></table></figure>
-<p>五. 综合操作下载命令</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">yum install gcc-c++ pcre pcre-devel zlib zlib-devel openssl openssl-devel -y</span><br></pre></td></tr></table></figure>
-<h4 id="下载安装Nginx"><a href="#下载安装Nginx" class="headerlink" title="下载安装Nginx"></a>下载安装Nginx</h4><ol>
-<li>官网下载.tar.gz安装包，地址：<a href="https://nginx.org/en/download.html" target="_blank" rel="noopener">https://nginx.org/en/download.html</a></li>
-<li>使用wget命令下载（推荐）。确保系统已经安装了wget，如果没有安装，执行 yum install wget 安装。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">wget -c https://nginx.org/download/nginx-1.12.0.tar.gz</span><br></pre></td></tr></table></figure></li>
-<li>解压<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tar -zxvf nginx-1.12.0.tar.gz -C ../app</span><br><span class="line">cd nginx-1.12.0</span><br></pre></td></tr></table></figure></li>
-<li>默认配置(默认是安装在/usr/local/nginx，不推介指定安装目录)<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./configure</span><br></pre></td></tr></table></figure></li>
-<li>编译安装(root用户)<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">make &amp;&amp; make install</span><br></pre></td></tr></table></figure></li>
-<li>查找安装路径<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">whereis nginx</span><br></pre></td></tr></table></figure>
-结果：/usr/local/nginx、</li>
-</ol>
-<h4 id="Nginx常用操作"><a href="#Nginx常用操作" class="headerlink" title="Nginx常用操作"></a>Nginx常用操作</h4><ol>
-<li>启动、停止nginx<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd /usr/local/nginx/sbin/</span><br><span class="line">./nginx 	        #启动</span><br><span class="line">./nginx -s stop		#停止</span><br><span class="line">./nginx -s quit		#退出</span><br><span class="line">./nginx -s reload	#重新加载配置文件</span><br></pre></td></tr></table></figure>
-启动时报80端口被占用:nginx: [emerg] bind() to 0.0.0.0:80 failed (98: Address already in use)<br>解决办法：安装net-tool 包：yum install net-tools<br>命令详解：<br>./nginx -s quit:此方式停止步骤是待nginx进程处理任务完毕进行停止。<br>./nginx -s stop:此方式相当于先查出nginx进程id再使用kill命令强制杀掉进程。</li>
-<li>重启Nginx<br>对 nginx 进行重启相当于先停止再启动，即先执行停止命令再执行启动命令。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./nginx -s quit</span><br><span class="line">./nginx</span><br></pre></td></tr></table></figure></li>
-<li>重新加载配置文件<br>当 ngin x的配置文件 nginx.conf 修改后，要想让配置生效需要重启 nginx，使用-s reload不用先停止 ngin x再启动 nginx 即可将配置信息在 nginx 中生效。<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./nginx -s reload</span><br></pre></td></tr></table></figure>
-启动成功后，可打开浏览器访问，默认端口80</li>
-<li>配置开机自启<br>即在rc.local增加启动代码就可以了。<br>vi /etc/rc.local<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">/usr/local/nginx/sbin/nginx</span><br></pre></td></tr></table></figure>
-设置执行权限：chmod 755 rc.local</li>
-</ol>
+<h4 id="kafka-zookeeper准备"><a href="#kafka-zookeeper准备" class="headerlink" title="kafka+zookeeper准备"></a>kafka+zookeeper准备</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这里假设你已经把kafka+zookeeper安装完成，但是需要注意的几点是：</span><br><span class="line">1.kafka需要开启JMX端口</span><br><span class="line">    找到kafka安装路径，进入到bin文件夹，修改下面的地方。</span><br><span class="line">    vi kafka-server-start.sh</span><br><span class="line">...</span><br><span class="line">if [ "x$KAFKA_HEAP_OPTS" = "x" ]; then</span><br><span class="line">    export KAFKA_HEAP_OPTS="-server -Xms2G -Xmx2G -XX:PermSize=128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:ParallelGCThreads=8 -XX:ConcGCThreads=5 -XX:InitiatingHeapOccupancyPercent=70"</span><br><span class="line">    export JMX_PORT="9999"</span><br><span class="line">fi</span><br><span class="line">...</span><br><span class="line">    参考链接：[kafka添加jmx端口]:https://ke.smartloli.org/3.Manuals/11.Metrics.html</span><br><span class="line"></span><br><span class="line">2.了解kafka在zookeeper配置</span><br><span class="line">    需要查看kafka的server.properties配置</span><br><span class="line">    找到zookeeper.connect此项配置，这个是要配置到eagle里面的</span><br><span class="line">    此处假设zookeeper.connect=192.168.18.11:2181,192.168.18.12:2181,192.168.18.13:2181</span><br><span class="line">    ！！！PS:此处踩了坑，如果说这里的zookeeper地址后面加了其他路径，在kafka-eagle里面也要配置，</span><br><span class="line">    否则在kafka-eagle的Dashboard中无法读取到kafka的信息。比如我们有人安装的kafka集群里面就有    </span><br><span class="line">    192.168.18.11:2181/kafka1或者192.168.18.11:2181/kafka2这种地址。</span><br><span class="line">    如果你在安装kafka的时候没有配置多余路径，这样是最好的，如果有一定要加上。</span><br><span class="line"></span><br><span class="line">3.连通性测试</span><br><span class="line">  安装kafka-eagle的服务器，一定要提前测试是否能连接kafka注册的zookeeper端口</span><br><span class="line">  telnet 端口进行测试</span><br></pre></td></tr></table></figure>
+
+<h4 id="JDK环境准备"><a href="#JDK环境准备" class="headerlink" title="JDK环境准备"></a>JDK环境准备</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">此处就忽略不说了，kafka既然会安装，也是依赖JDK环境的。版本没要求，但是最好是1.7以上。</span><br><span class="line">echo $JAVA_HOME</span><br><span class="line">测试一下JDK环境是否安装成功</span><br></pre></td></tr></table></figure>
+
+<h4 id="开始安装kafka-eagle"><a href="#开始安装kafka-eagle" class="headerlink" title="开始安装kafka-eagle"></a>开始安装kafka-eagle</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">1.下载安装包</span><br><span class="line">软件安装目录建议按照自己的规范来，以后好找</span><br><span class="line">cd /tmp</span><br><span class="line">wget https://github.com/smartloli/kafka-eagle-bin/archive/v1.2.2.tar.gz</span><br><span class="line">tar zxf v1.2.2.tar.gz</span><br><span class="line">cd kafka-eagle-bin-1.2.2</span><br><span class="line">tar zxf kafka-eagle-web-1.2.2-bin.tar.gz -C /data/app/</span><br><span class="line">cd /data/app</span><br><span class="line">mv kafka-eagle-web-1.2.2 kafka-eagle</span><br><span class="line"></span><br><span class="line">2.环境配置</span><br><span class="line">vi /etc/profile</span><br><span class="line">export KE_HOME=/data/app/kafka-eagle</span><br><span class="line">export PATH=$PATH:$KE_HOME/bin</span><br><span class="line">ps:此处的KE_HOME按照自己实际安装的目录来，我安装在/data/app/kafka-eagle下面</span><br><span class="line">如果你是安装的其他目录，别忘了修改。</span><br><span class="line"></span><br><span class="line">3.配置修改</span><br><span class="line">cd $&#123;KE_HOME&#125;/conf</span><br><span class="line">vi system-config.properties</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> multi zookeeper&amp;kafka cluster list -- The client connection address of the Zookeeper cluster is <span class="built_in">set</span> here</span></span><br><span class="line"><span class="meta">#</span><span class="bash">如果只有一个集群的话，就写一个cluster1就行了</span></span><br><span class="line">kafka.eagle.zk.cluster.alias=cluster1,cluster2   </span><br><span class="line"><span class="meta">#</span><span class="bash">这里填上刚才上准备工作中的zookeeper.connect地址</span></span><br><span class="line">cluster1.zk.list=192.168.18.11:2181,192.168.18.12:2181,192.168.18.13:2181</span><br><span class="line"><span class="meta">#</span><span class="bash">如果多个集群，继续写，如果没有注释掉</span></span><br><span class="line">cluster2.zk.list=192.168.18.21:2181,192.168.18.22:2181,192.168.18.23:2181/kafka </span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> zk <span class="built_in">limit</span> -- Zookeeper cluster allows the number of clients to connect to</span></span><br><span class="line">kafka.zk.limit.size=25</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> kafka eagel webui port -- WebConsole port access address</span></span><br><span class="line">kafka.eagle.webui.port=8048     ###web界面地址端口</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> kafka offset storage -- Offset stored <span class="keyword">in</span> a Kafka cluster, <span class="keyword">if</span> stored <span class="keyword">in</span> the zookeeper, you can not use this option</span></span><br><span class="line">kafka.eagle.offset.storage=kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> delete kafka topic token -- Set to delete the topic token, so that administrators can have the right to delete</span></span><br><span class="line">kafka.eagle.topic.token=keadmin</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> kafka sasl authenticate, current support SASL_PLAINTEXT</span></span><br><span class="line"><span class="meta">#</span><span class="bash">如果kafka开启了sasl认证，需要在这个地方配置sasl认证文件</span></span><br><span class="line">kafka.eagle.sasl.enable=false</span><br><span class="line">kafka.eagle.sasl.protocol=SASL_PLAINTEXT</span><br><span class="line">kafka.eagle.sasl.mechanism=PLAIN</span><br><span class="line">kafka.eagle.sasl.client=/data/kafka-eagle/conf/kafka_client_jaas.conf</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">下面两项是配置数据库的，默认使用sqlite，如果量大，建议使用mysql，这里我使用的是sqlit</span></span><br><span class="line"><span class="meta">#</span><span class="bash">如果想使用mysql建议在文末查看官方文档</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> Default use sqlite to store data</span></span><br><span class="line">kafka.eagle.driver=org.sqlite.JDBC</span><br><span class="line"><span class="meta">#</span><span class="bash"> It is important to note that the <span class="string">'/hadoop/kafka-eagle/db'</span> path must exist.</span></span><br><span class="line">kafka.eagle.url=jdbc:sqlite:/data/app/kafka-eagle/db/ke.db   #这个地址，按照安装目录进行配置</span><br><span class="line">kafka.eagle.username=root</span><br><span class="line">kafka.eagle.password=smartloli</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> &lt;Optional&gt; <span class="built_in">set</span> mysql address</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.driver=com.mysql.jdbc.Driver</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.url=jdbc:mysql://127.0.0.1:3306/ke?useUnicode=<span class="literal">true</span>&amp;characterEncoding=UTF-8&amp;zeroDateTimeBehavior=convertToNull</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.username=root</span></span><br><span class="line"><span class="meta">#</span><span class="bash">kafka.eagle.password=smartloli</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">如果开启了sasl认证，需要自己去修改kafka-eagle目录下的conf/kafka_client_jaas.conf</span><br><span class="line">此处不多说</span><br></pre></td></tr></table></figure>
+
+<h4 id="启动kafka-eagle"><a href="#启动kafka-eagle" class="headerlink" title="启动kafka-eagle"></a>启动kafka-eagle</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cd $&#123;KE_HOME&#125;/bin</span><br><span class="line">chmod +x ke.sh</span><br><span class="line">./ke.sh start</span><br><span class="line">查看日志是否出问题</span><br><span class="line">tailf ../log/log.log</span><br><span class="line">如果没问题，则直接登录</span><br><span class="line">http://host:8048/ke</span><br><span class="line">默认用户名:admin</span><br><span class="line">默认密码:12345</span><br><span class="line">如果进入到一下界面，就说明你安装成功了！</span><br></pre></td></tr></table></figure>
+<p><img src="/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/01.png" alt="登陆界面"></p>
+<h4 id="问题汇总"><a href="#问题汇总" class="headerlink" title="问题汇总"></a>问题汇总</h4><p>ZKPoolUtils.localhost-startStop-1 - ERROR - Unable to connect to zookeeper server within timeout: 100000</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这个是网络问题，在kafka-eagle服务器上自己测试一下能否能telnet通配置的zk地址。</span><br><span class="line">cat system-config.properties|grep cluster1.zk.list</span><br><span class="line">测试这个配置的端口</span><br></pre></td></tr></table></figure>
+
+<p>ERROR - Get kafka consumer has error,msg is No resolvable bootstrap urls given in bootstrap.servers</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这个问题是配置的zk地址有问题，看看kafka配置的zk地址</span><br><span class="line">跟自己在eagle上配置的地址是否相同，有没有少目录或者端口配置。</span><br><span class="line">可以看看文章开头，kafka+zookeeper准备-了解kafka在zookeeper配置</span><br></pre></td></tr></table></figure>
+
+<p>zookeeper state changed (AuthFailed)</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">这个问题有两种情况</span><br><span class="line">1.认证的问题，确认你配置的认证文件是否正确</span><br><span class="line">2.zk地址问题，看看kafka配置的zk地址，跟自己在eagle上配置的地址是否相同</span><br><span class="line">可以看看文章开头，kafka+zookeeper准备-了解kafka在zookeeper配置</span><br></pre></td></tr></table></figure>
+
+<h4 id="kafka-eagle使用"><a href="#kafka-eagle使用" class="headerlink" title="kafka-eagle使用"></a>kafka-eagle使用</h4><p>kafka-eagle 官方文档:    <a href="https://ke.smartloli.org/2.Install/2.Installing.html" target="_blank" rel="noopener">https://ke.smartloli.org/2.Install/2.Installing.html</a></p>
+<p>kafka-eagle 下载地址:    <a href="http://download.smartloli.org/" target="_blank" rel="noopener">http://download.smartloli.org/</a></p>
+<p>kafka-eagle git地址:        <a href="https://github.com/smartloli/kafka-eagle" target="_blank" rel="noopener">https://github.com/smartloli/kafka-eagle</a></p>
 ]]></content>
       <categories>
-        <category>Nginx</category>
+        <category>Kafka</category>
       </categories>
       <tags>
-        <tag>Nginx</tag>
+        <tag>Kafka</tag>
       </tags>
   </entry>
   <entry>
@@ -1319,6 +1319,25 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Spark DRR转DF的两种方式</title>
+    <url>/2018/10/16/Spark%20DRR%E8%BD%ACDF%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
+    <content><![CDATA[<p>Spark DRR转DF的两种方式分为编程方式和反射方式</p>
+<a id="more"></a>
+
+<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
+<p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
+<h3 id="编程方式将RDD转成DF"><a href="#编程方式将RDD转成DF" class="headerlink" title="编程方式将RDD转成DF"></a>编程方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">programmatically</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP1: RDD[String] ==&gt; RDD[Row]</span></span><br><span class="line">    <span class="keyword">val</span> infoRDD: <span class="type">RDD</span>[<span class="type">Row</span>] = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Row</span>(id, name, age)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP2: schema</span></span><br><span class="line">    <span class="keyword">val</span> schema = <span class="type">StructType</span>(</span><br><span class="line">      <span class="type">StructField</span>(<span class="string">"id"</span>, <span class="type">IntegerType</span>, <span class="literal">true</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"name"</span>, <span class="type">StringType</span>, <span class="literal">false</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"age"</span>, <span class="type">IntegerType</span>, <span class="literal">false</span>) :: <span class="type">Nil</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP3: createDataFrame</span></span><br><span class="line">    <span class="keyword">val</span> df = spark.createDataFrame(infoRDD, schema)</span><br><span class="line">    df.printSchema()</span><br><span class="line">    df.show()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="反射方式将RDD转成DF"><a href="#反射方式将RDD转成DF" class="headerlink" title="反射方式将RDD转成DF"></a>反射方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">reflection</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// RDD[String] =&gt; case class</span></span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Info</span>(id, name, age)</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line"></span><br><span class="line">    infoDF.printSchema()</span><br><span class="line">    infoDF.show()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Info</span>(<span class="params">id: <span class="type">Int</span>, name: <span class="type">String</span>, age: <span class="type">Int</span></span>)</span></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>SparkSQL</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Scala 集合 Tuple</title>
     <url>/2018/05/05/Scala_%E9%9B%86%E5%90%88_Tuple/</url>
     <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中Tuple的说明</p>
@@ -1337,25 +1356,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </categories>
       <tags>
         <tag>Scala</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Spark DRR转DF的两种方式</title>
-    <url>/2018/10/16/Spark%20DRR%E8%BD%ACDF%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E5%BC%8F/</url>
-    <content><![CDATA[<p>Spark DRR转DF的两种方式分为编程方式和反射方式</p>
-<a id="more"></a>
-
-<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
-<p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
-<h3 id="编程方式将RDD转成DF"><a href="#编程方式将RDD转成DF" class="headerlink" title="编程方式将RDD转成DF"></a>编程方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">programmatically</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP1: RDD[String] ==&gt; RDD[Row]</span></span><br><span class="line">    <span class="keyword">val</span> infoRDD: <span class="type">RDD</span>[<span class="type">Row</span>] = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Row</span>(id, name, age)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP2: schema</span></span><br><span class="line">    <span class="keyword">val</span> schema = <span class="type">StructType</span>(</span><br><span class="line">      <span class="type">StructField</span>(<span class="string">"id"</span>, <span class="type">IntegerType</span>, <span class="literal">true</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"name"</span>, <span class="type">StringType</span>, <span class="literal">false</span>) ::</span><br><span class="line">        <span class="type">StructField</span>(<span class="string">"age"</span>, <span class="type">IntegerType</span>, <span class="literal">false</span>) :: <span class="type">Nil</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// STEP3: createDataFrame</span></span><br><span class="line">    <span class="keyword">val</span> df = spark.createDataFrame(infoRDD, schema)</span><br><span class="line">    df.printSchema()</span><br><span class="line">    df.show()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="反射方式将RDD转成DF"><a href="#反射方式将RDD转成DF" class="headerlink" title="反射方式将RDD转成DF"></a>反射方式将RDD转成DF</h3><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">reflection</span></span>(spark: <span class="type">SparkSession</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">// RDD=&gt;DF时需要的隐式转换</span></span><br><span class="line">    <span class="keyword">import</span> spark.implicits._</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 创建RDD</span></span><br><span class="line">    <span class="keyword">val</span> rdd = spark.sparkContext.textFile(<span class="string">"spark-sql/data/info.txt"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">// RDD[String] =&gt; case class</span></span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">","</span>)</span><br><span class="line">      <span class="keyword">val</span> id = splits(<span class="number">0</span>).trim.toInt</span><br><span class="line">      <span class="keyword">val</span> name = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> age = splits(<span class="number">2</span>).trim.toInt</span><br><span class="line">      <span class="type">Info</span>(id, name, age)</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line"></span><br><span class="line">    infoDF.printSchema()</span><br><span class="line">    infoDF.show()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Info</span>(<span class="params">id: <span class="type">Int</span>, name: <span class="type">String</span>, age: <span class="type">Int</span></span>)</span></span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>SparkSQL</tag>
       </tags>
   </entry>
   <entry>
@@ -1537,6 +1537,50 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Spark RDD浅谈</title>
+    <url>/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/</url>
+    <content><![CDATA[<p>对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念</p>
+<p>它是分布式的，可以分布在多台机器上，进行计算</p>
+<p>它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换</p>
+<p>它表示已被分区，不可变的并能够被并行操作的数据集合</p>
+<p>这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？</p>
+<a id="more"></a>
+<hr>
+<h4 id="对RDD的理解"><a href="#对RDD的理解" class="headerlink" title="对RDD的理解"></a>对RDD的理解</h4><h5 id="官方在源码中对RDD的注释："><a href="#官方在源码中对RDD的注释：" class="headerlink" title="官方在源码中对RDD的注释："></a>官方在源码中对RDD的注释：</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">* Internally, each RDD is characterized by five main properties:</span><br><span class="line">*   </span><br><span class="line">*  - A list of partitions  一个分区的列表</span><br><span class="line">*  - A function <span class="keyword">for</span> computing each split  一个计算每个分区的函数，即RDD的分片函数</span><br><span class="line">*  - A list of dependencies on other RDDs    RDD之间的依赖关系 </span><br><span class="line">*  - Optionally, a Partitioner <span class="keyword">for</span> key-<span class="function">value <span class="title">RDDs</span> <span class="params">(e.g. to say that the RDD is hash-partitioned)</span>    可选：一个Partitioner</span></span><br><span class="line"><span class="function">*  - Optionally, a list of preferred locations to compute each split <span class="title">on</span> <span class="params">(e.g. block locations <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">*    an HDFS file)</span>    可选：一个列表，存储存取每个Partition的优先位置</span></span><br><span class="line"><span class="function">*</span></span><br><span class="line"><span class="function">* All of the scheduling and execution in Spark is done based on these methods, allowing each RDD</span></span><br><span class="line"><span class="function">* to implement its own way of computing itself. Indeed, users can implement custom <span class="title">RDDs</span> <span class="params">(e.g. <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">* reading data from a new storage system)</span> by overriding these functions. Please refer to the</span></span><br><span class="line"><span class="function">* [[http:<span class="comment">//www.cs.berkeley.edu/~matei/papers/2012/nsdi_spark.pdf Spark paper]] for more details</span></span></span><br><span class="line"><span class="function">* on RDD internals.</span></span><br><span class="line"><span class="function">*/</span></span><br></pre></td></tr></table></figure>
+<p>通过官方的注释，我们可以了解到，每个RDD都有五个重要的属性。</p>
+<ol>
+<li><p>一个分区的列表。我们可以理解为是一组分片，分片就是数据集的基本组成单位，对于RDD来说，每个分片都会被一个计算任务处理，并决定并行计算的粒度。<br>用户创建RDD时，可以指定RDD的分片个数，若没有指定，则采用默认（默认值：程序所分配的CPU Cores数目），下图描述了分区存储的计算模型，每个分配的存储是有BlockManager实现的。<br>每个分区都会被逻辑映射成BlockManager的一个block，而这个block会被一个Task负责计算。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png" alt="RDD Partiton 的存储和计算模型"></p>
+</li>
+<li><p>一个计算每个分区的函数。即RDD的计算分片compute函数，Spark中的RDD计算是以分片为单位的，每个RDD都会实现compute函数以达到这个目的。compute函数会对迭代器进行复核，不需要保存每次计算的结果。</p>
+</li>
+<li><p>RDD之间的依赖关系。这里要说一下RDD的依赖关系<br>RDD和它的依赖的parent RDD(s)的关系有两种不同的类型，即宽依赖和窄依赖</p>
+</li>
+</ol>
+<ul>
+<li>窄依赖指的是每一个parent RDD的partition最多被子RDD的一个partition使用</li>
+<li>宽依赖是指多个子RDD的partition会依赖同一个parent RDD的partition<br>接下来，从不同类型的转换来进一步理解RDD的窄依赖和宽依赖的区别，如下图所示。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png" alt="RDD 宽依赖 窄依赖"><br>对于map和filter形式的转换来说，它们只是将Partition的数据根据转换的规则进行转化，并不涉及其他的处理，可以简单地认为只是将数据从一个形式转换到另一个形式。<br>对于union，只是将多个RDD合并成一个，parent RDD的Partition(s)不会有任何的变化，可以认为只是把parent RDD的Partition(s)简单进行复制与合并。<br>对于join，如果每个Partition仅仅和已知的、特定的Partition进行join，那么这个依赖关系也是窄依赖。对于这种有规则的数据的join，并不会引入昂贵的Shuffle。<br>对于窄依赖，由于RDD每个Partition依赖固定数量的parent RDD(s)的Partition(s)，因此可以通过一个计算任务来处理这些Partition，并且这些Partition相互独立，这些计算任务也就可以并行执行了。<br>对于groupByKey，子RDD的所有Partition(s)会依赖于parent RDD的所有Partition(s)，子RDD的Partition是parent RDD的所有Partition Shuffle的结果，因此这两个RDD是不能通过一个计算任务来完成的。同样，对于需要parent RDD的所有Partition进行join的转换，也是需要Shuffle，这类join的依赖就是宽依赖而不是前面提到的窄依赖了。<br>不同的操作依据其特性，可能会产生不同的依赖。例如map、filter操作会产生 narrow dependency 。reduceBykey操作会产生 wide / shuffle dependency。<br>通俗点来说，RDD的每个Partition，仅仅依赖于父RDD中的一个Partition，这才是窄。 就这么简单！<br>反正，子Rdd的partition和父Rdd的Partition如果是一对一就是窄依赖，这样理解就好区分了 　　　　　　　　　<br>捋一下这里的源码：<br>所有的依赖都要实现<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">trait Dependency[T]：</span><br><span class="line">abstract class Dependency[T] extends Serializable &#123;</span><br><span class="line">    def rdd: RDD[T]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中rdd就是依赖的parent RDD。<br>对于窄依赖的实现（有两种）<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] &#123;</span><br><span class="line">    <span class="comment">//返回子RDD的partitionId依赖的所有的parent RDD的Partition(s)</span></span><br><span class="line">    <span class="function">def <span class="title">getParents</span><span class="params">(partitionId: Int)</span>: Seq[Int]</span></span><br><span class="line"><span class="function">    override def rdd: RDD[T] </span>= _rdd</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+窄依赖是有两种具体实现，分别如下：<br>一种是一对一的依赖，即OneToOneDependency：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) &#123;</span><br><span class="line">    <span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= List(partitionId)</span><br><span class="line">    通过getParents的实现不难看出，RDD仅仅依赖于parent RDD相同ID的Partition。</span><br></pre></td></tr></table></figure>
+还有一个是范围的依赖，即RangeDependency，它仅仅被org.apache.spark.rdd.UnionRDD使用。UnionRDD是把多个RDD合成一个RDD，这些RDD是被拼接而成，即每个parent RDD的Partition的相对顺序不会变，只不过每个parent RDD在UnionRDD中的Partition的起始位置不同。因此它的getPartents如下：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= &#123;</span><br><span class="line">    <span class="keyword">if</span>(partitionId &gt;= outStart &amp;&amp; partitionId &lt; outStart + length) &#123;</span><br><span class="line">       List(partitionId - outStart + inStart)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       Nil</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中，inStart是parent RDD中Partition的起始位置，outStart是在UnionRDD中的起始位置，length就是parent RDD中Partition的数量。<br>对于宽依赖的实现（只有一种）<br>宽依赖的实现只有一种：ShuffleDependency。子RDD依赖于parent RDD的所有Partition，因此需要Shuffle过程：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class ShuffleDependency[K, V, C](</span><br><span class="line">    <span class="meta">@transient</span> _rdd: RDD[_ &lt;: Product2[K, V]],</span><br><span class="line">    val partitioner: Partitioner,</span><br><span class="line">    val serializer: Option[Serializer] = None,</span><br><span class="line">    val keyOrdering: Option[Ordering[K]] = None,</span><br><span class="line">    val aggregator: Option[Aggregator[K, V, C]] = None,</span><br><span class="line">    val mapSideCombine: Boolean = <span class="keyword">false</span>)</span><br><span class="line">extends Dependency[Product2[K, V]] &#123;</span><br><span class="line"> </span><br><span class="line">override def rdd = _rdd.asInstanceOf[RDD[Product2[K, V]]]</span><br><span class="line"><span class="comment">//获取新的shuffleId</span></span><br><span class="line">val shuffleId: Int = _rdd.context.newShuffleId()</span><br><span class="line"><span class="comment">//向ShuffleManager注册Shuffle的信息</span></span><br><span class="line">val shuffleHandle: ShuffleHandle =</span><br><span class="line">_rdd.context.env.shuffleManager.registerShuffle(</span><br><span class="line">    shuffleId, _rdd.partitions.size, <span class="keyword">this</span>)</span><br><span class="line">    _rdd.sparkContext.cleaner.foreach(_.registerShuffleForCleanup(<span class="keyword">this</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+注意：宽依赖支持两种Shuffle Manager。<br>即org.apache.spark.shuffle.hash.HashShuffleManager（基于Hash的Shuffle机制）和<br>org.apache.spark.shuffle.sort.SortShuffleManager（基于排序的Shuffle机制）。</li>
+</ul>
+<ol start="4">
+<li><p>可选：KV RDD可重分区。当前Spark中实现了两种类型的分片函数，一个是基于哈希的HashPartitioner，另外一个是基于范围的RangePartitioner。只有对于key-value的RDD才会有Partitioner，非key-value的RDD的Partitioner的值是None。Partitioner函数不但决定了RDD本身的分片数量，也决定了parent RDD Shuffle输出时的分片数量。</p>
+</li>
+<li><p>可选：移动计算，存储存取每个Partition的优先位置。对于一个HDFS文件来说，这个列表保存的就是每个Partition所在块的位置。</p>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>Spark RDD</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Spark 监控模块</title>
     <url>/2019/03/12/Spark%20%E7%9B%91%E6%8E%A7%E6%A8%A1%E5%9D%97/</url>
     <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
@@ -1612,50 +1656,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>Spark</tag>
         <tag>Spark监控</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Spark RDD浅谈</title>
-    <url>/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/</url>
-    <content><![CDATA[<p>对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念</p>
-<p>它是分布式的，可以分布在多台机器上，进行计算</p>
-<p>它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换</p>
-<p>它表示已被分区，不可变的并能够被并行操作的数据集合</p>
-<p>这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？</p>
-<a id="more"></a>
-<hr>
-<h4 id="对RDD的理解"><a href="#对RDD的理解" class="headerlink" title="对RDD的理解"></a>对RDD的理解</h4><h5 id="官方在源码中对RDD的注释："><a href="#官方在源码中对RDD的注释：" class="headerlink" title="官方在源码中对RDD的注释："></a>官方在源码中对RDD的注释：</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">* Internally, each RDD is characterized by five main properties:</span><br><span class="line">*   </span><br><span class="line">*  - A list of partitions  一个分区的列表</span><br><span class="line">*  - A function <span class="keyword">for</span> computing each split  一个计算每个分区的函数，即RDD的分片函数</span><br><span class="line">*  - A list of dependencies on other RDDs    RDD之间的依赖关系 </span><br><span class="line">*  - Optionally, a Partitioner <span class="keyword">for</span> key-<span class="function">value <span class="title">RDDs</span> <span class="params">(e.g. to say that the RDD is hash-partitioned)</span>    可选：一个Partitioner</span></span><br><span class="line"><span class="function">*  - Optionally, a list of preferred locations to compute each split <span class="title">on</span> <span class="params">(e.g. block locations <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">*    an HDFS file)</span>    可选：一个列表，存储存取每个Partition的优先位置</span></span><br><span class="line"><span class="function">*</span></span><br><span class="line"><span class="function">* All of the scheduling and execution in Spark is done based on these methods, allowing each RDD</span></span><br><span class="line"><span class="function">* to implement its own way of computing itself. Indeed, users can implement custom <span class="title">RDDs</span> <span class="params">(e.g. <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">* reading data from a new storage system)</span> by overriding these functions. Please refer to the</span></span><br><span class="line"><span class="function">* [[http:<span class="comment">//www.cs.berkeley.edu/~matei/papers/2012/nsdi_spark.pdf Spark paper]] for more details</span></span></span><br><span class="line"><span class="function">* on RDD internals.</span></span><br><span class="line"><span class="function">*/</span></span><br></pre></td></tr></table></figure>
-<p>通过官方的注释，我们可以了解到，每个RDD都有五个重要的属性。</p>
-<ol>
-<li><p>一个分区的列表。我们可以理解为是一组分片，分片就是数据集的基本组成单位，对于RDD来说，每个分片都会被一个计算任务处理，并决定并行计算的粒度。<br>用户创建RDD时，可以指定RDD的分片个数，若没有指定，则采用默认（默认值：程序所分配的CPU Cores数目），下图描述了分区存储的计算模型，每个分配的存储是有BlockManager实现的。<br>每个分区都会被逻辑映射成BlockManager的一个block，而这个block会被一个Task负责计算。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png" alt="RDD Partiton 的存储和计算模型"></p>
-</li>
-<li><p>一个计算每个分区的函数。即RDD的计算分片compute函数，Spark中的RDD计算是以分片为单位的，每个RDD都会实现compute函数以达到这个目的。compute函数会对迭代器进行复核，不需要保存每次计算的结果。</p>
-</li>
-<li><p>RDD之间的依赖关系。这里要说一下RDD的依赖关系<br>RDD和它的依赖的parent RDD(s)的关系有两种不同的类型，即宽依赖和窄依赖</p>
-</li>
-</ol>
-<ul>
-<li>窄依赖指的是每一个parent RDD的partition最多被子RDD的一个partition使用</li>
-<li>宽依赖是指多个子RDD的partition会依赖同一个parent RDD的partition<br>接下来，从不同类型的转换来进一步理解RDD的窄依赖和宽依赖的区别，如下图所示。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png" alt="RDD 宽依赖 窄依赖"><br>对于map和filter形式的转换来说，它们只是将Partition的数据根据转换的规则进行转化，并不涉及其他的处理，可以简单地认为只是将数据从一个形式转换到另一个形式。<br>对于union，只是将多个RDD合并成一个，parent RDD的Partition(s)不会有任何的变化，可以认为只是把parent RDD的Partition(s)简单进行复制与合并。<br>对于join，如果每个Partition仅仅和已知的、特定的Partition进行join，那么这个依赖关系也是窄依赖。对于这种有规则的数据的join，并不会引入昂贵的Shuffle。<br>对于窄依赖，由于RDD每个Partition依赖固定数量的parent RDD(s)的Partition(s)，因此可以通过一个计算任务来处理这些Partition，并且这些Partition相互独立，这些计算任务也就可以并行执行了。<br>对于groupByKey，子RDD的所有Partition(s)会依赖于parent RDD的所有Partition(s)，子RDD的Partition是parent RDD的所有Partition Shuffle的结果，因此这两个RDD是不能通过一个计算任务来完成的。同样，对于需要parent RDD的所有Partition进行join的转换，也是需要Shuffle，这类join的依赖就是宽依赖而不是前面提到的窄依赖了。<br>不同的操作依据其特性，可能会产生不同的依赖。例如map、filter操作会产生 narrow dependency 。reduceBykey操作会产生 wide / shuffle dependency。<br>通俗点来说，RDD的每个Partition，仅仅依赖于父RDD中的一个Partition，这才是窄。 就这么简单！<br>反正，子Rdd的partition和父Rdd的Partition如果是一对一就是窄依赖，这样理解就好区分了 　　　　　　　　　<br>捋一下这里的源码：<br>所有的依赖都要实现<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">trait Dependency[T]：</span><br><span class="line">abstract class Dependency[T] extends Serializable &#123;</span><br><span class="line">    def rdd: RDD[T]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-其中rdd就是依赖的parent RDD。<br>对于窄依赖的实现（有两种）<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] &#123;</span><br><span class="line">    <span class="comment">//返回子RDD的partitionId依赖的所有的parent RDD的Partition(s)</span></span><br><span class="line">    <span class="function">def <span class="title">getParents</span><span class="params">(partitionId: Int)</span>: Seq[Int]</span></span><br><span class="line"><span class="function">    override def rdd: RDD[T] </span>= _rdd</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-窄依赖是有两种具体实现，分别如下：<br>一种是一对一的依赖，即OneToOneDependency：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) &#123;</span><br><span class="line">    <span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= List(partitionId)</span><br><span class="line">    通过getParents的实现不难看出，RDD仅仅依赖于parent RDD相同ID的Partition。</span><br></pre></td></tr></table></figure>
-还有一个是范围的依赖，即RangeDependency，它仅仅被org.apache.spark.rdd.UnionRDD使用。UnionRDD是把多个RDD合成一个RDD，这些RDD是被拼接而成，即每个parent RDD的Partition的相对顺序不会变，只不过每个parent RDD在UnionRDD中的Partition的起始位置不同。因此它的getPartents如下：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= &#123;</span><br><span class="line">    <span class="keyword">if</span>(partitionId &gt;= outStart &amp;&amp; partitionId &lt; outStart + length) &#123;</span><br><span class="line">       List(partitionId - outStart + inStart)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       Nil</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-其中，inStart是parent RDD中Partition的起始位置，outStart是在UnionRDD中的起始位置，length就是parent RDD中Partition的数量。<br>对于宽依赖的实现（只有一种）<br>宽依赖的实现只有一种：ShuffleDependency。子RDD依赖于parent RDD的所有Partition，因此需要Shuffle过程：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class ShuffleDependency[K, V, C](</span><br><span class="line">    <span class="meta">@transient</span> _rdd: RDD[_ &lt;: Product2[K, V]],</span><br><span class="line">    val partitioner: Partitioner,</span><br><span class="line">    val serializer: Option[Serializer] = None,</span><br><span class="line">    val keyOrdering: Option[Ordering[K]] = None,</span><br><span class="line">    val aggregator: Option[Aggregator[K, V, C]] = None,</span><br><span class="line">    val mapSideCombine: Boolean = <span class="keyword">false</span>)</span><br><span class="line">extends Dependency[Product2[K, V]] &#123;</span><br><span class="line"> </span><br><span class="line">override def rdd = _rdd.asInstanceOf[RDD[Product2[K, V]]]</span><br><span class="line"><span class="comment">//获取新的shuffleId</span></span><br><span class="line">val shuffleId: Int = _rdd.context.newShuffleId()</span><br><span class="line"><span class="comment">//向ShuffleManager注册Shuffle的信息</span></span><br><span class="line">val shuffleHandle: ShuffleHandle =</span><br><span class="line">_rdd.context.env.shuffleManager.registerShuffle(</span><br><span class="line">    shuffleId, _rdd.partitions.size, <span class="keyword">this</span>)</span><br><span class="line">    _rdd.sparkContext.cleaner.foreach(_.registerShuffleForCleanup(<span class="keyword">this</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-注意：宽依赖支持两种Shuffle Manager。<br>即org.apache.spark.shuffle.hash.HashShuffleManager（基于Hash的Shuffle机制）和<br>org.apache.spark.shuffle.sort.SortShuffleManager（基于排序的Shuffle机制）。</li>
-</ul>
-<ol start="4">
-<li><p>可选：KV RDD可重分区。当前Spark中实现了两种类型的分片函数，一个是基于哈希的HashPartitioner，另外一个是基于范围的RangePartitioner。只有对于key-value的RDD才会有Partitioner，非key-value的RDD的Partitioner的值是None。Partitioner函数不但决定了RDD本身的分片数量，也决定了parent RDD Shuffle输出时的分片数量。</p>
-</li>
-<li><p>可选：移动计算，存储存取每个Partition的优先位置。对于一个HDFS文件来说，这个列表保存的就是每个Partition所在块的位置。</p>
-</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>Spark RDD</tag>
       </tags>
   </entry>
   <entry>
@@ -2082,6 +2082,24 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
+    <title>Spark 序列化</title>
+    <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
+    <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
+
+<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
+<h3 id="Java-serialization"><a href="#Java-serialization" class="headerlink" title="Java serialization"></a>Java serialization</h3><p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
+<h3 id="Kryo-serialization"><a href="#Kryo-serialization" class="headerlink" title="Kryo serialization"></a>Kryo serialization</h3><p>Spark还可以使用Kryo库（版本4）来更快地序列化对象。Kryo比Java串行化（通常多达10倍）要快得多，也更紧凑，但是不支持所有可串行化类型，并且要求您提前注册您将在程序中使用的类，以获得最佳性能。</p>
+<p>您可以通过使用SparkConf初始化作业并调用conf.set（“ spark.serializer”，“ org.apache.spark.serializer.KryoSerializer”）来切换为使用Kryo。</p>
+<p>要向Kryo注册您自己的自定义类，请使用registerKryoClasses方法</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(...).setAppName(...)</span><br><span class="line">conf.registerKryoClasses(<span class="type">Array</span>(classOf[<span class="type">MyClass1</span>], classOf[<span class="type">MyClass2</span>]))</span><br><span class="line"><span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Spark 广播变量</title>
     <url>/2018/10/04/Spark%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F/</url>
     <content><![CDATA[<h5 id="为什么要将变量定义成广播变量？"><a href="#为什么要将变量定义成广播变量？" class="headerlink" title="为什么要将变量定义成广播变量？"></a>为什么要将变量定义成广播变量？</h5><p>如果我们要在分布式计算里面分发大对象，例如：字典，集合，黑白名单等，这个都会由Driver端进行分发，一般来讲，如果这个变量不是广播变量，那么每个task就会分发一份，这在task数目十分多的情况下Driver的带宽会成为系统的瓶颈，而且会大量消耗task服务器上的资源，如果将这个变量声明为广播变量，那么知识每个executor拥有一份，这个executor启动的task会共享这个变量，节省了通信的成本和服务器的资源。</p>
@@ -2205,24 +2223,6 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>Spark 序列化</title>
-    <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
-    <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
-
-<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
-<h3 id="Java-serialization"><a href="#Java-serialization" class="headerlink" title="Java serialization"></a>Java serialization</h3><p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
-<h3 id="Kryo-serialization"><a href="#Kryo-serialization" class="headerlink" title="Kryo serialization"></a>Kryo serialization</h3><p>Spark还可以使用Kryo库（版本4）来更快地序列化对象。Kryo比Java串行化（通常多达10倍）要快得多，也更紧凑，但是不支持所有可串行化类型，并且要求您提前注册您将在程序中使用的类，以获得最佳性能。</p>
-<p>您可以通过使用SparkConf初始化作业并调用conf.set（“ spark.serializer”，“ org.apache.spark.serializer.KryoSerializer”）来切换为使用Kryo。</p>
-<p>要向Kryo注册您自己的自定义类，请使用registerKryoClasses方法</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(...).setAppName(...)</span><br><span class="line">conf.registerKryoClasses(<span class="type">Array</span>(classOf[<span class="type">MyClass1</span>], classOf[<span class="type">MyClass2</span>]))</span><br><span class="line"><span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spark 经典案例</title>
     <url>/2018/10/01/Spark%E7%BB%8F%E5%85%B8%E6%A1%88%E4%BE%8B/</url>
     <content><![CDATA[<p>一个Spark的经典案例</p>
@@ -2286,11 +2286,11 @@ csv读取数据注意使用几个参数</li>
 <p>如果必须在恢复方案中还原服务器，建议对两种类型都执行定期备份：</p>
 <h5 id="Tableau-Server-管理的数据"><a href="#Tableau-Server-管理的数据" class="headerlink" title="Tableau Server 管理的数据"></a>Tableau Server 管理的数据</h5><p>Tableau Server 管理的数据包含 Tableau PostgreSQL 数据库或存储库以及文件存储，其中包含工作簿和用户元数据、数据提取文件以及配置数据。使用 TSM 创建备份时，所有这些数据都保存在一个扩展名为 <code>.tsbak</code>的文件中。</p>
 <p>管理的数据使用以下命令进行备份，扩展名为<code>.tsbak</code></p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tsm maintenance backup</span><br><span class="line">tsm maintenance backup -f &lt;filename&gt;.tsbak -d</span><br><span class="line">/var/opt/tableau/tableau_server/data/tabsvc/files/backups/&lt;filename&gt;.tsbak</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tsm maintenance backup -f &lt;filename&gt;.tsbak</span><br><span class="line">/var/opt/tableau/tableau_server/data/tabsvc/files/backups/&lt;filename&gt;.tsbak</span><br></pre></td></tr></table></figure>
 
 <h5 id="配置和拓扑数据"><a href="#配置和拓扑数据" class="headerlink" title="配置和拓扑数据"></a>配置和拓扑数据</h5><p>包括完全恢复服务器所需的大多数服务器配置信息。SMTP、通知、某些身份验证资产都是可导出进行备份的配置数据的示例。拓扑数据定义 Tableau Server 进程在单服务器和多节点部署中的配置方式。</p>
 <p>配置和拓扑数据使用以下命令进行备份，命令生成的<code>.json</code> 文件</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tsm settings export</span><br><span class="line">tsm settings export -f &lt;filename&gt;.json</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tsm settings export -f &lt;filename&gt;.json</span><br></pre></td></tr></table></figure>
 
 
 
