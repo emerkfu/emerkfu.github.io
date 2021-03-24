@@ -55,6 +55,191 @@
       </tags>
   </entry>
   <entry>
+    <title>Flume架构基础</title>
+    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
+    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
+<a id="more"></a>
+<hr>
+<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
+<li>可以和任意存储进程集成。</li>
+<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
+<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
+</ol>
+<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
+<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
+<ul>
+<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
+</li>
+<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
+</li>
+<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
+</li>
+</ul>
+<ol>
+<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
+<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
+</ol>
+<ul>
+<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
+</li>
+<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
+</li>
+</ul>
+<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
+<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
+<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
+<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
+<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
+<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
+<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
+<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
+]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HBase 基本概念和使用</title>
+    <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
+    <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
+<p>HBase是基于列的而不是基于行的模式。</p>
+<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
+<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+<a id="more"></a>
+
+<hr>
+<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
+<li>监控RegionServer</li>
+<li>处理RegionServer故障转移</li>
+<li>处理元数据的变更</li>
+<li>处理region的分配或移除</li>
+<li>在空闲时间进行数据的负载均衡</li>
+<li>通过zookeeper发布自己的位置给客户端</li>
+</ol>
+<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
+<li>负责存储HBase的实际数据</li>
+<li>处理分配给它的Region</li>
+<li>刷新缓存到HDFS</li>
+<li>维护HLog</li>
+<li>执行压缩</li>
+<li>负责处理Region分片</li>
+</ol>
+<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
+<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
+<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
+</ul>
+<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
+<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
+<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
+<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
+<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
+<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
+<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
+<ul>
+<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
+<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
+<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
+<li>Zookeeper中记录了-ROOT-表的location</li>
+<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
+</ul>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
+<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
+<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
+<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
+<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
+<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
+<ol>
+<li>管理用户对Table的增、删、改、查操作</li>
+<li>管理HRegionServer的负载均衡，调整Region分布</li>
+<li>在Region Split后，负责新Region的分配</li>
+<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
+</ol>
+<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
+<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
+<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
+<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
+<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
+<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
+<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
+<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
+<ol>
+<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
+<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
+</ol>
+<p>Zookeeper中hbase的节点的存储信息：</p>
+<ul>
+<li>rs：regionserver节点信息</li>
+<li>table-lock：hbase的除meta以外的所有表</li>
+<li>Table：hbase的所有的表</li>
+</ul>
+<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
+<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
+<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
+</ul>
+<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
+<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
+<li>进入HBase客户端命令行<br>bin/hbase shell</li>
+<li>查看帮助命令<br>hbase(main)&gt; help</li>
+<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
+<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
+</ul>
+<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
+<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
+</li>
+<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
+</li>
+<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
+</li>
+<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
+</li>
+<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
+</li>
+<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
+</li>
+<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
+</li>
+<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
+</li>
+<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
+</li>
+<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
+</li>
+<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
+</li>
+</ul>
+<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
+<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
+</li>
+<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
+</li>
+<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
+</li>
+<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
+</li>
+<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
+</li>
+<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
+</li>
+<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
+</li>
+<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>HBase</category>
+      </categories>
+      <tags>
+        <tag>HBase</tag>
+        <tag>基本概念</tag>
+        <tag>常用命令</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Flume案例</title>
     <url>/2018/08/17/Flume%E6%A1%88%E4%BE%8B/</url>
     <content><![CDATA[<p>Flume的一些配置案例</p>
@@ -231,53 +416,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Flume架构基础</title>
-    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
-    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
-<a id="more"></a>
-<hr>
-<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
-<li>可以和任意存储进程集成。</li>
-<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
-<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
-</ol>
-<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
-<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
-<ul>
-<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
-</li>
-<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
-</li>
-<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
-</li>
-</ul>
-<ol>
-<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
-<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
-</ol>
-<ul>
-<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
-</li>
-<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
-</li>
-</ul>
-<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
-<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
-<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
-<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
-<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
-<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
-<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
-<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
-]]></content>
-      <categories>
-        <category>Flume</category>
-      </categories>
-      <tags>
-        <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>HDFS 读写流程</title>
     <url>/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<p>关于HDFS文件的读写流程</p>
@@ -307,146 +445,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
+        <tag>基本概念</tag>
         <tag>Hadoop</tag>
-        <tag>基本概念</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>HBase 基本概念和使用</title>
-    <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
-    <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
-<p>HBase是基于列的而不是基于行的模式。</p>
-<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
-<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
-<a id="more"></a>
-
-<hr>
-<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
-<li>监控RegionServer</li>
-<li>处理RegionServer故障转移</li>
-<li>处理元数据的变更</li>
-<li>处理region的分配或移除</li>
-<li>在空闲时间进行数据的负载均衡</li>
-<li>通过zookeeper发布自己的位置给客户端</li>
-</ol>
-<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
-<li>负责存储HBase的实际数据</li>
-<li>处理分配给它的Region</li>
-<li>刷新缓存到HDFS</li>
-<li>维护HLog</li>
-<li>执行压缩</li>
-<li>负责处理Region分片</li>
-</ol>
-<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
-<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
-<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
-</ul>
-<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
-<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
-<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
-<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
-<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
-<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
-<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
-<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
-<ul>
-<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
-<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
-<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
-<li>Zookeeper中记录了-ROOT-表的location</li>
-<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
-</ul>
-<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
-<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
-<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
-<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
-<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
-<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
-<ol>
-<li>管理用户对Table的增、删、改、查操作</li>
-<li>管理HRegionServer的负载均衡，调整Region分布</li>
-<li>在Region Split后，负责新Region的分配</li>
-<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
-</ol>
-<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
-<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
-<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
-<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
-<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
-<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
-<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
-<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
-<ol>
-<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
-<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
-</ol>
-<p>Zookeeper中hbase的节点的存储信息：</p>
-<ul>
-<li>rs：regionserver节点信息</li>
-<li>table-lock：hbase的除meta以外的所有表</li>
-<li>Table：hbase的所有的表</li>
-</ul>
-<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
-<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
-<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
-</ul>
-<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
-<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
-<li>进入HBase客户端命令行<br>bin/hbase shell</li>
-<li>查看帮助命令<br>hbase(main)&gt; help</li>
-<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
-<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
-</ul>
-<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
-<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
-</li>
-<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
-</li>
-<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
-</li>
-<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
-</li>
-<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
-</li>
-<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
-</li>
-<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
-</li>
-<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
-</li>
-<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
-</li>
-<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
-</li>
-<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
-</li>
-</ul>
-<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
-<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
-</li>
-<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
-</li>
-<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
-</li>
-<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
-</li>
-<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
-</li>
-<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
-</li>
-<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
-</li>
-<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
-</li>
-</ul>
-]]></content>
-      <categories>
-        <category>HBase</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>HBase</tag>
-        <tag>常用命令</tag>
       </tags>
   </entry>
   <entry>
@@ -532,66 +532,9 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
         <tag>Shuffle</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>HDFS 常用命令</title>
-    <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<p>Hadoop的常用命令</p>
-<a id="more"></a>
-
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">查看hdfs某路径的大小</span><br><span class="line">hadoop fs -du -s -h /</span><br><span class="line">hadoop fs -du -s /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>常用命令</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop 数据压缩</title>
-    <url>/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/</url>
-    <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
-<a id="more"></a>
-<hr>
-<h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
-<ul>
-<li>减少磁盘存储空间</li>
-<li>降低IO（网络的IO和磁盘的IO）</li>
-<li>加快数据在磁盘和网络中的传输速度，从而提高系统的处理速度</li>
-</ul>
-<p>坏处：</p>
-<ul>
-<li>由于使用数据时，需要先将数据解压，加重CPU负荷</li>
-</ul>
-<p>基本原则：</p>
-<ul>
-<li>运算密集型的job，少用压缩</li>
-<li>IO密集型的job，多用压缩</li>
-</ul>
-<p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png" alt="压缩格式"><br>是否可分割是指，压缩后的文件是否可以再分割。可以分割的格式允许单一文件由多个Mapper程序同时读取，可以做到更好的并行化。</p>
-<h4 id="压缩比"><a href="#压缩比" class="headerlink" title="压缩比"></a>压缩比</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png" alt="压缩之后的size"></p>
-<h4 id="压缩时间"><a href="#压缩时间" class="headerlink" title="压缩时间"></a>压缩时间</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png" alt="压缩时间-两次不同大小的文件"><br>可以看出，压缩比越高，压缩时间越长，压缩比：Snappy&gt;LZ4&gt;LZO&gt;GZIP&gt;BZIP2</p>
-<h4 id="压缩格式的优缺点"><a href="#压缩格式的优缺点" class="headerlink" title="压缩格式的优缺点"></a>压缩格式的优缺点</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png" alt="压缩格式的优缺点"></p>
-<h4 id="压缩的应用场景"><a href="#压缩的应用场景" class="headerlink" title="压缩的应用场景"></a>压缩的应用场景</h4><p>在Hadoop中的应用场景主要在三方面：输入，中间，输出。</p>
-<p>整体思路：hdfs ==&gt; map ==&gt; shuffle ==&gt; reduce</p>
-<ol>
-<li>Use Compressd Map Input: 从HDFS中读取文件进行MR作业，如果数据很大，可以使用压缩并且选择支持分片的压缩方式（bzip2, LZO），可以实现并行处理，提高效率，减少磁盘读取时间，同时选择合适的存储格式，例如：Sequence Files, RC, ORC等。</li>
-<li>Compress Intermediate Data: Map输出作为Reduce的输入，需要经过shuffle这一过程，需要把数据读取到一个环形缓冲区，然后读取到本地磁盘，所以选择压缩可以减少存储文件所占空间，提升数据传输速率。建议使用压缩速度快的压缩方式，例如：Snappy和LZO。</li>
-<li>Compress Reducer Output: 进行归档处理或者链接MR的工作（该作业的输出作为下个作业的输入），压缩可以减少存储文件所占空间，提升数据传输速率，如果作为归档处理，可以采用高的压缩比（Gzip, bzip2），如果作为下个作业的输入，考虑是否要分片进行选择。</li>
-</ol>
-<h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -683,8 +626,65 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HDFS 常用命令</title>
+    <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<p>Hadoop的常用命令</p>
+<a id="more"></a>
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">查看hdfs某路径的大小</span><br><span class="line">hadoop fs -du -s -h /</span><br><span class="line">hadoop fs -du -s /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>常用命令</tag>
+        <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop 数据压缩</title>
+    <url>/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/</url>
+    <content><![CDATA[<h4 id="Hadoop-数据压缩"><a href="#Hadoop-数据压缩" class="headerlink" title="Hadoop 数据压缩"></a>Hadoop 数据压缩</h4><p>压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。</p>
+<a id="more"></a>
+<hr>
+<h4 id="压缩的好处和坏处"><a href="#压缩的好处和坏处" class="headerlink" title="压缩的好处和坏处"></a>压缩的好处和坏处</h4><p>好处：</p>
+<ul>
+<li>减少磁盘存储空间</li>
+<li>降低IO（网络的IO和磁盘的IO）</li>
+<li>加快数据在磁盘和网络中的传输速度，从而提高系统的处理速度</li>
+</ul>
+<p>坏处：</p>
+<ul>
+<li>由于使用数据时，需要先将数据解压，加重CPU负荷</li>
+</ul>
+<p>基本原则：</p>
+<ul>
+<li>运算密集型的job，少用压缩</li>
+<li>IO密集型的job，多用压缩</li>
+</ul>
+<p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png" alt="压缩格式"><br>是否可分割是指，压缩后的文件是否可以再分割。可以分割的格式允许单一文件由多个Mapper程序同时读取，可以做到更好的并行化。</p>
+<h4 id="压缩比"><a href="#压缩比" class="headerlink" title="压缩比"></a>压缩比</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png" alt="压缩之后的size"></p>
+<h4 id="压缩时间"><a href="#压缩时间" class="headerlink" title="压缩时间"></a>压缩时间</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png" alt="压缩时间-两次不同大小的文件"><br>可以看出，压缩比越高，压缩时间越长，压缩比：Snappy&gt;LZ4&gt;LZO&gt;GZIP&gt;BZIP2</p>
+<h4 id="压缩格式的优缺点"><a href="#压缩格式的优缺点" class="headerlink" title="压缩格式的优缺点"></a>压缩格式的优缺点</h4><p><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png" alt="压缩格式的优缺点"></p>
+<h4 id="压缩的应用场景"><a href="#压缩的应用场景" class="headerlink" title="压缩的应用场景"></a>压缩的应用场景</h4><p>在Hadoop中的应用场景主要在三方面：输入，中间，输出。</p>
+<p>整体思路：hdfs ==&gt; map ==&gt; shuffle ==&gt; reduce</p>
+<ol>
+<li>Use Compressd Map Input: 从HDFS中读取文件进行MR作业，如果数据很大，可以使用压缩并且选择支持分片的压缩方式（bzip2, LZO），可以实现并行处理，提高效率，减少磁盘读取时间，同时选择合适的存储格式，例如：Sequence Files, RC, ORC等。</li>
+<li>Compress Intermediate Data: Map输出作为Reduce的输入，需要经过shuffle这一过程，需要把数据读取到一个环形缓冲区，然后读取到本地磁盘，所以选择压缩可以减少存储文件所占空间，提升数据传输速率。建议使用压缩速度快的压缩方式，例如：Snappy和LZO。</li>
+<li>Compress Reducer Output: 进行归档处理或者链接MR的工作（该作业的输出作为下个作业的输入），压缩可以减少存储文件所占空间，提升数据传输速率，如果作为归档处理，可以采用高的压缩比（Gzip, bzip2），如果作为下个作业的输入，考虑是否要分片进行选择。</li>
+</ol>
+<h4 id="压缩参数配置"><a href="#压缩参数配置" class="headerlink" title="压缩参数配置"></a>压缩参数配置</h4><p>要在Hadoop中启动压缩，可以配置如下参数：<br><img src="/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png" alt="压缩参数配置"></p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -735,8 +735,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>Hadoop</tag>
         <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -844,6 +844,29 @@
       </tags>
   </entry>
   <entry>
+    <title>Hive 行列转换</title>
+    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
+    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
+<a id="more"></a>
+
+<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
+<hr>
+<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Hive 数据倾斜</title>
     <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
     <content><![CDATA[<p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
@@ -899,29 +922,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>Hive</tag>
         <tag>数据倾斜</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 行列转换</title>
-    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
-    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
-<a id="more"></a>
-
-<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
-<hr>
-<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
       </tags>
   </entry>
   <entry>
@@ -1128,6 +1128,48 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Scala 模式匹配</title>
+    <url>/2018/05/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
+    <content><![CDATA[<h3 id="Scala-模式匹配"><a href="#Scala-模式匹配" class="headerlink" title="Scala 模式匹配"></a>Scala 模式匹配</h3><p>类似于java的switch case<br>可以匹配内容、集合、类型…</p>
+<a id="more"></a>
+<hr>
+<h4 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">变量 <span class="keyword">match</span>&#123;</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">1</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">2</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">3</span> =&gt; ...</span><br><span class="line">	_ =&gt; ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//*scala不需要break</span></span><br></pre></td></tr></table></figure>
+<h5 id="根据集合匹配："><a href="#根据集合匹配：" class="headerlink" title="根据集合匹配："></a>根据集合匹配：</h5><p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> a1 = <span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>,<span class="string">"d"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> a11 = a1(<span class="type">Random</span>.nextInt(a1.length))</span><br><span class="line"></span><br><span class="line">a11 <span class="keyword">match</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"a"</span> =&gt; print(<span class="string">"这是a"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"b"</span> =&gt; print(<span class="string">"这是b"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"c"</span> =&gt; print(<span class="string">"这是c"</span>)</span><br><span class="line">  <span class="keyword">case</span> _ =&gt; print(<span class="string">"这是哪个？"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting</span></span>(array: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>) =&gt; println(<span class="string">"这是只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(x,y) =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>,_*) =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
+<h6 id="结果："><a href="#结果：" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
+
+<p>例3：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting1</span></span>(array: <span class="type">List</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>:: <span class="type">Nil</span> =&gt; println(<span class="string">"有且只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> x::y::<span class="type">Nil</span> =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>::tail =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-1"><a href="#结果：-1" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
+<h5 id="根据类型匹配："><a href="#根据类型匹配：" class="headerlink" title="根据类型匹配："></a>根据类型匹配：</h5><p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchType</span></span>(obj: <span class="type">Any</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">  obj <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> i:<span class="type">Int</span> =&gt; println(<span class="string">"这是Int类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> s:<span class="type">String</span> =&gt; println(<span class="string">"这是String类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> m:<span class="type">Map</span>[_,_] =&gt; println(<span class="string">"这是Map类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"未找到的类型"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchType(<span class="number">1</span>)</span><br><span class="line">matchType(<span class="string">"a"</span>)</span><br><span class="line">matchType(<span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="number">1</span>))</span><br><span class="line">matchType(<span class="number">1</span>L)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-2"><a href="#结果：-2" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是<span class="type">Int</span>类型</span><br><span class="line">这是<span class="type">String</span>类型</span><br><span class="line">这是<span class="type">Map</span>类型</span><br><span class="line">未找到的类型</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> aas = <span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="string">"a1"</span>, <span class="string">"b"</span> -&gt; <span class="string">"b1"</span>, <span class="string">"c"</span> -&gt; <span class="string">"c1"</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchaa</span></span>(key:<span class="type">String</span>): <span class="type">Unit</span> =&#123;</span><br><span class="line">  <span class="keyword">val</span> aa = aas.get(key)</span><br><span class="line">  aa <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Some</span>(aa) =&gt; println(<span class="string">"key对应的value为"</span> + aa)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">None</span> =&gt; println(<span class="string">"key没有匹配上..."</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchaa(<span class="string">"a"</span>)</span><br><span class="line">matchaa(<span class="string">"b"</span>)</span><br><span class="line">matchaa(<span class="string">"c"</span>)</span><br><span class="line">matchaa(<span class="string">"d"</span>)</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-3"><a href="#结果：-3" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">key对应的value为a1</span><br><span class="line">key对应的value为b1</span><br><span class="line">key对应的value为c1</span><br><span class="line">key没有匹配上...</span><br></pre></td></tr></table></figure>
+<h5 id="模式匹配在工作中主要用于异常处理："><a href="#模式匹配在工作中主要用于异常处理：" class="headerlink" title="模式匹配在工作中主要用于异常处理："></a>模式匹配在工作中主要用于异常处理：</h5><p>IO操作、数据库操作<br>1）open<br>2）todo…<br>3）release</p>
+<p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">ArithmeticException</span> =&gt; println(<span class="string">"除数不能为0..."</span>)</span><br><span class="line">  <span class="comment">//case e:Exception =&gt; println(e.getMessage)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-4"><a href="#结果：-4" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">除数不能为<span class="number">0.</span>..</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="comment">//case e:ArithmeticException =&gt; println("除数不能为0...")</span></span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-5"><a href="#结果：-5" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">/ by zero</span><br></pre></td></tr></table></figure>
+
+<p>例3：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="comment">//open</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">//关闭文件流或释放数据库连接</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
+      <tags>
+        <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>RowKey设计原则、热点问题、设计实践</title>
     <url>/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/</url>
     <content><![CDATA[<p>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</p>
@@ -1171,89 +1213,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Scala 集合 List</title>
-    <url>/2018/05/02/Scala_%E9%9B%86%E5%90%88_List/</url>
-    <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中List的说明</p>
-<a id="more"></a>
-<hr>
-<h4 id="List"><a href="#List" class="headerlink" title="List"></a>List</h4><p>Scala List 可以有重复值</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">import</span> scala.collection.mutable.<span class="type">Queue</span></span><br><span class="line">scala&gt; <span class="keyword">val</span> q1 = <span class="keyword">new</span> <span class="type">Queue</span>[<span class="type">Int</span>]</span><br></pre></td></tr></table></figure>
-<h5 id="放入数据："><a href="#放入数据：" class="headerlink" title="放入数据："></a>放入数据：</h5><h6 id="单个数据"><a href="#单个数据" class="headerlink" title="单个数据"></a>单个数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1 += <span class="number">10</span></span><br><span class="line">res0: q1<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Queue</span>(<span class="number">10</span>)</span><br></pre></td></tr></table></figure>
-<h6 id="集合数据"><a href="#集合数据" class="headerlink" title="集合数据"></a>集合数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1 ++= <span class="type">List</span>(<span class="number">2</span>,<span class="number">4</span>,<span class="number">6</span>)</span><br><span class="line">res1: q1<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Queue</span>(<span class="number">10</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
-<h6 id="多个数据"><a href="#多个数据" class="headerlink" title="多个数据"></a>多个数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.enqueue(<span class="number">2</span>,<span class="number">6</span>)</span><br><span class="line">scala&gt; scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">10</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
-<h5 id="取数据："><a href="#取数据：" class="headerlink" title="取数据："></a>取数据：</h5><h6 id="只读取数据，不删除数据"><a href="#只读取数据，不删除数据" class="headerlink" title="只读取数据，不删除数据"></a>只读取数据，不删除数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.head</span><br><span class="line">res5: <span class="type">Int</span> = <span class="number">10</span></span><br></pre></td></tr></table></figure>
-<h6 id="读取数据后，删除数据"><a href="#读取数据后，删除数据" class="headerlink" title="读取数据后，删除数据"></a>读取数据后，删除数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.dequeue</span><br><span class="line">res6: <span class="type">Int</span> = <span class="number">10</span></span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res7: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
-<h6 id="读取最后一位数据"><a href="#读取最后一位数据" class="headerlink" title="读取最后一位数据"></a>读取最后一位数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.last</span><br><span class="line">res8: <span class="type">Int</span> = <span class="number">6</span></span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res9: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
-
-<h6 id="读取第一位以后的所有值"><a href="#读取第一位以后的所有值" class="headerlink" title="读取第一位以后的所有值"></a>读取第一位以后的所有值</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.tail</span><br><span class="line">res10: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res11: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1.tail.tail</span><br><span class="line">res12: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res13: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Scala</category>
-      </categories>
-      <tags>
-        <tag>Scala</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Scala 模式匹配</title>
-    <url>/2018/05/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
-    <content><![CDATA[<h3 id="Scala-模式匹配"><a href="#Scala-模式匹配" class="headerlink" title="Scala 模式匹配"></a>Scala 模式匹配</h3><p>类似于java的switch case<br>可以匹配内容、集合、类型…</p>
-<a id="more"></a>
-<hr>
-<h4 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">变量 <span class="keyword">match</span>&#123;</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">1</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">2</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">3</span> =&gt; ...</span><br><span class="line">	_ =&gt; ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//*scala不需要break</span></span><br></pre></td></tr></table></figure>
-<h5 id="根据集合匹配："><a href="#根据集合匹配：" class="headerlink" title="根据集合匹配："></a>根据集合匹配：</h5><p>例1：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> a1 = <span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>,<span class="string">"d"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> a11 = a1(<span class="type">Random</span>.nextInt(a1.length))</span><br><span class="line"></span><br><span class="line">a11 <span class="keyword">match</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"a"</span> =&gt; print(<span class="string">"这是a"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"b"</span> =&gt; print(<span class="string">"这是b"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"c"</span> =&gt; print(<span class="string">"这是c"</span>)</span><br><span class="line">  <span class="keyword">case</span> _ =&gt; print(<span class="string">"这是哪个？"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>例2：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting</span></span>(array: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>) =&gt; println(<span class="string">"这是只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(x,y) =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>,_*) =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
-<h6 id="结果："><a href="#结果：" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
-
-<p>例3：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting1</span></span>(array: <span class="type">List</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>:: <span class="type">Nil</span> =&gt; println(<span class="string">"有且只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> x::y::<span class="type">Nil</span> =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>::tail =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-1"><a href="#结果：-1" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
-<h5 id="根据类型匹配："><a href="#根据类型匹配：" class="headerlink" title="根据类型匹配："></a>根据类型匹配：</h5><p>例1：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchType</span></span>(obj: <span class="type">Any</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">  obj <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> i:<span class="type">Int</span> =&gt; println(<span class="string">"这是Int类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> s:<span class="type">String</span> =&gt; println(<span class="string">"这是String类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> m:<span class="type">Map</span>[_,_] =&gt; println(<span class="string">"这是Map类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"未找到的类型"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchType(<span class="number">1</span>)</span><br><span class="line">matchType(<span class="string">"a"</span>)</span><br><span class="line">matchType(<span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="number">1</span>))</span><br><span class="line">matchType(<span class="number">1</span>L)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-2"><a href="#结果：-2" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是<span class="type">Int</span>类型</span><br><span class="line">这是<span class="type">String</span>类型</span><br><span class="line">这是<span class="type">Map</span>类型</span><br><span class="line">未找到的类型</span><br></pre></td></tr></table></figure>
-
-<p>例2：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> aas = <span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="string">"a1"</span>, <span class="string">"b"</span> -&gt; <span class="string">"b1"</span>, <span class="string">"c"</span> -&gt; <span class="string">"c1"</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchaa</span></span>(key:<span class="type">String</span>): <span class="type">Unit</span> =&#123;</span><br><span class="line">  <span class="keyword">val</span> aa = aas.get(key)</span><br><span class="line">  aa <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Some</span>(aa) =&gt; println(<span class="string">"key对应的value为"</span> + aa)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">None</span> =&gt; println(<span class="string">"key没有匹配上..."</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchaa(<span class="string">"a"</span>)</span><br><span class="line">matchaa(<span class="string">"b"</span>)</span><br><span class="line">matchaa(<span class="string">"c"</span>)</span><br><span class="line">matchaa(<span class="string">"d"</span>)</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-3"><a href="#结果：-3" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">key对应的value为a1</span><br><span class="line">key对应的value为b1</span><br><span class="line">key对应的value为c1</span><br><span class="line">key没有匹配上...</span><br></pre></td></tr></table></figure>
-<h5 id="模式匹配在工作中主要用于异常处理："><a href="#模式匹配在工作中主要用于异常处理：" class="headerlink" title="模式匹配在工作中主要用于异常处理："></a>模式匹配在工作中主要用于异常处理：</h5><p>IO操作、数据库操作<br>1）open<br>2）todo…<br>3）release</p>
-<p>例1：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">ArithmeticException</span> =&gt; println(<span class="string">"除数不能为0..."</span>)</span><br><span class="line">  <span class="comment">//case e:Exception =&gt; println(e.getMessage)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-4"><a href="#结果：-4" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">除数不能为<span class="number">0.</span>..</span><br></pre></td></tr></table></figure>
-
-<p>例2：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="comment">//case e:ArithmeticException =&gt; println("除数不能为0...")</span></span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-5"><a href="#结果：-5" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">/ by zero</span><br></pre></td></tr></table></figure>
-
-<p>例3：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="comment">//open</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">//关闭文件流或释放数据库连接</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Scala</category>
-      </categories>
-      <tags>
-        <tag>Scala</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Scala 集合 Set</title>
-    <url>/2018/05/04/Scala_%E9%9B%86%E5%90%88_Set/</url>
-    <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中Set的说明</p>
-<a id="more"></a>
-<hr>
-<h4 id="Set"><a href="#Set" class="headerlink" title="Set"></a>Set</h4><p>Scala Set 数据不会重复</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="comment">//导包了是可mutable（可变的）</span></span><br><span class="line"></span><br><span class="line">scala&gt; <span class="keyword">val</span> s = <span class="type">Set</span>(<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>)</span><br><span class="line">s: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>)</span><br></pre></td></tr></table></figure>
-<h5 id="增加一个值，成功了返回值为true："><a href="#增加一个值，成功了返回值为true：" class="headerlink" title="增加一个值，成功了返回值为true："></a>增加一个值，成功了返回值为true：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s.add(<span class="number">10</span>)</span><br><span class="line">res14: <span class="type">Boolean</span> = <span class="literal">true</span></span><br></pre></td></tr></table></figure>
-<h5 id="多种增加值的方法："><a href="#多种增加值的方法：" class="headerlink" title="多种增加值的方法："></a>多种增加值的方法：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s += <span class="number">11</span></span><br><span class="line">res15: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += (<span class="number">12</span>)</span><br><span class="line">res16: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += <span class="number">12</span></span><br><span class="line">res17: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.add(<span class="number">12</span>)</span><br><span class="line">res18: <span class="type">Boolean</span> = <span class="literal">false</span></span><br><span class="line"><span class="comment">//此处因为12存在，所以不能增加了</span></span><br></pre></td></tr></table></figure>
-<h5 id="去掉一个值"><a href="#去掉一个值" class="headerlink" title="去掉一个值"></a>去掉一个值</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s -= <span class="number">12</span></span><br><span class="line">res19: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.remove(<span class="number">10</span>)</span><br><span class="line">res20: <span class="type">Boolean</span> = <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">scala&gt; s</span><br><span class="line">res21: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">11</span>)</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Scala</category>
-      </categories>
-      <tags>
-        <tag>Scala</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Scala 使用ScalikeJDBC操作MySQL</title>
     <url>/2018/05/13/Scala%20%E4%BD%BF%E7%94%A8ScalikeJDBC%E6%93%8D%E4%BD%9CMySQL/</url>
     <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
@@ -1289,6 +1248,29 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Scala 集合 List</title>
+    <url>/2018/05/02/Scala_%E9%9B%86%E5%90%88_List/</url>
+    <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中List的说明</p>
+<a id="more"></a>
+<hr>
+<h4 id="List"><a href="#List" class="headerlink" title="List"></a>List</h4><p>Scala List 可以有重复值</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">import</span> scala.collection.mutable.<span class="type">Queue</span></span><br><span class="line">scala&gt; <span class="keyword">val</span> q1 = <span class="keyword">new</span> <span class="type">Queue</span>[<span class="type">Int</span>]</span><br></pre></td></tr></table></figure>
+<h5 id="放入数据："><a href="#放入数据：" class="headerlink" title="放入数据："></a>放入数据：</h5><h6 id="单个数据"><a href="#单个数据" class="headerlink" title="单个数据"></a>单个数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1 += <span class="number">10</span></span><br><span class="line">res0: q1<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Queue</span>(<span class="number">10</span>)</span><br></pre></td></tr></table></figure>
+<h6 id="集合数据"><a href="#集合数据" class="headerlink" title="集合数据"></a>集合数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1 ++= <span class="type">List</span>(<span class="number">2</span>,<span class="number">4</span>,<span class="number">6</span>)</span><br><span class="line">res1: q1<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Queue</span>(<span class="number">10</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
+<h6 id="多个数据"><a href="#多个数据" class="headerlink" title="多个数据"></a>多个数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.enqueue(<span class="number">2</span>,<span class="number">6</span>)</span><br><span class="line">scala&gt; scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">10</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
+<h5 id="取数据："><a href="#取数据：" class="headerlink" title="取数据："></a>取数据：</h5><h6 id="只读取数据，不删除数据"><a href="#只读取数据，不删除数据" class="headerlink" title="只读取数据，不删除数据"></a>只读取数据，不删除数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.head</span><br><span class="line">res5: <span class="type">Int</span> = <span class="number">10</span></span><br></pre></td></tr></table></figure>
+<h6 id="读取数据后，删除数据"><a href="#读取数据后，删除数据" class="headerlink" title="读取数据后，删除数据"></a>读取数据后，删除数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.dequeue</span><br><span class="line">res6: <span class="type">Int</span> = <span class="number">10</span></span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res7: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
+<h6 id="读取最后一位数据"><a href="#读取最后一位数据" class="headerlink" title="读取最后一位数据"></a>读取最后一位数据</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.last</span><br><span class="line">res8: <span class="type">Int</span> = <span class="number">6</span></span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res9: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>
+
+<h6 id="读取第一位以后的所有值"><a href="#读取第一位以后的所有值" class="headerlink" title="读取第一位以后的所有值"></a>读取第一位以后的所有值</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; q1.tail</span><br><span class="line">res10: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res11: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1.tail.tail</span><br><span class="line">res12: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; q1</span><br><span class="line">res13: scala.collection.mutable.<span class="type">Queue</span>[<span class="type">Int</span>] = <span class="type">Queue</span>(<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>, <span class="number">2</span>, <span class="number">6</span>)</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
+      <tags>
+        <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Scala 集合 Map</title>
     <url>/2018/05/03/Scala_%E9%9B%86%E5%90%88_Map/</url>
     <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中Map的说明</p>
@@ -1311,6 +1293,24 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <h6 id="获取所有key："><a href="#获取所有key：" class="headerlink" title="获取所有key："></a>获取所有key：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> (v &lt;- c.values) &#123;</span><br><span class="line">  println(v)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <h6 id="结果：-2"><a href="#结果：-2" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="number">20</span></span><br><span class="line"><span class="number">10</span></span><br></pre></td></tr></table></figure>
 <h5 id="some的解释："><a href="#some的解释：" class="headerlink" title="some的解释："></a>some的解释：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">val</span> a = <span class="type">Map</span>(<span class="number">1</span> -&gt; <span class="number">2</span>)</span><br><span class="line">a: scala.collection.immutable.<span class="type">Map</span>[<span class="type">Int</span>,<span class="type">Int</span>] = <span class="type">Map</span>(<span class="number">1</span> -&gt; <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">1</span>)</span><br><span class="line">res10: <span class="type">Option</span>[<span class="type">Int</span>] = <span class="type">Some</span>(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">2</span>)</span><br><span class="line">res11: <span class="type">Option</span>[<span class="type">Int</span>] = <span class="type">None</span></span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">1</span>).get</span><br><span class="line">res12: <span class="type">Int</span> = <span class="number">2</span></span><br><span class="line"></span><br><span class="line">scala&gt; a.get(<span class="number">2</span>).getOrElse(<span class="number">99</span>)</span><br><span class="line">res2: <span class="type">Int</span> = <span class="number">99</span></span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
+      <tags>
+        <tag>Scala</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Scala 集合 Set</title>
+    <url>/2018/05/04/Scala_%E9%9B%86%E5%90%88_Set/</url>
+    <content><![CDATA[<h3 id="Scala-集合"><a href="#Scala-集合" class="headerlink" title="Scala 集合"></a>Scala 集合</h3><p>Scala集合部分包括List Set Tuple Map<br>集合的操作需要掌握增、删、迭代的方法<br>该部分为集合中Set的说明</p>
+<a id="more"></a>
+<hr>
+<h4 id="Set"><a href="#Set" class="headerlink" title="Set"></a>Set</h4><p>Scala Set 数据不会重复</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; <span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="keyword">import</span> scala.collection.mutable.<span class="type">Set</span></span><br><span class="line"><span class="comment">//导包了是可mutable（可变的）</span></span><br><span class="line"></span><br><span class="line">scala&gt; <span class="keyword">val</span> s = <span class="type">Set</span>(<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>)</span><br><span class="line">s: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>)</span><br></pre></td></tr></table></figure>
+<h5 id="增加一个值，成功了返回值为true："><a href="#增加一个值，成功了返回值为true：" class="headerlink" title="增加一个值，成功了返回值为true："></a>增加一个值，成功了返回值为true：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s.add(<span class="number">10</span>)</span><br><span class="line">res14: <span class="type">Boolean</span> = <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<h5 id="多种增加值的方法："><a href="#多种增加值的方法：" class="headerlink" title="多种增加值的方法："></a>多种增加值的方法：</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s += <span class="number">11</span></span><br><span class="line">res15: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += (<span class="number">12</span>)</span><br><span class="line">res16: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s += <span class="number">12</span></span><br><span class="line">res17: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">12</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.add(<span class="number">12</span>)</span><br><span class="line">res18: <span class="type">Boolean</span> = <span class="literal">false</span></span><br><span class="line"><span class="comment">//此处因为12存在，所以不能增加了</span></span><br></pre></td></tr></table></figure>
+<h5 id="去掉一个值"><a href="#去掉一个值" class="headerlink" title="去掉一个值"></a>去掉一个值</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">scala&gt; s -= <span class="number">12</span></span><br><span class="line">res19: s<span class="class">.<span class="keyword">type</span> </span>= <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">10</span>, <span class="number">11</span>)</span><br><span class="line"></span><br><span class="line">scala&gt; s.remove(<span class="number">10</span>)</span><br><span class="line">res20: <span class="type">Boolean</span> = <span class="literal">true</span></span><br><span class="line"></span><br><span class="line">scala&gt; s</span><br><span class="line">res21: scala.collection.mutable.<span class="type">Set</span>[<span class="type">Int</span>] = <span class="type">Set</span>(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">11</span>)</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>Scala</category>
       </categories>
@@ -1537,50 +1537,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Spark RDD浅谈</title>
-    <url>/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/</url>
-    <content><![CDATA[<p>对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念</p>
-<p>它是分布式的，可以分布在多台机器上，进行计算</p>
-<p>它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换</p>
-<p>它表示已被分区，不可变的并能够被并行操作的数据集合</p>
-<p>这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？</p>
-<a id="more"></a>
-<hr>
-<h4 id="对RDD的理解"><a href="#对RDD的理解" class="headerlink" title="对RDD的理解"></a>对RDD的理解</h4><h5 id="官方在源码中对RDD的注释："><a href="#官方在源码中对RDD的注释：" class="headerlink" title="官方在源码中对RDD的注释："></a>官方在源码中对RDD的注释：</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">* Internally, each RDD is characterized by five main properties:</span><br><span class="line">*   </span><br><span class="line">*  - A list of partitions  一个分区的列表</span><br><span class="line">*  - A function <span class="keyword">for</span> computing each split  一个计算每个分区的函数，即RDD的分片函数</span><br><span class="line">*  - A list of dependencies on other RDDs    RDD之间的依赖关系 </span><br><span class="line">*  - Optionally, a Partitioner <span class="keyword">for</span> key-<span class="function">value <span class="title">RDDs</span> <span class="params">(e.g. to say that the RDD is hash-partitioned)</span>    可选：一个Partitioner</span></span><br><span class="line"><span class="function">*  - Optionally, a list of preferred locations to compute each split <span class="title">on</span> <span class="params">(e.g. block locations <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">*    an HDFS file)</span>    可选：一个列表，存储存取每个Partition的优先位置</span></span><br><span class="line"><span class="function">*</span></span><br><span class="line"><span class="function">* All of the scheduling and execution in Spark is done based on these methods, allowing each RDD</span></span><br><span class="line"><span class="function">* to implement its own way of computing itself. Indeed, users can implement custom <span class="title">RDDs</span> <span class="params">(e.g. <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">* reading data from a new storage system)</span> by overriding these functions. Please refer to the</span></span><br><span class="line"><span class="function">* [[http:<span class="comment">//www.cs.berkeley.edu/~matei/papers/2012/nsdi_spark.pdf Spark paper]] for more details</span></span></span><br><span class="line"><span class="function">* on RDD internals.</span></span><br><span class="line"><span class="function">*/</span></span><br></pre></td></tr></table></figure>
-<p>通过官方的注释，我们可以了解到，每个RDD都有五个重要的属性。</p>
-<ol>
-<li><p>一个分区的列表。我们可以理解为是一组分片，分片就是数据集的基本组成单位，对于RDD来说，每个分片都会被一个计算任务处理，并决定并行计算的粒度。<br>用户创建RDD时，可以指定RDD的分片个数，若没有指定，则采用默认（默认值：程序所分配的CPU Cores数目），下图描述了分区存储的计算模型，每个分配的存储是有BlockManager实现的。<br>每个分区都会被逻辑映射成BlockManager的一个block，而这个block会被一个Task负责计算。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png" alt="RDD Partiton 的存储和计算模型"></p>
-</li>
-<li><p>一个计算每个分区的函数。即RDD的计算分片compute函数，Spark中的RDD计算是以分片为单位的，每个RDD都会实现compute函数以达到这个目的。compute函数会对迭代器进行复核，不需要保存每次计算的结果。</p>
-</li>
-<li><p>RDD之间的依赖关系。这里要说一下RDD的依赖关系<br>RDD和它的依赖的parent RDD(s)的关系有两种不同的类型，即宽依赖和窄依赖</p>
-</li>
-</ol>
-<ul>
-<li>窄依赖指的是每一个parent RDD的partition最多被子RDD的一个partition使用</li>
-<li>宽依赖是指多个子RDD的partition会依赖同一个parent RDD的partition<br>接下来，从不同类型的转换来进一步理解RDD的窄依赖和宽依赖的区别，如下图所示。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png" alt="RDD 宽依赖 窄依赖"><br>对于map和filter形式的转换来说，它们只是将Partition的数据根据转换的规则进行转化，并不涉及其他的处理，可以简单地认为只是将数据从一个形式转换到另一个形式。<br>对于union，只是将多个RDD合并成一个，parent RDD的Partition(s)不会有任何的变化，可以认为只是把parent RDD的Partition(s)简单进行复制与合并。<br>对于join，如果每个Partition仅仅和已知的、特定的Partition进行join，那么这个依赖关系也是窄依赖。对于这种有规则的数据的join，并不会引入昂贵的Shuffle。<br>对于窄依赖，由于RDD每个Partition依赖固定数量的parent RDD(s)的Partition(s)，因此可以通过一个计算任务来处理这些Partition，并且这些Partition相互独立，这些计算任务也就可以并行执行了。<br>对于groupByKey，子RDD的所有Partition(s)会依赖于parent RDD的所有Partition(s)，子RDD的Partition是parent RDD的所有Partition Shuffle的结果，因此这两个RDD是不能通过一个计算任务来完成的。同样，对于需要parent RDD的所有Partition进行join的转换，也是需要Shuffle，这类join的依赖就是宽依赖而不是前面提到的窄依赖了。<br>不同的操作依据其特性，可能会产生不同的依赖。例如map、filter操作会产生 narrow dependency 。reduceBykey操作会产生 wide / shuffle dependency。<br>通俗点来说，RDD的每个Partition，仅仅依赖于父RDD中的一个Partition，这才是窄。 就这么简单！<br>反正，子Rdd的partition和父Rdd的Partition如果是一对一就是窄依赖，这样理解就好区分了 　　　　　　　　　<br>捋一下这里的源码：<br>所有的依赖都要实现<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">trait Dependency[T]：</span><br><span class="line">abstract class Dependency[T] extends Serializable &#123;</span><br><span class="line">    def rdd: RDD[T]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-其中rdd就是依赖的parent RDD。<br>对于窄依赖的实现（有两种）<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] &#123;</span><br><span class="line">    <span class="comment">//返回子RDD的partitionId依赖的所有的parent RDD的Partition(s)</span></span><br><span class="line">    <span class="function">def <span class="title">getParents</span><span class="params">(partitionId: Int)</span>: Seq[Int]</span></span><br><span class="line"><span class="function">    override def rdd: RDD[T] </span>= _rdd</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-窄依赖是有两种具体实现，分别如下：<br>一种是一对一的依赖，即OneToOneDependency：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) &#123;</span><br><span class="line">    <span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= List(partitionId)</span><br><span class="line">    通过getParents的实现不难看出，RDD仅仅依赖于parent RDD相同ID的Partition。</span><br></pre></td></tr></table></figure>
-还有一个是范围的依赖，即RangeDependency，它仅仅被org.apache.spark.rdd.UnionRDD使用。UnionRDD是把多个RDD合成一个RDD，这些RDD是被拼接而成，即每个parent RDD的Partition的相对顺序不会变，只不过每个parent RDD在UnionRDD中的Partition的起始位置不同。因此它的getPartents如下：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= &#123;</span><br><span class="line">    <span class="keyword">if</span>(partitionId &gt;= outStart &amp;&amp; partitionId &lt; outStart + length) &#123;</span><br><span class="line">       List(partitionId - outStart + inStart)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       Nil</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-其中，inStart是parent RDD中Partition的起始位置，outStart是在UnionRDD中的起始位置，length就是parent RDD中Partition的数量。<br>对于宽依赖的实现（只有一种）<br>宽依赖的实现只有一种：ShuffleDependency。子RDD依赖于parent RDD的所有Partition，因此需要Shuffle过程：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class ShuffleDependency[K, V, C](</span><br><span class="line">    <span class="meta">@transient</span> _rdd: RDD[_ &lt;: Product2[K, V]],</span><br><span class="line">    val partitioner: Partitioner,</span><br><span class="line">    val serializer: Option[Serializer] = None,</span><br><span class="line">    val keyOrdering: Option[Ordering[K]] = None,</span><br><span class="line">    val aggregator: Option[Aggregator[K, V, C]] = None,</span><br><span class="line">    val mapSideCombine: Boolean = <span class="keyword">false</span>)</span><br><span class="line">extends Dependency[Product2[K, V]] &#123;</span><br><span class="line"> </span><br><span class="line">override def rdd = _rdd.asInstanceOf[RDD[Product2[K, V]]]</span><br><span class="line"><span class="comment">//获取新的shuffleId</span></span><br><span class="line">val shuffleId: Int = _rdd.context.newShuffleId()</span><br><span class="line"><span class="comment">//向ShuffleManager注册Shuffle的信息</span></span><br><span class="line">val shuffleHandle: ShuffleHandle =</span><br><span class="line">_rdd.context.env.shuffleManager.registerShuffle(</span><br><span class="line">    shuffleId, _rdd.partitions.size, <span class="keyword">this</span>)</span><br><span class="line">    _rdd.sparkContext.cleaner.foreach(_.registerShuffleForCleanup(<span class="keyword">this</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-注意：宽依赖支持两种Shuffle Manager。<br>即org.apache.spark.shuffle.hash.HashShuffleManager（基于Hash的Shuffle机制）和<br>org.apache.spark.shuffle.sort.SortShuffleManager（基于排序的Shuffle机制）。</li>
-</ul>
-<ol start="4">
-<li><p>可选：KV RDD可重分区。当前Spark中实现了两种类型的分片函数，一个是基于哈希的HashPartitioner，另外一个是基于范围的RangePartitioner。只有对于key-value的RDD才会有Partitioner，非key-value的RDD的Partitioner的值是None。Partitioner函数不但决定了RDD本身的分片数量，也决定了parent RDD Shuffle输出时的分片数量。</p>
-</li>
-<li><p>可选：移动计算，存储存取每个Partition的优先位置。对于一个HDFS文件来说，这个列表保存的就是每个Partition所在块的位置。</p>
-</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>Spark RDD</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spark 监控模块</title>
     <url>/2019/03/12/Spark%20%E7%9B%91%E6%8E%A7%E6%A8%A1%E5%9D%97/</url>
     <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
@@ -1656,6 +1612,50 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>Spark</tag>
         <tag>Spark监控</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark RDD浅谈</title>
+    <url>/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/</url>
+    <content><![CDATA[<p>对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念</p>
+<p>它是分布式的，可以分布在多台机器上，进行计算</p>
+<p>它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换</p>
+<p>它表示已被分区，不可变的并能够被并行操作的数据集合</p>
+<p>这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？</p>
+<a id="more"></a>
+<hr>
+<h4 id="对RDD的理解"><a href="#对RDD的理解" class="headerlink" title="对RDD的理解"></a>对RDD的理解</h4><h5 id="官方在源码中对RDD的注释："><a href="#官方在源码中对RDD的注释：" class="headerlink" title="官方在源码中对RDD的注释："></a>官方在源码中对RDD的注释：</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">* Internally, each RDD is characterized by five main properties:</span><br><span class="line">*   </span><br><span class="line">*  - A list of partitions  一个分区的列表</span><br><span class="line">*  - A function <span class="keyword">for</span> computing each split  一个计算每个分区的函数，即RDD的分片函数</span><br><span class="line">*  - A list of dependencies on other RDDs    RDD之间的依赖关系 </span><br><span class="line">*  - Optionally, a Partitioner <span class="keyword">for</span> key-<span class="function">value <span class="title">RDDs</span> <span class="params">(e.g. to say that the RDD is hash-partitioned)</span>    可选：一个Partitioner</span></span><br><span class="line"><span class="function">*  - Optionally, a list of preferred locations to compute each split <span class="title">on</span> <span class="params">(e.g. block locations <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">*    an HDFS file)</span>    可选：一个列表，存储存取每个Partition的优先位置</span></span><br><span class="line"><span class="function">*</span></span><br><span class="line"><span class="function">* All of the scheduling and execution in Spark is done based on these methods, allowing each RDD</span></span><br><span class="line"><span class="function">* to implement its own way of computing itself. Indeed, users can implement custom <span class="title">RDDs</span> <span class="params">(e.g. <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">* reading data from a new storage system)</span> by overriding these functions. Please refer to the</span></span><br><span class="line"><span class="function">* [[http:<span class="comment">//www.cs.berkeley.edu/~matei/papers/2012/nsdi_spark.pdf Spark paper]] for more details</span></span></span><br><span class="line"><span class="function">* on RDD internals.</span></span><br><span class="line"><span class="function">*/</span></span><br></pre></td></tr></table></figure>
+<p>通过官方的注释，我们可以了解到，每个RDD都有五个重要的属性。</p>
+<ol>
+<li><p>一个分区的列表。我们可以理解为是一组分片，分片就是数据集的基本组成单位，对于RDD来说，每个分片都会被一个计算任务处理，并决定并行计算的粒度。<br>用户创建RDD时，可以指定RDD的分片个数，若没有指定，则采用默认（默认值：程序所分配的CPU Cores数目），下图描述了分区存储的计算模型，每个分配的存储是有BlockManager实现的。<br>每个分区都会被逻辑映射成BlockManager的一个block，而这个block会被一个Task负责计算。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png" alt="RDD Partiton 的存储和计算模型"></p>
+</li>
+<li><p>一个计算每个分区的函数。即RDD的计算分片compute函数，Spark中的RDD计算是以分片为单位的，每个RDD都会实现compute函数以达到这个目的。compute函数会对迭代器进行复核，不需要保存每次计算的结果。</p>
+</li>
+<li><p>RDD之间的依赖关系。这里要说一下RDD的依赖关系<br>RDD和它的依赖的parent RDD(s)的关系有两种不同的类型，即宽依赖和窄依赖</p>
+</li>
+</ol>
+<ul>
+<li>窄依赖指的是每一个parent RDD的partition最多被子RDD的一个partition使用</li>
+<li>宽依赖是指多个子RDD的partition会依赖同一个parent RDD的partition<br>接下来，从不同类型的转换来进一步理解RDD的窄依赖和宽依赖的区别，如下图所示。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png" alt="RDD 宽依赖 窄依赖"><br>对于map和filter形式的转换来说，它们只是将Partition的数据根据转换的规则进行转化，并不涉及其他的处理，可以简单地认为只是将数据从一个形式转换到另一个形式。<br>对于union，只是将多个RDD合并成一个，parent RDD的Partition(s)不会有任何的变化，可以认为只是把parent RDD的Partition(s)简单进行复制与合并。<br>对于join，如果每个Partition仅仅和已知的、特定的Partition进行join，那么这个依赖关系也是窄依赖。对于这种有规则的数据的join，并不会引入昂贵的Shuffle。<br>对于窄依赖，由于RDD每个Partition依赖固定数量的parent RDD(s)的Partition(s)，因此可以通过一个计算任务来处理这些Partition，并且这些Partition相互独立，这些计算任务也就可以并行执行了。<br>对于groupByKey，子RDD的所有Partition(s)会依赖于parent RDD的所有Partition(s)，子RDD的Partition是parent RDD的所有Partition Shuffle的结果，因此这两个RDD是不能通过一个计算任务来完成的。同样，对于需要parent RDD的所有Partition进行join的转换，也是需要Shuffle，这类join的依赖就是宽依赖而不是前面提到的窄依赖了。<br>不同的操作依据其特性，可能会产生不同的依赖。例如map、filter操作会产生 narrow dependency 。reduceBykey操作会产生 wide / shuffle dependency。<br>通俗点来说，RDD的每个Partition，仅仅依赖于父RDD中的一个Partition，这才是窄。 就这么简单！<br>反正，子Rdd的partition和父Rdd的Partition如果是一对一就是窄依赖，这样理解就好区分了 　　　　　　　　　<br>捋一下这里的源码：<br>所有的依赖都要实现<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">trait Dependency[T]：</span><br><span class="line">abstract class Dependency[T] extends Serializable &#123;</span><br><span class="line">    def rdd: RDD[T]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中rdd就是依赖的parent RDD。<br>对于窄依赖的实现（有两种）<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] &#123;</span><br><span class="line">    <span class="comment">//返回子RDD的partitionId依赖的所有的parent RDD的Partition(s)</span></span><br><span class="line">    <span class="function">def <span class="title">getParents</span><span class="params">(partitionId: Int)</span>: Seq[Int]</span></span><br><span class="line"><span class="function">    override def rdd: RDD[T] </span>= _rdd</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+窄依赖是有两种具体实现，分别如下：<br>一种是一对一的依赖，即OneToOneDependency：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) &#123;</span><br><span class="line">    <span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= List(partitionId)</span><br><span class="line">    通过getParents的实现不难看出，RDD仅仅依赖于parent RDD相同ID的Partition。</span><br></pre></td></tr></table></figure>
+还有一个是范围的依赖，即RangeDependency，它仅仅被org.apache.spark.rdd.UnionRDD使用。UnionRDD是把多个RDD合成一个RDD，这些RDD是被拼接而成，即每个parent RDD的Partition的相对顺序不会变，只不过每个parent RDD在UnionRDD中的Partition的起始位置不同。因此它的getPartents如下：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= &#123;</span><br><span class="line">    <span class="keyword">if</span>(partitionId &gt;= outStart &amp;&amp; partitionId &lt; outStart + length) &#123;</span><br><span class="line">       List(partitionId - outStart + inStart)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       Nil</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中，inStart是parent RDD中Partition的起始位置，outStart是在UnionRDD中的起始位置，length就是parent RDD中Partition的数量。<br>对于宽依赖的实现（只有一种）<br>宽依赖的实现只有一种：ShuffleDependency。子RDD依赖于parent RDD的所有Partition，因此需要Shuffle过程：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class ShuffleDependency[K, V, C](</span><br><span class="line">    <span class="meta">@transient</span> _rdd: RDD[_ &lt;: Product2[K, V]],</span><br><span class="line">    val partitioner: Partitioner,</span><br><span class="line">    val serializer: Option[Serializer] = None,</span><br><span class="line">    val keyOrdering: Option[Ordering[K]] = None,</span><br><span class="line">    val aggregator: Option[Aggregator[K, V, C]] = None,</span><br><span class="line">    val mapSideCombine: Boolean = <span class="keyword">false</span>)</span><br><span class="line">extends Dependency[Product2[K, V]] &#123;</span><br><span class="line"> </span><br><span class="line">override def rdd = _rdd.asInstanceOf[RDD[Product2[K, V]]]</span><br><span class="line"><span class="comment">//获取新的shuffleId</span></span><br><span class="line">val shuffleId: Int = _rdd.context.newShuffleId()</span><br><span class="line"><span class="comment">//向ShuffleManager注册Shuffle的信息</span></span><br><span class="line">val shuffleHandle: ShuffleHandle =</span><br><span class="line">_rdd.context.env.shuffleManager.registerShuffle(</span><br><span class="line">    shuffleId, _rdd.partitions.size, <span class="keyword">this</span>)</span><br><span class="line">    _rdd.sparkContext.cleaner.foreach(_.registerShuffleForCleanup(<span class="keyword">this</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+注意：宽依赖支持两种Shuffle Manager。<br>即org.apache.spark.shuffle.hash.HashShuffleManager（基于Hash的Shuffle机制）和<br>org.apache.spark.shuffle.sort.SortShuffleManager（基于排序的Shuffle机制）。</li>
+</ul>
+<ol start="4">
+<li><p>可选：KV RDD可重分区。当前Spark中实现了两种类型的分片函数，一个是基于哈希的HashPartitioner，另外一个是基于范围的RangePartitioner。只有对于key-value的RDD才会有Partitioner，非key-value的RDD的Partitioner的值是None。Partitioner函数不但决定了RDD本身的分片数量，也决定了parent RDD Shuffle输出时的分片数量。</p>
+</li>
+<li><p>可选：移动计算，存储存取每个Partition的优先位置。对于一个HDFS文件来说，这个列表保存的就是每个Partition所在块的位置。</p>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>Spark RDD</tag>
       </tags>
   </entry>
   <entry>
@@ -2082,24 +2082,6 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>Spark 序列化</title>
-    <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
-    <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
-
-<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
-<h3 id="Java-serialization"><a href="#Java-serialization" class="headerlink" title="Java serialization"></a>Java serialization</h3><p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
-<h3 id="Kryo-serialization"><a href="#Kryo-serialization" class="headerlink" title="Kryo serialization"></a>Kryo serialization</h3><p>Spark还可以使用Kryo库（版本4）来更快地序列化对象。Kryo比Java串行化（通常多达10倍）要快得多，也更紧凑，但是不支持所有可串行化类型，并且要求您提前注册您将在程序中使用的类，以获得最佳性能。</p>
-<p>您可以通过使用SparkConf初始化作业并调用conf.set（“ spark.serializer”，“ org.apache.spark.serializer.KryoSerializer”）来切换为使用Kryo。</p>
-<p>要向Kryo注册您自己的自定义类，请使用registerKryoClasses方法</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(...).setAppName(...)</span><br><span class="line">conf.registerKryoClasses(<span class="type">Array</span>(classOf[<span class="type">MyClass1</span>], classOf[<span class="type">MyClass2</span>]))</span><br><span class="line"><span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spark 广播变量</title>
     <url>/2018/10/04/Spark%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F/</url>
     <content><![CDATA[<h5 id="为什么要将变量定义成广播变量？"><a href="#为什么要将变量定义成广播变量？" class="headerlink" title="为什么要将变量定义成广播变量？"></a>为什么要将变量定义成广播变量？</h5><p>如果我们要在分布式计算里面分发大对象，例如：字典，集合，黑白名单等，这个都会由Driver端进行分发，一般来讲，如果这个变量不是广播变量，那么每个task就会分发一份，这在task数目十分多的情况下Driver的带宽会成为系统的瓶颈，而且会大量消耗task服务器上的资源，如果将这个变量声明为广播变量，那么知识每个executor拥有一份，这个executor启动的task会共享这个变量，节省了通信的成本和服务器的资源。</p>
@@ -2145,6 +2127,24 @@ csv读取数据注意使用几个参数</li>
 </li>
 </ol>
 ]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark 序列化</title>
+    <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
+    <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
+
+<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
+<h3 id="Java-serialization"><a href="#Java-serialization" class="headerlink" title="Java serialization"></a>Java serialization</h3><p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
+<h3 id="Kryo-serialization"><a href="#Kryo-serialization" class="headerlink" title="Kryo serialization"></a>Kryo serialization</h3><p>Spark还可以使用Kryo库（版本4）来更快地序列化对象。Kryo比Java串行化（通常多达10倍）要快得多，也更紧凑，但是不支持所有可串行化类型，并且要求您提前注册您将在程序中使用的类，以获得最佳性能。</p>
+<p>您可以通过使用SparkConf初始化作业并调用conf.set（“ spark.serializer”，“ org.apache.spark.serializer.KryoSerializer”）来切换为使用Kryo。</p>
+<p>要向Kryo注册您自己的自定义类，请使用registerKryoClasses方法</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(...).setAppName(...)</span><br><span class="line">conf.registerKryoClasses(<span class="type">Array</span>(classOf[<span class="type">MyClass1</span>], classOf[<span class="type">MyClass2</span>]))</span><br><span class="line"><span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>Spark</category>
       </categories>
@@ -2223,21 +2223,6 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>Spark 经典案例</title>
-    <url>/2018/10/01/Spark%E7%BB%8F%E5%85%B8%E6%A1%88%E4%BE%8B/</url>
-    <content><![CDATA[<p>一个Spark的经典案例</p>
-<a id="more"></a>
-<hr>
-<h5 id="经典案例"><a href="#经典案例" class="headerlink" title="经典案例"></a>经典案例</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 用户     节目            展示 点击</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,1</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,0</span></span><br><span class="line"><span class="comment"> * 002,一起看|电视剧|军旅|士兵突击,1,1</span></span><br><span class="line"><span class="comment"> * ==&gt;</span></span><br><span class="line"><span class="comment"> * 001,一起看,2,1</span></span><br><span class="line"><span class="comment"> * 001,电视剧,2,1</span></span><br><span class="line"><span class="comment"> * 001,军旅,2,1</span></span><br><span class="line"><span class="comment"> * 001,亮剑,2,1</span></span><br><span class="line"><span class="comment"> **/</span></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">exercise02</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> linesRDD: <span class="type">RDD</span>[<span class="type">String</span>] = sc.textFile(<span class="string">"tunan-spark-core/data/test2.txt"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用map返回的是一个数组，我不要数组，就使用flatMap</span></span><br><span class="line">        <span class="keyword">import</span> com.tunan.spark.utils.<span class="type">ImplicitAspect</span>.rdd2RichRDD</span><br><span class="line">        <span class="keyword">val</span> map2RDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = linesRDD.flatMap(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words: <span class="type">Array</span>[<span class="type">String</span>] = line.split(<span class="string">","</span>)</span><br><span class="line">            <span class="keyword">val</span> programs: <span class="type">Array</span>[<span class="type">String</span>] = words(<span class="number">1</span>).split(<span class="string">"\\|"</span>)</span><br><span class="line">            <span class="keyword">val</span> mapRDD: <span class="type">Array</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = programs.map(program =&gt; ((words(<span class="number">0</span>), program), (words(<span class="number">2</span>).toInt, words(<span class="number">3</span>).toInt)))</span><br><span class="line">            mapRDD</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">val</span> groupRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), <span class="type">Iterable</span>[(<span class="type">Int</span>, <span class="type">Int</span>)])] = map2RDD.groupByKey()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//这里是mapValues很好的一个使用案例</span></span><br><span class="line">        <span class="keyword">val</span> mapVRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = groupRDD.mapValues(x =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> imps: <span class="type">Int</span> = x.map(_._1).sum</span><br><span class="line">            <span class="keyword">val</span> check: <span class="type">Int</span> = x.map(_._2).sum</span><br><span class="line">            (imps, check)</span><br><span class="line">        &#125;)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//格式化输出</span></span><br><span class="line">        mapVRDD.map(x =&gt; &#123;</span><br><span class="line">            (x._1._1,x._1._2,x._2._1,x._2._1)</span><br><span class="line">        &#125;).print()</span><br><span class="line"></span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>Spark算子</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spark 计数器</title>
     <url>/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/</url>
     <content><![CDATA[<h5 id="为什么要定义计数器？"><a href="#为什么要定义计数器？" class="headerlink" title="为什么要定义计数器？"></a>为什么要定义计数器？</h5><p>在spark应用程序中，我们经常会有这样的需求，如异常监控，调试，记录符合某特性的数据的数目，这种需求都需要用到计数器，如果一个变量不被声明为一个累加器，那么它将在被改变时不会再driver端进行全局汇总，即在分布式运行时每个task运行的只是原始变量的一个副本，并不能改变原始变量的值，但是当这个变量被声明为累加器后，该变量就会有分布式计数的功能。</p>
@@ -2273,6 +2258,21 @@ csv读取数据注意使用几个参数</li>
       </categories>
       <tags>
         <tag>Spark</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Spark 经典案例</title>
+    <url>/2018/10/01/Spark%E7%BB%8F%E5%85%B8%E6%A1%88%E4%BE%8B/</url>
+    <content><![CDATA[<p>一个Spark的经典案例</p>
+<a id="more"></a>
+<hr>
+<h5 id="经典案例"><a href="#经典案例" class="headerlink" title="经典案例"></a>经典案例</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 用户     节目            展示 点击</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,1</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,0</span></span><br><span class="line"><span class="comment"> * 002,一起看|电视剧|军旅|士兵突击,1,1</span></span><br><span class="line"><span class="comment"> * ==&gt;</span></span><br><span class="line"><span class="comment"> * 001,一起看,2,1</span></span><br><span class="line"><span class="comment"> * 001,电视剧,2,1</span></span><br><span class="line"><span class="comment"> * 001,军旅,2,1</span></span><br><span class="line"><span class="comment"> * 001,亮剑,2,1</span></span><br><span class="line"><span class="comment"> **/</span></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">exercise02</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> linesRDD: <span class="type">RDD</span>[<span class="type">String</span>] = sc.textFile(<span class="string">"tunan-spark-core/data/test2.txt"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用map返回的是一个数组，我不要数组，就使用flatMap</span></span><br><span class="line">        <span class="keyword">import</span> com.tunan.spark.utils.<span class="type">ImplicitAspect</span>.rdd2RichRDD</span><br><span class="line">        <span class="keyword">val</span> map2RDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = linesRDD.flatMap(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words: <span class="type">Array</span>[<span class="type">String</span>] = line.split(<span class="string">","</span>)</span><br><span class="line">            <span class="keyword">val</span> programs: <span class="type">Array</span>[<span class="type">String</span>] = words(<span class="number">1</span>).split(<span class="string">"\\|"</span>)</span><br><span class="line">            <span class="keyword">val</span> mapRDD: <span class="type">Array</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = programs.map(program =&gt; ((words(<span class="number">0</span>), program), (words(<span class="number">2</span>).toInt, words(<span class="number">3</span>).toInt)))</span><br><span class="line">            mapRDD</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">val</span> groupRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), <span class="type">Iterable</span>[(<span class="type">Int</span>, <span class="type">Int</span>)])] = map2RDD.groupByKey()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//这里是mapValues很好的一个使用案例</span></span><br><span class="line">        <span class="keyword">val</span> mapVRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = groupRDD.mapValues(x =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> imps: <span class="type">Int</span> = x.map(_._1).sum</span><br><span class="line">            <span class="keyword">val</span> check: <span class="type">Int</span> = x.map(_._2).sum</span><br><span class="line">            (imps, check)</span><br><span class="line">        &#125;)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//格式化输出</span></span><br><span class="line">        mapVRDD.map(x =&gt; &#123;</span><br><span class="line">            (x._1._1,x._1._2,x._2._1,x._2._1)</span><br><span class="line">        &#125;).print()</span><br><span class="line"></span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>Spark算子</tag>
       </tags>
   </entry>
   <entry>
@@ -2344,6 +2344,51 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
+    <title>Yarn 调度流程</title>
+    <url>/2018/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
+    <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
+<a id="more"></a>
+<hr>
+<h4 id="ResourceManager"><a href="#ResourceManager" class="headerlink" title="ResourceManager"></a>ResourceManager</h4><p>官网原文：</p>
+<p>The ResourceManager is the ultimate authority that arbitrates resources among all the applications in the system.</p>
+<p>The ResourceManager has two main components: Scheduler and ApplicationsManager.</p>
+<p>RM组成：</p>
+<ul>
+<li>Application Manager 应用程序管理器</li>
+<li>Resource Scheduler memory+cpu资源调度器</li>
+</ul>
+<h4 id="NodeManager"><a href="#NodeManager" class="headerlink" title="NodeManager"></a>NodeManager</h4><p>官网原文：</p>
+<p>The NodeManager is responsible for launching and managing containers on a node. Containers execute tasks as specified by the AppMaster.</p>
+<p>NM组成：</p>
+<ul>
+<li>container - 虚拟概念，执行MR、Spark计算任务的最小单元</li>
+</ul>
+<h4 id="MR-on-YARN-调度流程"><a href="#MR-on-YARN-调度流程" class="headerlink" title="MR on YARN 调度流程"></a>MR on YARN 调度流程</h4><p><img src="/2018/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/mr-on-yarn.png" alt="MR on YARN 调度流程"></p>
+<h5 id="MR-on-YARN-调度过程描述："><a href="#MR-on-YARN-调度过程描述：" class="headerlink" title="MR on YARN 调度过程描述："></a>MR on YARN 调度过程描述：</h5><ol>
+<li>用户向YARN提交应用程序，其中包括ApplicationMaster程序、启动ApplicationMaster的命令等。</li>
+<li>RM为该job分配第一个container，运行job的ApplicationMaster。</li>
+<li>App Master向Application Manager注册，这样就可以在RM WEB界面查询这个job的运行状态。</li>
+<li>App Master采用轮询的方式通过RPC协议向RM申请和领取资源。</li>
+<li>一旦App Master拿到资源，就对应的与NM通信，要求启动任务。</li>
+<li>NM为任务设置好运行环境（jar包等），将任务启动命令写在一个脚本里，并通过该脚本启动任务task。</li>
+<li>各个task通过RPC协议向App Master汇报自己的状态和进度，以此让App Master随时掌握各个task的运行状态，从而在task运行失败后重启任务。</li>
+<li>App Master向Application Manager注销且关闭自己。</li>
+</ol>
+<p>总的来说就是两步：</p>
+<ul>
+<li>启动App Master，申请资源；</li>
+<li>运行任务，直到任务运行完成。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>Yarn</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Tableau 部署</title>
     <url>/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<p>在一台机器上进行Tableau的部署，以下是部署Tableau的具体步骤。</p>
@@ -2412,51 +2457,6 @@ csv读取数据注意使用几个参数</li>
       </categories>
       <tags>
         <tag>Tableau</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Yarn 调度流程</title>
-    <url>/2018/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
-<a id="more"></a>
-<hr>
-<h4 id="ResourceManager"><a href="#ResourceManager" class="headerlink" title="ResourceManager"></a>ResourceManager</h4><p>官网原文：</p>
-<p>The ResourceManager is the ultimate authority that arbitrates resources among all the applications in the system.</p>
-<p>The ResourceManager has two main components: Scheduler and ApplicationsManager.</p>
-<p>RM组成：</p>
-<ul>
-<li>Application Manager 应用程序管理器</li>
-<li>Resource Scheduler memory+cpu资源调度器</li>
-</ul>
-<h4 id="NodeManager"><a href="#NodeManager" class="headerlink" title="NodeManager"></a>NodeManager</h4><p>官网原文：</p>
-<p>The NodeManager is responsible for launching and managing containers on a node. Containers execute tasks as specified by the AppMaster.</p>
-<p>NM组成：</p>
-<ul>
-<li>container - 虚拟概念，执行MR、Spark计算任务的最小单元</li>
-</ul>
-<h4 id="MR-on-YARN-调度流程"><a href="#MR-on-YARN-调度流程" class="headerlink" title="MR on YARN 调度流程"></a>MR on YARN 调度流程</h4><p><img src="/2018/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/mr-on-yarn.png" alt="MR on YARN 调度流程"></p>
-<h5 id="MR-on-YARN-调度过程描述："><a href="#MR-on-YARN-调度过程描述：" class="headerlink" title="MR on YARN 调度过程描述："></a>MR on YARN 调度过程描述：</h5><ol>
-<li>用户向YARN提交应用程序，其中包括ApplicationMaster程序、启动ApplicationMaster的命令等。</li>
-<li>RM为该job分配第一个container，运行job的ApplicationMaster。</li>
-<li>App Master向Application Manager注册，这样就可以在RM WEB界面查询这个job的运行状态。</li>
-<li>App Master采用轮询的方式通过RPC协议向RM申请和领取资源。</li>
-<li>一旦App Master拿到资源，就对应的与NM通信，要求启动任务。</li>
-<li>NM为任务设置好运行环境（jar包等），将任务启动命令写在一个脚本里，并通过该脚本启动任务task。</li>
-<li>各个task通过RPC协议向App Master汇报自己的状态和进度，以此让App Master随时掌握各个task的运行状态，从而在task运行失败后重启任务。</li>
-<li>App Master向Application Manager注销且关闭自己。</li>
-</ol>
-<p>总的来说就是两步：</p>
-<ul>
-<li>启动App Master，申请资源；</li>
-<li>运行任务，直到任务运行完成。</li>
-</ul>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Yarn</tag>
       </tags>
   </entry>
   <entry>

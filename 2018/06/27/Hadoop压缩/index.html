@@ -27,25 +27,25 @@
 <meta name="description" content="Hadoop 数据压缩压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Hadoop 数据压缩">
-<meta property="og:url" content="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/index.html">
+<meta property="og:url" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/index.html">
 <meta property="og:site_name" content="Emerk&#39;s blog">
 <meta property="og:description" content="Hadoop 数据压缩压缩技术能够有效减少底层存储系统（HDFS）读写字节数。通过压缩编码对Mapper或者Reducer的输出进行压缩，以减少磁盘IO，提高MR程序运行速度（但相应增加了cpu运算负担）。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-size.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/compress-codec-time.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E6%A0%BC%E5%BC%8F%E4%BC%98%E7%BC%BA%E7%82%B9.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9%E9%85%8D%E7%BD%AE.png">
 <meta property="article:published_time" content="2018-06-27T09:00:00.000Z">
 <meta property="article:modified_time" content="2020-12-05T11:57:27.615Z">
 <meta property="article:author" content="EmerkFu">
 <meta property="article:tag" content="Hadoop">
 <meta property="article:tag" content="Hadoop优化">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png">
+<meta name="twitter:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/%E5%8E%8B%E7%BC%A9.png">
 
 
-<link rel="canonical" href="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/">
+<link rel="canonical" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/">
 
 
 <script class="page-configurations">
@@ -281,7 +281,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/27/Hadoop%E5%8E%8B%E7%BC%A9/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">

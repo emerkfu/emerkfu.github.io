@@ -27,29 +27,29 @@
 <meta name="description" content="转载来源:http:&#x2F;&#x2F;sharkdtu.com&#x2F;posts&#x2F;spark-rdd.html RDD全称叫做弹性分布式数据集(Resilient Distributed Datasets)，它是一种分布式的内存抽象，表示一个只读的记录分区的集合，它只能通过其他RDD转换而创建，为此，RDD支持丰富的转换操作(如map, join, filter, groupBy等)，通过这种转换操作，新的RDD则包">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Spark 核心概念RDD">
-<meta property="og:url" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/index.html">
+<meta property="og:url" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/index.html">
 <meta property="og:site_name" content="Emerk&#39;s blog">
 <meta property="og:description" content="转载来源:http:&#x2F;&#x2F;sharkdtu.com&#x2F;posts&#x2F;spark-rdd.html RDD全称叫做弹性分布式数据集(Resilient Distributed Datasets)，它是一种分布式的内存抽象，表示一个只读的记录分区的集合，它只能通过其他RDD转换而创建，为此，RDD支持丰富的转换操作(如map, join, filter, groupBy等)，通过这种转换操作，新的RDD则包">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-readonly.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transform.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transformations-actions.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dependency.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dag.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-cache.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-runtime.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-wordcount.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-readonly.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transform.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transformations-actions.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dependency.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dag.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-cache.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-runtime.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-wordcount.png">
 <meta property="article:published_time" content="2018-09-04T11:00:00.000Z">
 <meta property="article:modified_time" content="2020-12-09T14:12:31.803Z">
 <meta property="article:author" content="EmerkFu">
 <meta property="article:tag" content="Spark">
 <meta property="article:tag" content="Spark RDD">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png">
+<meta name="twitter:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png">
 
 
-<link rel="canonical" href="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/">
+<link rel="canonical" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/">
 
 
 <script class="page-configurations">
@@ -285,7 +285,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">

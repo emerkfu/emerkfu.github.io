@@ -27,21 +27,21 @@
 <meta name="description" content="为什么要定义计数器？在spark应用程序中，我们经常会有这样的需求，如异常监控，调试，记录符合某特性的数据的数目，这种需求都需要用到计数器，如果一个变量不被声明为一个累加器，那么它将在被改变时不会再driver端进行全局汇总，即在分布式运行时每个task运行的只是原始变量的一个副本，并不能改变原始变量的值，但是当这个变量被声明为累加器后，该变量就会有分布式计数的功能。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Spark 计数器">
-<meta property="og:url" content="https://emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/index.html">
+<meta property="og:url" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/index.html">
 <meta property="og:site_name" content="Emerk&#39;s blog">
 <meta property="og:description" content="为什么要定义计数器？在spark应用程序中，我们经常会有这样的需求，如异常监控，调试，记录符合某特性的数据的数目，这种需求都需要用到计数器，如果一个变量不被声明为一个累加器，那么它将在被改变时不会再driver端进行全局汇总，即在分布式运行时每个task运行的只是原始变量的一个副本，并不能改变原始变量的值，但是当这个变量被声明为累加器后，该变量就会有分布式计数的功能。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/%E7%B4%AF%E5%8A%A0%E5%99%A8%E9%94%99%E8%AF%AF%E7%9A%84%E5%9B%BE%E8%A7%A3.png">
-<meta property="og:image" content="https://emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/%E7%B4%AF%E5%8A%A0%E5%99%A8%E6%AD%A3%E7%A1%AE%E7%9A%84%E5%9B%BE%E8%A7%A3.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/%E7%B4%AF%E5%8A%A0%E5%99%A8%E9%94%99%E8%AF%AF%E7%9A%84%E5%9B%BE%E8%A7%A3.png">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/%E7%B4%AF%E5%8A%A0%E5%99%A8%E6%AD%A3%E7%A1%AE%E7%9A%84%E5%9B%BE%E8%A7%A3.png">
 <meta property="article:published_time" content="2018-10-02T11:00:00.000Z">
 <meta property="article:modified_time" content="2020-12-09T14:58:54.528Z">
 <meta property="article:author" content="EmerkFu">
 <meta property="article:tag" content="Spark">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/%E7%B4%AF%E5%8A%A0%E5%99%A8%E9%94%99%E8%AF%AF%E7%9A%84%E5%9B%BE%E8%A7%A3.png">
+<meta name="twitter:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/%E7%B4%AF%E5%8A%A0%E5%99%A8%E9%94%99%E8%AF%AF%E7%9A%84%E5%9B%BE%E8%A7%A3.png">
 
 
-<link rel="canonical" href="https://emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/">
+<link rel="canonical" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/">
 
 
 <script class="page-configurations">
@@ -277,7 +277,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
