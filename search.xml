@@ -88,94 +88,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Flume 负载均衡 KafkaSource KafkaSink</title>
-    <url>/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/</url>
-    <content><![CDATA[<p>Flume使用的版本为1.6.0。</p>
-<p>Flume配置负载均衡，Kafka Source -&gt; Avro -&gt; Avro -&gt; Kafka Sink 场景。</p>
-<a id="more"></a>
-<hr>
-<h3 id="Kafka-Source-Sink-To-Kafka"><a href="#Kafka-Source-Sink-To-Kafka" class="headerlink" title="Kafka Source Sink To Kafka"></a>Kafka Source Sink To Kafka</h3><h4 id="配置信息"><a href="#配置信息" class="headerlink" title="配置信息"></a>配置信息</h4><h5 id="Agent节点配置"><a href="#Agent节点配置" class="headerlink" title="Agent节点配置"></a>Agent节点配置</h5><p>flume_analysys_loadbalance_agent.conf</p>
-<p>sink port ip 为目标机器 ip</p>
-<p>Tips：<strong>拦截器一定要配置！！！</strong></p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agentX.sources = sX</span><br><span class="line">agentX.channels = chX</span><br><span class="line">agentX.sinks = sk0 sk1 sk2</span><br><span class="line"></span><br><span class="line">agentX.sources.sX.channels = chX</span><br><span class="line"></span><br><span class="line">agentX.sources.sX.type = org.apache.flume.source.kafka.KafkaSource</span><br><span class="line">agentX.sources.sX.zookeeperConnect = ark1:2181/kafka</span><br><span class="line">agentX.sources.sX.topic = post_66f27704d3162247</span><br><span class="line">agentX.sources.sX.groupId = flume</span><br><span class="line">agentX.sources.sX.kafka.consumer.timeout.ms = 100</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure interceptors</span></span><br><span class="line">agentX.sources.sX.interceptors = i1</span><br><span class="line">agentX.sources.sX.interceptors.i1.type = static</span><br><span class="line">agentX.sources.sX.interceptors.i1.key = topic</span><br><span class="line">agentX.sources.sX.interceptors.i1.preserveExisting = false</span><br><span class="line">agentX.sources.sX.interceptors.i1.value = flume-test01</span><br><span class="line"></span><br><span class="line">agentX.channels.chX.type = memory</span><br><span class="line">agentX.channels.chX.capacity = 10000</span><br><span class="line">agentX.channels.chX.transactionCapacity = 10000</span><br><span class="line">agent1.channels.chX.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure sinks</span></span><br><span class="line">agentX.sinks.sk0.channel = chX</span><br><span class="line">agentX.sinks.sk0.type = avro</span><br><span class="line">agentX.sinks.sk0.hostname = 10.0.15.182</span><br><span class="line">agentX.sinks.sk0.port = 44441</span><br><span class="line">agentX.sinks.sk1.channel = chX</span><br><span class="line">agentX.sinks.sk1.type = avro</span><br><span class="line">agentX.sinks.sk1.hostname = 10.0.15.181</span><br><span class="line">agentX.sinks.sk1.port = 44441</span><br><span class="line">agentX.sinks.sk2.channel = chX</span><br><span class="line">agentX.sinks.sk2.type = avro</span><br><span class="line">agentX.sinks.sk2.hostname = 10.0.15.133</span><br><span class="line">agentX.sinks.sk2.port = 44441</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure loadbalance</span></span><br><span class="line">agentX.sinkgroups = g1</span><br><span class="line">agentX.sinkgroups.g1.sinks = sk0 sk1 sk2</span><br><span class="line">agentX.sinkgroups.g1.processor.type = load_balance</span><br><span class="line">agentX.sinkgroups.g1.processor.backoff=true</span><br><span class="line">agentX.sinkgroups.g1.processor.selector=round_robin</span><br><span class="line"><span class="meta">#</span><span class="bash">agentX.sinkgroups.g1.processor.selector=random</span></span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-0-节点配置"><a href="#load-balance-0-节点配置" class="headerlink" title="load balance 0 节点配置"></a>load balance 0 节点配置</h5><p>flume_loadbalance_collector0.conf</p>
-<p>bind配置的ip为本机ip</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent0.sources = s0</span><br><span class="line">agent0.channels = ch0</span><br><span class="line">agent0.sinks = sk0</span><br><span class="line"></span><br><span class="line">agent0.sources.s0.channels = ch0</span><br><span class="line">agent0.sources.s0.type = avro</span><br><span class="line">agent0.sources.s0.bind = 10.0.15.182</span><br><span class="line">agent0.sources.s0.port = 44441</span><br><span class="line"></span><br><span class="line">agent0.channels.ch0.type = memory</span><br><span class="line">agent0.channels.ch0.capacity = 10000</span><br><span class="line">agent0.channels.ch0.transactionCapacity = 10000</span><br><span class="line">agent0.channels.ch0.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink0</span></span><br><span class="line">agent0.sinks.sk0.type = org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">agent0.sinks.sk0.topic = flume-test01</span><br><span class="line">agent0.sinks.sk0.brokerList = 10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092</span><br><span class="line">agent0.sinks.sk0.requiredAcks = 1</span><br><span class="line">agent0.sinks.sk0.batchSize = 20</span><br><span class="line">agent0.sinks.sk0.channel = ch0</span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-1-节点配置"><a href="#load-balance-1-节点配置" class="headerlink" title="load balance 1 节点配置"></a>load balance 1 节点配置</h5><p>flume_loadbalance_collector1.conf</p>
-<p>bind配置的ip为本机ip</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = s1</span><br><span class="line">agent1.channels = ch1</span><br><span class="line">agent1.sinks = sk1</span><br><span class="line"></span><br><span class="line">agent1.sources.s1.channels = ch1</span><br><span class="line">agent1.sources.s1.type = avro</span><br><span class="line">agent1.sources.s1.bind = 10.0.15.181</span><br><span class="line">agent1.sources.s1.port = 44441</span><br><span class="line"></span><br><span class="line">agent1.channels.ch1.type = memory</span><br><span class="line">agent1.channels.ch1.capacity = 10000</span><br><span class="line">agent1.channels.ch1.transactionCapacity = 10000</span><br><span class="line">agent1.channels.ch1.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink1</span></span><br><span class="line">agent1.sinks.sk1.type = org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">agent1.sinks.sk1.topic = flume-test01</span><br><span class="line">agent1.sinks.sk1.brokerList = 10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092</span><br><span class="line">agent1.sinks.sk1.requiredAcks = 1</span><br><span class="line">agent1.sinks.sk1.batchSize = 20</span><br><span class="line">agent1.sinks.sk1.channel = ch1</span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-2-节点配置"><a href="#load-balance-2-节点配置" class="headerlink" title="load balance 2 节点配置"></a>load balance 2 节点配置</h5><p>flume_loadbalance_collector2.conf</p>
-<p>bind配置的ip为本机ip</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent2.sources = s2</span><br><span class="line">agent2.channels = ch2</span><br><span class="line">agent2.sinks = sk2</span><br><span class="line"></span><br><span class="line">agent2.sources.s2.channels = ch2</span><br><span class="line">agent2.sources.s2.type = avro</span><br><span class="line">agent2.sources.s2.bind = 10.0.15.133</span><br><span class="line">agent2.sources.s2.port = 44441</span><br><span class="line"></span><br><span class="line">agent2.channels.ch2.type = memory</span><br><span class="line">agent2.channels.ch2.capacity = 1000</span><br><span class="line">agent2.channels.ch2.transactionCapacity = 100</span><br><span class="line">agent2.channels.ch2.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink2</span></span><br><span class="line">agent2.sinks.sk2.type = org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">agent2.sinks.sk2.topic = flume-test01</span><br><span class="line">agent2.sinks.sk2.brokerList = 10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092</span><br><span class="line">agent2.sinks.sk2.requiredAcks = 1</span><br><span class="line">agent2.sinks.sk2.batchSize = 20</span><br><span class="line">agent2.sinks.sk2.channel = ch2</span><br></pre></td></tr></table></figure>
-
-<h4 id="启动命令"><a href="#启动命令" class="headerlink" title="启动命令"></a>启动命令</h4><p>启动顺序：load balance节点 -&gt; agent节点</p>
-<h5 id="load-balance-0-节点启动"><a href="#load-balance-0-节点启动" class="headerlink" title="load balance 0 节点启动"></a>load balance 0 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector0.conf -n agent0 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-1-节点启动"><a href="#load-balance-1-节点启动" class="headerlink" title="load balance 1 节点启动"></a>load balance 1 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector1.conf -n agent1 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-2-节点启动"><a href="#load-balance-2-节点启动" class="headerlink" title="load balance 2 节点启动"></a>load balance 2 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector2.conf -n agent2 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
-
-<h5 id="agent-节点启动"><a href="#agent-节点启动" class="headerlink" title="agent 节点启动"></a>agent 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/soft/apache-flume-1.6.0-bin/conf -f /opt/soft/apache-flume-1.6.0-bin/jobs/flume_analysys_loadbalance_agent.conf -n agentX -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
-
-]]></content>
-      <categories>
-        <category>Flume</category>
-      </categories>
-      <tags>
-        <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Flume架构基础</title>
-    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
-    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
-<a id="more"></a>
-<hr>
-<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
-<li>可以和任意存储进程集成。</li>
-<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
-<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
-</ol>
-<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
-<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
-<ul>
-<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
-</li>
-<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
-</li>
-<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
-</li>
-</ul>
-<ol>
-<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
-<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
-</ol>
-<ul>
-<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
-</li>
-<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
-</li>
-</ul>
-<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
-<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
-<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
-<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
-<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
-<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
-<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
-<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
-]]></content>
-      <categories>
-        <category>Flume</category>
-      </categories>
-      <tags>
-        <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Flume案例</title>
     <url>/2018/08/17/Flume%E6%A1%88%E4%BE%8B/</url>
     <content><![CDATA[<p>Flume的一些配置案例</p>
@@ -352,6 +264,53 @@
       </tags>
   </entry>
   <entry>
+    <title>Flume架构基础</title>
+    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
+    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
+<a id="more"></a>
+<hr>
+<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
+<li>可以和任意存储进程集成。</li>
+<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
+<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
+</ol>
+<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
+<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
+<ul>
+<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
+</li>
+<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
+</li>
+<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
+</li>
+</ul>
+<ol>
+<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
+<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
+</ol>
+<ul>
+<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
+</li>
+<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
+</li>
+</ul>
+<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
+<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
+<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
+<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
+<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
+<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
+<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
+<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
+]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Flume 负载均衡配置</title>
     <url>/2021/04/21/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%85%8D%E7%BD%AE/</url>
     <content><![CDATA[<p>Flume使用的版本为1.6.0。</p>
@@ -380,6 +339,143 @@
       </categories>
       <tags>
         <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume 负载均衡 KafkaSource KafkaSink</title>
+    <url>/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/</url>
+    <content><![CDATA[<p>Flume使用的版本为1.6.0。</p>
+<p>Flume配置负载均衡，Kafka Source -&gt; Avro -&gt; Avro -&gt; Kafka Sink 场景。</p>
+<a id="more"></a>
+<hr>
+<h3 id="Kafka-Source-Sink-To-Kafka"><a href="#Kafka-Source-Sink-To-Kafka" class="headerlink" title="Kafka Source Sink To Kafka"></a>Kafka Source Sink To Kafka</h3><h4 id="结构信息"><a href="#结构信息" class="headerlink" title="结构信息"></a>结构信息</h4><p><img src="/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink.PNG" alt="Flume负载均衡KafkaSourceKafkaSink"></p>
+<h4 id="配置信息"><a href="#配置信息" class="headerlink" title="配置信息"></a>配置信息</h4><h5 id="Agent节点配置"><a href="#Agent节点配置" class="headerlink" title="Agent节点配置"></a>Agent节点配置</h5><p>flume_analysys_loadbalance_agent.conf</p>
+<p>sink port ip 为目标机器 ip</p>
+<p>Tips：<strong>拦截器一定要配置！！！</strong></p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agentX.sources = sX</span><br><span class="line">agentX.channels = chX</span><br><span class="line">agentX.sinks = sk0 sk1 sk2</span><br><span class="line"></span><br><span class="line">agentX.sources.sX.channels = chX</span><br><span class="line"></span><br><span class="line">agentX.sources.sX.type = org.apache.flume.source.kafka.KafkaSource</span><br><span class="line">agentX.sources.sX.zookeeperConnect = ark1:2181/kafka</span><br><span class="line">agentX.sources.sX.topic = post_66f27704d3162247</span><br><span class="line">agentX.sources.sX.groupId = flume</span><br><span class="line">agentX.sources.sX.kafka.consumer.timeout.ms = 100</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure interceptors</span></span><br><span class="line">agentX.sources.sX.interceptors = i1</span><br><span class="line">agentX.sources.sX.interceptors.i1.type = static</span><br><span class="line">agentX.sources.sX.interceptors.i1.key = topic</span><br><span class="line">agentX.sources.sX.interceptors.i1.preserveExisting = false</span><br><span class="line">agentX.sources.sX.interceptors.i1.value = flume-test01</span><br><span class="line"></span><br><span class="line">agentX.channels.chX.type = memory</span><br><span class="line">agentX.channels.chX.capacity = 10000</span><br><span class="line">agentX.channels.chX.transactionCapacity = 10000</span><br><span class="line">agent1.channels.chX.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure sinks</span></span><br><span class="line">agentX.sinks.sk0.channel = chX</span><br><span class="line">agentX.sinks.sk0.type = avro</span><br><span class="line">agentX.sinks.sk0.hostname = 10.0.15.182</span><br><span class="line">agentX.sinks.sk0.port = 44441</span><br><span class="line">agentX.sinks.sk1.channel = chX</span><br><span class="line">agentX.sinks.sk1.type = avro</span><br><span class="line">agentX.sinks.sk1.hostname = 10.0.15.181</span><br><span class="line">agentX.sinks.sk1.port = 44441</span><br><span class="line">agentX.sinks.sk2.channel = chX</span><br><span class="line">agentX.sinks.sk2.type = avro</span><br><span class="line">agentX.sinks.sk2.hostname = 10.0.15.133</span><br><span class="line">agentX.sinks.sk2.port = 44441</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure loadbalance</span></span><br><span class="line">agentX.sinkgroups = g1</span><br><span class="line">agentX.sinkgroups.g1.sinks = sk0 sk1 sk2</span><br><span class="line">agentX.sinkgroups.g1.processor.type = load_balance</span><br><span class="line">agentX.sinkgroups.g1.processor.backoff=true</span><br><span class="line">agentX.sinkgroups.g1.processor.selector=round_robin</span><br><span class="line"><span class="meta">#</span><span class="bash">agentX.sinkgroups.g1.processor.selector=random</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-0-节点配置"><a href="#load-balance-0-节点配置" class="headerlink" title="load balance 0 节点配置"></a>load balance 0 节点配置</h5><p>flume_loadbalance_collector0.conf</p>
+<p>bind配置的ip为本机ip</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent0.sources = s0</span><br><span class="line">agent0.channels = ch0</span><br><span class="line">agent0.sinks = sk0</span><br><span class="line"></span><br><span class="line">agent0.sources.s0.channels = ch0</span><br><span class="line">agent0.sources.s0.type = avro</span><br><span class="line">agent0.sources.s0.bind = 10.0.15.182</span><br><span class="line">agent0.sources.s0.port = 44441</span><br><span class="line"></span><br><span class="line">agent0.channels.ch0.type = memory</span><br><span class="line">agent0.channels.ch0.capacity = 10000</span><br><span class="line">agent0.channels.ch0.transactionCapacity = 10000</span><br><span class="line">agent0.channels.ch0.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink0</span></span><br><span class="line">agent0.sinks.sk0.type = org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">agent0.sinks.sk0.topic = flume-test01</span><br><span class="line">agent0.sinks.sk0.brokerList = 10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092</span><br><span class="line">agent0.sinks.sk0.requiredAcks = 1</span><br><span class="line">agent0.sinks.sk0.batchSize = 20</span><br><span class="line">agent0.sinks.sk0.channel = ch0</span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-1-节点配置"><a href="#load-balance-1-节点配置" class="headerlink" title="load balance 1 节点配置"></a>load balance 1 节点配置</h5><p>flume_loadbalance_collector1.conf</p>
+<p>bind配置的ip为本机ip</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = s1</span><br><span class="line">agent1.channels = ch1</span><br><span class="line">agent1.sinks = sk1</span><br><span class="line"></span><br><span class="line">agent1.sources.s1.channels = ch1</span><br><span class="line">agent1.sources.s1.type = avro</span><br><span class="line">agent1.sources.s1.bind = 10.0.15.181</span><br><span class="line">agent1.sources.s1.port = 44441</span><br><span class="line"></span><br><span class="line">agent1.channels.ch1.type = memory</span><br><span class="line">agent1.channels.ch1.capacity = 10000</span><br><span class="line">agent1.channels.ch1.transactionCapacity = 10000</span><br><span class="line">agent1.channels.ch1.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink1</span></span><br><span class="line">agent1.sinks.sk1.type = org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">agent1.sinks.sk1.topic = flume-test01</span><br><span class="line">agent1.sinks.sk1.brokerList = 10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092</span><br><span class="line">agent1.sinks.sk1.requiredAcks = 1</span><br><span class="line">agent1.sinks.sk1.batchSize = 20</span><br><span class="line">agent1.sinks.sk1.channel = ch1</span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-2-节点配置"><a href="#load-balance-2-节点配置" class="headerlink" title="load balance 2 节点配置"></a>load balance 2 节点配置</h5><p>flume_loadbalance_collector2.conf</p>
+<p>bind配置的ip为本机ip</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent2.sources = s2</span><br><span class="line">agent2.channels = ch2</span><br><span class="line">agent2.sinks = sk2</span><br><span class="line"></span><br><span class="line">agent2.sources.s2.channels = ch2</span><br><span class="line">agent2.sources.s2.type = avro</span><br><span class="line">agent2.sources.s2.bind = 10.0.15.133</span><br><span class="line">agent2.sources.s2.port = 44441</span><br><span class="line"></span><br><span class="line">agent2.channels.ch2.type = memory</span><br><span class="line">agent2.channels.ch2.capacity = 1000</span><br><span class="line">agent2.channels.ch2.transactionCapacity = 100</span><br><span class="line">agent2.channels.ch2.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink2</span></span><br><span class="line">agent2.sinks.sk2.type = org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">agent2.sinks.sk2.topic = flume-test01</span><br><span class="line">agent2.sinks.sk2.brokerList = 10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092</span><br><span class="line">agent2.sinks.sk2.requiredAcks = 1</span><br><span class="line">agent2.sinks.sk2.batchSize = 20</span><br><span class="line">agent2.sinks.sk2.channel = ch2</span><br></pre></td></tr></table></figure>
+
+<h4 id="启动命令"><a href="#启动命令" class="headerlink" title="启动命令"></a>启动命令</h4><p>启动顺序：load balance节点 -&gt; agent节点</p>
+<h5 id="load-balance-0-节点启动"><a href="#load-balance-0-节点启动" class="headerlink" title="load balance 0 节点启动"></a>load balance 0 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector0.conf -n agent0 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-1-节点启动"><a href="#load-balance-1-节点启动" class="headerlink" title="load balance 1 节点启动"></a>load balance 1 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector1.conf -n agent1 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-2-节点启动"><a href="#load-balance-2-节点启动" class="headerlink" title="load balance 2 节点启动"></a>load balance 2 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector2.conf -n agent2 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
+
+<h5 id="agent-节点启动"><a href="#agent-节点启动" class="headerlink" title="agent 节点启动"></a>agent 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/soft/apache-flume-1.6.0-bin/conf -f /opt/soft/apache-flume-1.6.0-bin/jobs/flume_analysys_loadbalance_agent.conf -n agentX -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HDFS 读写流程</title>
+    <url>/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
+    <content><![CDATA[<p>关于HDFS文件的读写流程</p>
+<a id="more"></a>
+<hr>
+<hr>
+<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"></p>
+<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
+<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
+<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
+<li>Client调用FSDataInputStream.close()方法，关闭输入流。</li>
+</ol>
+<hr>
+<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"></p>
+<h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5><ol>
+<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创  建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
+<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
+<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
+<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>基本概念</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hadoop Block和副本数&amp;小文件问题</title>
+    <url>/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
+    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
+<a id="more"></a>
+<hr>
+<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
+<p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
+<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
+<ol>
+<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
+<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
+<li>第三个副本：与第二个副本相同机架的不同节点上</li>
+<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
+</ol>
+<ul>
+<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
+<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
+</ul>
+<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
+<p>官网中的相应的默认参数如下：<br><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
+<p>可以看到，默认块大小为128M，默认副本数为3.</p>
+<p>这里会有一个常规的面试题：</p>
+<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
+<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
+<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
+<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
+<p>小文件的危害：</p>
+<ol>
+<li>HDFS不适合大量小文件的存储，因namenode将文件系统的元数据存放在内存中，因此存储的文件数目受限于 namenode的内存大小。HDFS中每个文件、目录、数据块占用150Bytes。如果存放的文件数目过多的话会占用很大的内存甚至撑爆内存。</li>
+<li>HDFS适用于高吞吐量，而不适合低时间延迟的访问。如果同时存入大量的小文件会花费很长的时间。</li>
+<li>流式读取的方式，不适合多用户写入，以及任意位置写入。如果访问小文件，则必须从一个datanode跳转到另外一个datanode，这样大大降低了读取性能。</li>
+</ol>
+<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
+<ol>
+<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS。</li>
+<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并。</li>
+</ol>
+<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
+<ol>
+<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
+<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
+<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
+<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
+</ol>
+<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
+<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
+<h4 id="小文件合并脚本"><a href="#小文件合并脚本" class="headerlink" title="小文件合并脚本"></a>小文件合并脚本</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.practice.spark</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.fs.&#123;<span class="type">FileSystem</span>, <span class="type">Path</span>&#125;</span><br><span class="line"><span class="keyword">import</span> org.apache.spark.internal.<span class="type">Logging</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.rdd.<span class="type">RDD</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.&#123;<span class="type">DataFrame</span>, <span class="type">SparkSession</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">miniFileMerge</span> <span class="keyword">extends</span> <span class="title">Logging</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> sparkSession = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>).appName(<span class="keyword">this</span>.getClass.getSimpleName).getOrCreate()</span><br><span class="line">    <span class="keyword">val</span> target = <span class="string">"hdfs://fushuaidate:9000/practice/minifilemerge"</span> <span class="comment">//待合并文件夹</span></span><br><span class="line">    <span class="keyword">val</span> output = <span class="keyword">new</span> <span class="type">Path</span>(target)</span><br><span class="line">    <span class="keyword">val</span> hdfs: <span class="type">FileSystem</span> = output.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)</span><br><span class="line">    <span class="keyword">val</span> partitions = makeCoalesce(hdfs, output, <span class="number">5</span>)</span><br><span class="line">    println(<span class="string">s"合并后文件数量为：<span class="subst">$partitions</span>"</span>)</span><br><span class="line">    <span class="keyword">val</span> paths: <span class="type">List</span>[<span class="type">String</span>] = getPaths(hdfs, output)</span><br><span class="line">    <span class="keyword">val</span> mergeFiles: <span class="type">RDD</span>[<span class="type">String</span>] = sparkSession.sparkContext.textFile(target).coalesce(partitions)</span><br><span class="line">    <span class="keyword">val</span> dataFrame = rddToDF(sparkSession, mergeFiles)</span><br><span class="line">    dataFrame.write.text(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>)</span><br><span class="line">    <span class="keyword">val</span> resStatus = hdfs.listStatus(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">//移动结果文件</span></span><br><span class="line">    resStatus.foreach(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">if</span> (x.getLen &gt; <span class="number">0</span>) &#123; <span class="comment">//排除spark自动生成的_success文件</span></span><br><span class="line">        hdfs.rename(x.getPath, output)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    println(<span class="string">s"merge <span class="subst">$&#123;paths.size&#125;</span> files =&gt; <span class="subst">$partitions</span> files"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除临时目录</span></span><br><span class="line">    hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>), <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除原小文件</span></span><br><span class="line">    paths.foreach(x =&gt; &#123;</span><br><span class="line">      hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(x), <span class="literal">true</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">makeCoalesce</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>, size: <span class="type">Int</span>): <span class="type">Int</span> = &#123;</span><br><span class="line">    <span class="keyword">var</span> num = <span class="number">0</span>L</span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      num += x.getLen</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">val</span> partitions = (num / <span class="number">1024</span> / <span class="number">1024</span> / size).toInt + <span class="number">1</span></span><br><span class="line">    logInfo(<span class="string">"分区数为："</span> + partitions)</span><br><span class="line">    partitions</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">getPaths</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>): <span class="type">List</span>[<span class="type">String</span>] = &#123;</span><br><span class="line">    <span class="keyword">var</span> paths: <span class="type">List</span>[<span class="type">String</span>] = <span class="type">List</span>.empty <span class="comment">//文件名字符串</span></span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      x.getLen</span><br><span class="line">      x.getPath</span><br><span class="line">      paths :+= x.getPath.toString</span><br><span class="line">      println(x.getLen + <span class="string">"|"</span> + x.getPath)</span><br><span class="line">    &#125;)</span><br><span class="line">    paths</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">rddToDF</span></span>(sparkSession: <span class="type">SparkSession</span>, rdd: <span class="type">RDD</span>[<span class="type">String</span>]): <span class="type">DataFrame</span> = &#123;</span><br><span class="line">    <span class="keyword">import</span> sparkSession.implicits._</span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">"\t"</span>)</span><br><span class="line">      <span class="keyword">val</span> date = splits(<span class="number">0</span>).trim</span><br><span class="line">      <span class="keyword">val</span> ip = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> domain = splits(<span class="number">6</span>).trim</span><br><span class="line">      date + <span class="string">"\t"</span> + ip + <span class="string">"\t"</span> + domain</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line">    infoDF</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="本地调试修改owner"><a href="#本地调试修改owner" class="headerlink" title="本地调试修改owner"></a>本地调试修改owner</h4><p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E6%9C%AC%E5%9C%B0%E8%B0%83%E8%AF%95%E4%BF%AE%E6%94%B9owner.png" alt="本地调试修改owner"></p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -515,104 +611,9 @@
         <category>HBase</category>
       </categories>
       <tags>
+        <tag>基本概念</tag>
         <tag>HBase</tag>
-        <tag>基本概念</tag>
         <tag>常用命令</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>HDFS 读写流程</title>
-    <url>/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<p>关于HDFS文件的读写流程</p>
-<a id="more"></a>
-<hr>
-<hr>
-<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"></p>
-<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
-<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
-<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
-<li>Client调用FSDataInputStream.close()方法，关闭输入流。</li>
-</ol>
-<hr>
-<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"></p>
-<h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5><ol>
-<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创  建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
-<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
-<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
-<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop Block和副本数&amp;小文件问题</title>
-    <url>/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&amp;%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/</url>
-    <content><![CDATA[<h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
-<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
-<a id="more"></a>
-<hr>
-<p>一个hadoop分布式集群会有很多的服务器，由于受到机架槽位和交换机网口的限制，通常大型的分布式集群都会跨好几个机架，机架内的服务器之间的网络速度通常都会高于跨机架服务器之间的网络速度，并且机架之间服务器的网络通信通常受到上层交换机间网络带宽的限制。</p>
-<p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/replication-and-rack-awareness.jpg" alt="副本放置策略"></p>
-<p>HDFS对数据文件是分block存储，每个block默认有3个副本（也可以配置大于3），HDFS对副本的存放策略如下：</p>
-<ol>
-<li>第一个副本：放置在Client所在的DN节点上（如果是集群外提交，则随机挑选一台磁盘不太慢、CPU不太忙的DN节点）</li>
-<li>第二个副本：放置在与第一个副本不同的机架的节点上（随机选择）</li>
-<li>第三个副本：与第二个副本相同机架的不同节点上</li>
-<li>如果还有更多的副本，随机放在集群的节点中<br>这样的策略主要是为了数据的可靠性和数据访问的性能：</li>
-</ol>
-<ul>
-<li>数据分布在不同的机架上，就算当前机架挂掉，其他机架上还有冗余备份，整个集群依然能对外服务。</li>
-<li>数据分布在不同的机架上，运行MR任务时可以就近获取所需的数据。</li>
-</ul>
-<h4 id="块大小和副本数"><a href="#块大小和副本数" class="headerlink" title="块大小和副本数"></a>块大小和副本数</h4><p>块大小和副本数需要在hdfs-site.xml中配置。</p>
-<p>官网中的相应的默认参数如下：<br><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E9%BB%98%E8%AE%A4%E5%8F%82%E6%95%B0.png" alt="默认参数"></p>
-<p>可以看到，默认块大小为128M，默认副本数为3.</p>
-<p>这里会有一个常规的面试题：</p>
-<p>问：假如一个文件300M，块128M，副本2。请问实际存储空间多大，多少块？</p>
-<p>答：300 x 2 = 600M，3 x 2 = 6块</p>
-<p>需要注意的是，实际存储空间=文件大小x副本数，并不是块大小，即使44M也占用一个块。</p>
-<h4 id="HDFS小文件问题"><a href="#HDFS小文件问题" class="headerlink" title="HDFS小文件问题"></a>HDFS小文件问题</h4><p>HDFS上每个文件都要在NameNode上建立一个索引，这样当小文件比较多的时候，就会产生很多的索引文件，一方面会大量占用NameNode的内存空间，另一方面就是索引文件过大使得索引速度变慢。</p>
-<p>小文件的危害：</p>
-<ol>
-<li>HDFS不适合大量小文件的存储，因namenode将文件系统的元数据存放在内存中，因此存储的文件数目受限于 namenode的内存大小。HDFS中每个文件、目录、数据块占用150Bytes。如果存放的文件数目过多的话会占用很大的内存甚至撑爆内存。</li>
-<li>HDFS适用于高吞吐量，而不适合低时间延迟的访问。如果同时存入大量的小文件会花费很长的时间。</li>
-<li>流式读取的方式，不适合多用户写入，以及任意位置写入。如果访问小文件，则必须从一个datanode跳转到另外一个datanode，这样大大降低了读取性能。</li>
-</ol>
-<h4 id="小文件优化"><a href="#小文件优化" class="headerlink" title="小文件优化"></a>小文件优化</h4><p>小文件的优化无非以下几种方式：</p>
-<ol>
-<li>在数据采集的时候，就将小文件或小批数据合成大文件再上传HDFS。</li>
-<li>在业务处理之前，在HDFS上使用MapReduce程序对小文件进行合并。</li>
-</ol>
-<p>根据上面的思想，可以考虑采用下面的解决方案：</p>
-<ol>
-<li>Hadoop Archive：<br>是一个高效地将小文件放入HDFS块中的文件存档工具，它能够将多个小文件打包成一个HAR文件，这样就减少了namenode的内存使用。</li>
-<li>Sequence file：<br>sequence file由一系列的二进制key/value组成，如果key为文件名，value为文件内容，则可以将大批小文件合并成一个大文件。</li>
-<li>CombineFileInputFormat：<br>CombineFileInputFormat是一种新的inputformat，用于将多个文件合并成一个单独的split，另外，它会考虑数据的存储位置。</li>
-<li>开启JVM重用：<br>对于大量小文件job，可以开启JVM重用，会减少45%运行时间。<br>JVM重用理解：一个map运行一个jvm，重用的话，在一个map在jvm上运行完毕后，jvm继续运行其他map。<br>具体设置：mapreduce.job.jvm.numtasks值在10-20之间。</li>
-</ol>
-<p>总的来说，解决小文件问题主要就是将小文件合并成大文件，一般约定：尽量使得合并后的大文件&lt;=blocksize，比如110M（假如块大小128M）。</p>
-<p>一般在生产上会设置一个阈值，比如10M，作为小文件的门槛，并使用shell脚本调用程序进行小文件的定期合并。</p>
-<h4 id="小文件合并脚本"><a href="#小文件合并脚本" class="headerlink" title="小文件合并脚本"></a>小文件合并脚本</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.practice.spark</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.apache.hadoop.fs.&#123;<span class="type">FileSystem</span>, <span class="type">Path</span>&#125;</span><br><span class="line"><span class="keyword">import</span> org.apache.spark.internal.<span class="type">Logging</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.rdd.<span class="type">RDD</span></span><br><span class="line"><span class="keyword">import</span> org.apache.spark.sql.&#123;<span class="type">DataFrame</span>, <span class="type">SparkSession</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">miniFileMerge</span> <span class="keyword">extends</span> <span class="title">Logging</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> sparkSession = <span class="type">SparkSession</span>.builder().master(<span class="string">"local[2]"</span>).appName(<span class="keyword">this</span>.getClass.getSimpleName).getOrCreate()</span><br><span class="line">    <span class="keyword">val</span> target = <span class="string">"hdfs://fushuaidate:9000/practice/minifilemerge"</span> <span class="comment">//待合并文件夹</span></span><br><span class="line">    <span class="keyword">val</span> output = <span class="keyword">new</span> <span class="type">Path</span>(target)</span><br><span class="line">    <span class="keyword">val</span> hdfs: <span class="type">FileSystem</span> = output.getFileSystem(sparkSession.sparkContext.hadoopConfiguration)</span><br><span class="line">    <span class="keyword">val</span> partitions = makeCoalesce(hdfs, output, <span class="number">5</span>)</span><br><span class="line">    println(<span class="string">s"合并后文件数量为：<span class="subst">$partitions</span>"</span>)</span><br><span class="line">    <span class="keyword">val</span> paths: <span class="type">List</span>[<span class="type">String</span>] = getPaths(hdfs, output)</span><br><span class="line">    <span class="keyword">val</span> mergeFiles: <span class="type">RDD</span>[<span class="type">String</span>] = sparkSession.sparkContext.textFile(target).coalesce(partitions)</span><br><span class="line">    <span class="keyword">val</span> dataFrame = rddToDF(sparkSession, mergeFiles)</span><br><span class="line">    dataFrame.write.text(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>)</span><br><span class="line">    <span class="keyword">val</span> resStatus = hdfs.listStatus(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment">//移动结果文件</span></span><br><span class="line">    resStatus.foreach(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">if</span> (x.getLen &gt; <span class="number">0</span>) &#123; <span class="comment">//排除spark自动生成的_success文件</span></span><br><span class="line">        hdfs.rename(x.getPath, output)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    println(<span class="string">s"merge <span class="subst">$&#123;paths.size&#125;</span> files =&gt; <span class="subst">$partitions</span> files"</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除临时目录</span></span><br><span class="line">    hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(<span class="string">s"<span class="subst">$target</span>/.TMP"</span>), <span class="literal">true</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//删除原小文件</span></span><br><span class="line">    paths.foreach(x =&gt; &#123;</span><br><span class="line">      hdfs.delete(<span class="keyword">new</span> <span class="type">Path</span>(x), <span class="literal">true</span>)</span><br><span class="line">    &#125;)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">makeCoalesce</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>, size: <span class="type">Int</span>): <span class="type">Int</span> = &#123;</span><br><span class="line">    <span class="keyword">var</span> num = <span class="number">0</span>L</span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      num += x.getLen</span><br><span class="line">    &#125;)</span><br><span class="line">    <span class="keyword">val</span> partitions = (num / <span class="number">1024</span> / <span class="number">1024</span> / size).toInt + <span class="number">1</span></span><br><span class="line">    logInfo(<span class="string">"分区数为："</span> + partitions)</span><br><span class="line">    partitions</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">getPaths</span></span>(fs: <span class="type">FileSystem</span>, path: <span class="type">Path</span>): <span class="type">List</span>[<span class="type">String</span>] = &#123;</span><br><span class="line">    <span class="keyword">var</span> paths: <span class="type">List</span>[<span class="type">String</span>] = <span class="type">List</span>.empty <span class="comment">//文件名字符串</span></span><br><span class="line">    fs.listStatus(path).foreach(x =&gt; &#123;</span><br><span class="line">      x.getLen</span><br><span class="line">      x.getPath</span><br><span class="line">      paths :+= x.getPath.toString</span><br><span class="line">      println(x.getLen + <span class="string">"|"</span> + x.getPath)</span><br><span class="line">    &#125;)</span><br><span class="line">    paths</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">rddToDF</span></span>(sparkSession: <span class="type">SparkSession</span>, rdd: <span class="type">RDD</span>[<span class="type">String</span>]): <span class="type">DataFrame</span> = &#123;</span><br><span class="line">    <span class="keyword">import</span> sparkSession.implicits._</span><br><span class="line">    <span class="keyword">val</span> infoDF = rdd.map(x =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> splits = x.split(<span class="string">"\t"</span>)</span><br><span class="line">      <span class="keyword">val</span> date = splits(<span class="number">0</span>).trim</span><br><span class="line">      <span class="keyword">val</span> ip = splits(<span class="number">1</span>).trim</span><br><span class="line">      <span class="keyword">val</span> domain = splits(<span class="number">6</span>).trim</span><br><span class="line">      date + <span class="string">"\t"</span> + ip + <span class="string">"\t"</span> + domain</span><br><span class="line">    &#125;).toDF() <span class="comment">// 最终转成DF</span></span><br><span class="line">    infoDF</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h4 id="本地调试修改owner"><a href="#本地调试修改owner" class="headerlink" title="本地调试修改owner"></a>本地调试修改owner</h4><p><img src="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/%E6%9C%AC%E5%9C%B0%E8%B0%83%E8%AF%95%E4%BF%AE%E6%94%B9owner.png" alt="本地调试修改owner"></p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>Hadoop</tag>
-        <tag>Hadoop优化</tag>
       </tags>
   </entry>
   <entry>
@@ -704,35 +705,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop Shuffle机制</title>
-    <url>/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<p>Hadoop Shuffle机制 Shuffle过程</p>
-<a id="more"></a>
-<hr>
-<h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
-<p><img src="/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle.png" alt="shuffle"></p>
-<p>下图是Shuffle机制图<br><img src="/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle-detail.png" alt="shuffle"></p>
-<h4 id="Shuffle过程"><a href="#Shuffle过程" class="headerlink" title="Shuffle过程"></a>Shuffle过程</h4><p>shuffle一开始就是map阶段做输出操作，map在做输出时会在内存里开启一个环形缓冲区，这个缓冲区是专门用来输出的，默认大小是100MB，并且在配置文件里为这个缓冲区设定了一个阈值，默认是0.80。同时map还会为输出操作启动一个守护线程，如果缓冲区的内存达到了阈值的80%的时候，这个守护线程就会把内容写到磁盘上，这个过程叫spill（溢写）。另外的20%内存可以继续写入要写进磁盘的数据，写入磁盘和写入内存操作互不干扰，如果缓存区被撑爆了，那么map就会阻塞写入内存的操作，让写入磁盘操作完成后再继续执行写入内存操作。</p>
-<p>写入磁盘前会有个排序操作，这个是在写入磁盘操作时进行，不是在写入内存时进行的，如果我们定义了combiner函数，那么排序前还会执行combiner操作。每次spill操作也就是写入磁盘时就会写一个溢出文件，也就是说在做map输出时有几次spill就会产生多少个溢出文件，等map输出全部做完后，map会合并这些输出文件。</p>
-<p>这个过程里还会有一个Partitioner操作，和map阶段的输入分片（Input Split）很像，一个Partitioner对应一个reduce作业，如果我们的MR操作只有一个reduce操作，那么Partitioner就只有一个，如果我们有多个reduce操作，那么Partitioner对应的就会有多个，Partitioner因此就是reduce的输入分片。</p>
-<p>到了reduce阶段就是合并map输出文件了，Partitioner会找到对应的map输出文件，然后进行复制操作，复制操作时reduce会开启几个复制线程，这些线程默认个数是5个，这个复制过程和map写入磁盘过程类似，也有阈值和内存大小，阈值可以在配置文件里配置，而内存大小是直接使用reduce的tasktracker的内存大小，复制时候reduce还会进行排序操作和合并文件操作，这些操作完了就会进行reduce计算了。</p>
-<p>上面也提到，将map的输出作为reduce的输入的过程就是shuffle（洗牌）。</p>
-<p>那么shuffle到底是属于map阶段还是reduce阶段呢？比较公认的说法是，shuffle应该是属于reduce阶段，因为map阶段的主要任务是数据映射，而shuffle的目的是主要是为reduce阶段做准备的。</p>
-<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
-<h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
         <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-        <tag>Shuffle</tag>
       </tags>
   </entry>
   <entry>
@@ -778,6 +752,33 @@
       </tags>
   </entry>
   <entry>
+    <title>Hadoop Shuffle机制</title>
+    <url>/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<p>Hadoop Shuffle机制 Shuffle过程</p>
+<a id="more"></a>
+<hr>
+<h4 id="Shuffle机制"><a href="#Shuffle机制" class="headerlink" title="Shuffle机制"></a>Shuffle机制</h4><p>MapReduce确保每个reduce的输入都是按键排序的。系统执行排序的过程（即将map输出作为输入传给reduce的过程）就是Shuffle。</p>
+<p><img src="/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle.png" alt="shuffle"></p>
+<p>下图是Shuffle机制图<br><img src="/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/shuffle-detail.png" alt="shuffle"></p>
+<h4 id="Shuffle过程"><a href="#Shuffle过程" class="headerlink" title="Shuffle过程"></a>Shuffle过程</h4><p>shuffle一开始就是map阶段做输出操作，map在做输出时会在内存里开启一个环形缓冲区，这个缓冲区是专门用来输出的，默认大小是100MB，并且在配置文件里为这个缓冲区设定了一个阈值，默认是0.80。同时map还会为输出操作启动一个守护线程，如果缓冲区的内存达到了阈值的80%的时候，这个守护线程就会把内容写到磁盘上，这个过程叫spill（溢写）。另外的20%内存可以继续写入要写进磁盘的数据，写入磁盘和写入内存操作互不干扰，如果缓存区被撑爆了，那么map就会阻塞写入内存的操作，让写入磁盘操作完成后再继续执行写入内存操作。</p>
+<p>写入磁盘前会有个排序操作，这个是在写入磁盘操作时进行，不是在写入内存时进行的，如果我们定义了combiner函数，那么排序前还会执行combiner操作。每次spill操作也就是写入磁盘时就会写一个溢出文件，也就是说在做map输出时有几次spill就会产生多少个溢出文件，等map输出全部做完后，map会合并这些输出文件。</p>
+<p>这个过程里还会有一个Partitioner操作，和map阶段的输入分片（Input Split）很像，一个Partitioner对应一个reduce作业，如果我们的MR操作只有一个reduce操作，那么Partitioner就只有一个，如果我们有多个reduce操作，那么Partitioner对应的就会有多个，Partitioner因此就是reduce的输入分片。</p>
+<p>到了reduce阶段就是合并map输出文件了，Partitioner会找到对应的map输出文件，然后进行复制操作，复制操作时reduce会开启几个复制线程，这些线程默认个数是5个，这个复制过程和map写入磁盘过程类似，也有阈值和内存大小，阈值可以在配置文件里配置，而内存大小是直接使用reduce的tasktracker的内存大小，复制时候reduce还会进行排序操作和合并文件操作，这些操作完了就会进行reduce计算了。</p>
+<p>上面也提到，将map的输出作为reduce的输入的过程就是shuffle（洗牌）。</p>
+<p>那么shuffle到底是属于map阶段还是reduce阶段呢？比较公认的说法是，shuffle应该是属于reduce阶段，因为map阶段的主要任务是数据映射，而shuffle的目的是主要是为reduce阶段做准备的。</p>
+<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
+<h4 id="MapReduce计算框架的不足之处"><a href="#MapReduce计算框架的不足之处" class="headerlink" title="MapReduce计算框架的不足之处"></a>MapReduce计算框架的不足之处</h4><p>从上图可以看到，shuffle阶段中会有多次写入磁盘的操作，基于MapReduce的计算引擎通常会将中间结果输出到磁盘上，进行存储和容错。另外，当一些查询（Hive）翻译到MapReduce任务时，往往会产生多个stage（阶段），而这些串联的stage又依赖于底层文件系统（HDFS）来存储每一个stage的输出结果，而I/O的效率往往较低，从而影响了MapReduce的运行速度。相比之下，Spark的运算结果中间不落地，而且兼容HDFS、Hive，实际应用中会以Spark替代MR作为常用的计算引擎。</p>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>Hadoop</tag>
+        <tag>基本概念</tag>
+        <tag>Shuffle</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>HDFS 常用命令</title>
     <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
     <content><![CDATA[<p>Hadoop的常用命令</p>
@@ -788,8 +789,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>常用命令</tag>
         <tag>Hadoop</tag>
+        <tag>常用命令</tag>
       </tags>
   </entry>
   <entry>
@@ -840,66 +841,8 @@
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>基本概念</tag>
         <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 数据倾斜</title>
-    <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
-    <content><![CDATA[<p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
-<a id="more"></a>
-
-<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
-<ol>
-<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>两个表的bucket数量相等</li>
-<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
-<li>必须是应用在bucket mapjoin 的场景中</li>
-<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
-<li>hive.enforce.sorting 设置为true</li>
-<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
-<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li>案例<ol>
-<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
-domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
-<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-</li>
-</ol>
-<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
-<p>user表为用户基本表，domain为用户访问域名的宽表</p>
-<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
-<ol>
-<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
-<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
-<ol>
-<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
-<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
-</ol>
-<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
-<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
-<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
-        <tag>数据倾斜</tag>
+        <tag>基本概念</tag>
       </tags>
   </entry>
   <entry>
@@ -1004,6 +947,64 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>常用命令</tag>
         <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 数据倾斜</title>
+    <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
+    <content><![CDATA[<p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
+<a id="more"></a>
+
+<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
+<ol>
+<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>两个表的bucket数量相等</li>
+<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
+<li>必须是应用在bucket mapjoin 的场景中</li>
+<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
+<li>hive.enforce.sorting 设置为true</li>
+<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
+<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>案例<ol>
+<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
+domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
+<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+</li>
+</ol>
+<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
+<p>user表为用户基本表，domain为用户访问域名的宽表</p>
+<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
+<ol>
+<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
+<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
+<ol>
+<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
+<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
+</ol>
+<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
+<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
+<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+        <tag>数据倾斜</tag>
       </tags>
   </entry>
   <entry>
@@ -1233,48 +1234,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Scala 模式匹配</title>
-    <url>/2018/05/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
-    <content><![CDATA[<h3 id="Scala-模式匹配"><a href="#Scala-模式匹配" class="headerlink" title="Scala 模式匹配"></a>Scala 模式匹配</h3><p>类似于java的switch case<br>可以匹配内容、集合、类型…</p>
-<a id="more"></a>
-<hr>
-<h4 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">变量 <span class="keyword">match</span>&#123;</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">1</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">2</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">3</span> =&gt; ...</span><br><span class="line">	_ =&gt; ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//*scala不需要break</span></span><br></pre></td></tr></table></figure>
-<h5 id="根据集合匹配："><a href="#根据集合匹配：" class="headerlink" title="根据集合匹配："></a>根据集合匹配：</h5><p>例1：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> a1 = <span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>,<span class="string">"d"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> a11 = a1(<span class="type">Random</span>.nextInt(a1.length))</span><br><span class="line"></span><br><span class="line">a11 <span class="keyword">match</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"a"</span> =&gt; print(<span class="string">"这是a"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"b"</span> =&gt; print(<span class="string">"这是b"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"c"</span> =&gt; print(<span class="string">"这是c"</span>)</span><br><span class="line">  <span class="keyword">case</span> _ =&gt; print(<span class="string">"这是哪个？"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>例2：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting</span></span>(array: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>) =&gt; println(<span class="string">"这是只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(x,y) =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>,_*) =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
-<h6 id="结果："><a href="#结果：" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
-
-<p>例3：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting1</span></span>(array: <span class="type">List</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>:: <span class="type">Nil</span> =&gt; println(<span class="string">"有且只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> x::y::<span class="type">Nil</span> =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>::tail =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-1"><a href="#结果：-1" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
-<h5 id="根据类型匹配："><a href="#根据类型匹配：" class="headerlink" title="根据类型匹配："></a>根据类型匹配：</h5><p>例1：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchType</span></span>(obj: <span class="type">Any</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">  obj <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> i:<span class="type">Int</span> =&gt; println(<span class="string">"这是Int类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> s:<span class="type">String</span> =&gt; println(<span class="string">"这是String类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> m:<span class="type">Map</span>[_,_] =&gt; println(<span class="string">"这是Map类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"未找到的类型"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchType(<span class="number">1</span>)</span><br><span class="line">matchType(<span class="string">"a"</span>)</span><br><span class="line">matchType(<span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="number">1</span>))</span><br><span class="line">matchType(<span class="number">1</span>L)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-2"><a href="#结果：-2" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是<span class="type">Int</span>类型</span><br><span class="line">这是<span class="type">String</span>类型</span><br><span class="line">这是<span class="type">Map</span>类型</span><br><span class="line">未找到的类型</span><br></pre></td></tr></table></figure>
-
-<p>例2：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> aas = <span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="string">"a1"</span>, <span class="string">"b"</span> -&gt; <span class="string">"b1"</span>, <span class="string">"c"</span> -&gt; <span class="string">"c1"</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchaa</span></span>(key:<span class="type">String</span>): <span class="type">Unit</span> =&#123;</span><br><span class="line">  <span class="keyword">val</span> aa = aas.get(key)</span><br><span class="line">  aa <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Some</span>(aa) =&gt; println(<span class="string">"key对应的value为"</span> + aa)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">None</span> =&gt; println(<span class="string">"key没有匹配上..."</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchaa(<span class="string">"a"</span>)</span><br><span class="line">matchaa(<span class="string">"b"</span>)</span><br><span class="line">matchaa(<span class="string">"c"</span>)</span><br><span class="line">matchaa(<span class="string">"d"</span>)</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-3"><a href="#结果：-3" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">key对应的value为a1</span><br><span class="line">key对应的value为b1</span><br><span class="line">key对应的value为c1</span><br><span class="line">key没有匹配上...</span><br></pre></td></tr></table></figure>
-<h5 id="模式匹配在工作中主要用于异常处理："><a href="#模式匹配在工作中主要用于异常处理：" class="headerlink" title="模式匹配在工作中主要用于异常处理："></a>模式匹配在工作中主要用于异常处理：</h5><p>IO操作、数据库操作<br>1）open<br>2）todo…<br>3）release</p>
-<p>例1：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">ArithmeticException</span> =&gt; println(<span class="string">"除数不能为0..."</span>)</span><br><span class="line">  <span class="comment">//case e:Exception =&gt; println(e.getMessage)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-4"><a href="#结果：-4" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">除数不能为<span class="number">0.</span>..</span><br></pre></td></tr></table></figure>
-
-<p>例2：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="comment">//case e:ArithmeticException =&gt; println("除数不能为0...")</span></span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h6 id="结果：-5"><a href="#结果：-5" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">/ by zero</span><br></pre></td></tr></table></figure>
-
-<p>例3：</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="comment">//open</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">//关闭文件流或释放数据库连接</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Scala</category>
-      </categories>
-      <tags>
-        <tag>Scala</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>RowKey设计原则、热点问题、设计实践</title>
     <url>/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/</url>
     <content><![CDATA[<p>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</p>
@@ -1350,6 +1309,48 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       <tags>
         <tag>Scala</tag>
         <tag>ScalikeJDBC</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Scala 模式匹配</title>
+    <url>/2018/05/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/</url>
+    <content><![CDATA[<h3 id="Scala-模式匹配"><a href="#Scala-模式匹配" class="headerlink" title="Scala 模式匹配"></a>Scala 模式匹配</h3><p>类似于java的switch case<br>可以匹配内容、集合、类型…</p>
+<a id="more"></a>
+<hr>
+<h4 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h4><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">变量 <span class="keyword">match</span>&#123;</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">1</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">2</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">3</span> =&gt; ...</span><br><span class="line">	_ =&gt; ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//*scala不需要break</span></span><br></pre></td></tr></table></figure>
+<h5 id="根据集合匹配："><a href="#根据集合匹配：" class="headerlink" title="根据集合匹配："></a>根据集合匹配：</h5><p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> a1 = <span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>,<span class="string">"d"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> a11 = a1(<span class="type">Random</span>.nextInt(a1.length))</span><br><span class="line"></span><br><span class="line">a11 <span class="keyword">match</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"a"</span> =&gt; print(<span class="string">"这是a"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"b"</span> =&gt; print(<span class="string">"这是b"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"c"</span> =&gt; print(<span class="string">"这是c"</span>)</span><br><span class="line">  <span class="keyword">case</span> _ =&gt; print(<span class="string">"这是哪个？"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting</span></span>(array: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>) =&gt; println(<span class="string">"这是只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(x,y) =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>,_*) =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
+<h6 id="结果："><a href="#结果：" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
+
+<p>例3：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting1</span></span>(array: <span class="type">List</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>:: <span class="type">Nil</span> =&gt; println(<span class="string">"有且只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> x::y::<span class="type">Nil</span> =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>::tail =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-1"><a href="#结果：-1" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
+<h5 id="根据类型匹配："><a href="#根据类型匹配：" class="headerlink" title="根据类型匹配："></a>根据类型匹配：</h5><p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchType</span></span>(obj: <span class="type">Any</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">  obj <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> i:<span class="type">Int</span> =&gt; println(<span class="string">"这是Int类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> s:<span class="type">String</span> =&gt; println(<span class="string">"这是String类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> m:<span class="type">Map</span>[_,_] =&gt; println(<span class="string">"这是Map类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"未找到的类型"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchType(<span class="number">1</span>)</span><br><span class="line">matchType(<span class="string">"a"</span>)</span><br><span class="line">matchType(<span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="number">1</span>))</span><br><span class="line">matchType(<span class="number">1</span>L)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-2"><a href="#结果：-2" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">这是<span class="type">Int</span>类型</span><br><span class="line">这是<span class="type">String</span>类型</span><br><span class="line">这是<span class="type">Map</span>类型</span><br><span class="line">未找到的类型</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> aas = <span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="string">"a1"</span>, <span class="string">"b"</span> -&gt; <span class="string">"b1"</span>, <span class="string">"c"</span> -&gt; <span class="string">"c1"</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchaa</span></span>(key:<span class="type">String</span>): <span class="type">Unit</span> =&#123;</span><br><span class="line">  <span class="keyword">val</span> aa = aas.get(key)</span><br><span class="line">  aa <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Some</span>(aa) =&gt; println(<span class="string">"key对应的value为"</span> + aa)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">None</span> =&gt; println(<span class="string">"key没有匹配上..."</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchaa(<span class="string">"a"</span>)</span><br><span class="line">matchaa(<span class="string">"b"</span>)</span><br><span class="line">matchaa(<span class="string">"c"</span>)</span><br><span class="line">matchaa(<span class="string">"d"</span>)</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-3"><a href="#结果：-3" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">key对应的value为a1</span><br><span class="line">key对应的value为b1</span><br><span class="line">key对应的value为c1</span><br><span class="line">key没有匹配上...</span><br></pre></td></tr></table></figure>
+<h5 id="模式匹配在工作中主要用于异常处理："><a href="#模式匹配在工作中主要用于异常处理：" class="headerlink" title="模式匹配在工作中主要用于异常处理："></a>模式匹配在工作中主要用于异常处理：</h5><p>IO操作、数据库操作<br>1）open<br>2）todo…<br>3）release</p>
+<p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">ArithmeticException</span> =&gt; println(<span class="string">"除数不能为0..."</span>)</span><br><span class="line">  <span class="comment">//case e:Exception =&gt; println(e.getMessage)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-4"><a href="#结果：-4" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">除数不能为<span class="number">0.</span>..</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="comment">//case e:ArithmeticException =&gt; println("除数不能为0...")</span></span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-5"><a href="#结果：-5" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">/ by zero</span><br></pre></td></tr></table></figure>
+
+<p>例3：</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="comment">//open</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">//关闭文件流或释放数据库连接</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
+      <tags>
+        <tag>Scala</tag>
       </tags>
   </entry>
   <entry>
@@ -1720,6 +1721,50 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Spark RDD浅谈</title>
+    <url>/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/</url>
+    <content><![CDATA[<p>对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念</p>
+<p>它是分布式的，可以分布在多台机器上，进行计算</p>
+<p>它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换</p>
+<p>它表示已被分区，不可变的并能够被并行操作的数据集合</p>
+<p>这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？</p>
+<a id="more"></a>
+<hr>
+<h4 id="对RDD的理解"><a href="#对RDD的理解" class="headerlink" title="对RDD的理解"></a>对RDD的理解</h4><h5 id="官方在源码中对RDD的注释："><a href="#官方在源码中对RDD的注释：" class="headerlink" title="官方在源码中对RDD的注释："></a>官方在源码中对RDD的注释：</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">* Internally, each RDD is characterized by five main properties:</span><br><span class="line">*   </span><br><span class="line">*  - A list of partitions  一个分区的列表</span><br><span class="line">*  - A function <span class="keyword">for</span> computing each split  一个计算每个分区的函数，即RDD的分片函数</span><br><span class="line">*  - A list of dependencies on other RDDs    RDD之间的依赖关系 </span><br><span class="line">*  - Optionally, a Partitioner <span class="keyword">for</span> key-<span class="function">value <span class="title">RDDs</span> <span class="params">(e.g. to say that the RDD is hash-partitioned)</span>    可选：一个Partitioner</span></span><br><span class="line"><span class="function">*  - Optionally, a list of preferred locations to compute each split <span class="title">on</span> <span class="params">(e.g. block locations <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">*    an HDFS file)</span>    可选：一个列表，存储存取每个Partition的优先位置</span></span><br><span class="line"><span class="function">*</span></span><br><span class="line"><span class="function">* All of the scheduling and execution in Spark is done based on these methods, allowing each RDD</span></span><br><span class="line"><span class="function">* to implement its own way of computing itself. Indeed, users can implement custom <span class="title">RDDs</span> <span class="params">(e.g. <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">* reading data from a new storage system)</span> by overriding these functions. Please refer to the</span></span><br><span class="line"><span class="function">* [[http:<span class="comment">//www.cs.berkeley.edu/~matei/papers/2012/nsdi_spark.pdf Spark paper]] for more details</span></span></span><br><span class="line"><span class="function">* on RDD internals.</span></span><br><span class="line"><span class="function">*/</span></span><br></pre></td></tr></table></figure>
+<p>通过官方的注释，我们可以了解到，每个RDD都有五个重要的属性。</p>
+<ol>
+<li><p>一个分区的列表。我们可以理解为是一组分片，分片就是数据集的基本组成单位，对于RDD来说，每个分片都会被一个计算任务处理，并决定并行计算的粒度。<br>用户创建RDD时，可以指定RDD的分片个数，若没有指定，则采用默认（默认值：程序所分配的CPU Cores数目），下图描述了分区存储的计算模型，每个分配的存储是有BlockManager实现的。<br>每个分区都会被逻辑映射成BlockManager的一个block，而这个block会被一个Task负责计算。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png" alt="RDD Partiton 的存储和计算模型"></p>
+</li>
+<li><p>一个计算每个分区的函数。即RDD的计算分片compute函数，Spark中的RDD计算是以分片为单位的，每个RDD都会实现compute函数以达到这个目的。compute函数会对迭代器进行复核，不需要保存每次计算的结果。</p>
+</li>
+<li><p>RDD之间的依赖关系。这里要说一下RDD的依赖关系<br>RDD和它的依赖的parent RDD(s)的关系有两种不同的类型，即宽依赖和窄依赖</p>
+</li>
+</ol>
+<ul>
+<li>窄依赖指的是每一个parent RDD的partition最多被子RDD的一个partition使用</li>
+<li>宽依赖是指多个子RDD的partition会依赖同一个parent RDD的partition<br>接下来，从不同类型的转换来进一步理解RDD的窄依赖和宽依赖的区别，如下图所示。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png" alt="RDD 宽依赖 窄依赖"><br>对于map和filter形式的转换来说，它们只是将Partition的数据根据转换的规则进行转化，并不涉及其他的处理，可以简单地认为只是将数据从一个形式转换到另一个形式。<br>对于union，只是将多个RDD合并成一个，parent RDD的Partition(s)不会有任何的变化，可以认为只是把parent RDD的Partition(s)简单进行复制与合并。<br>对于join，如果每个Partition仅仅和已知的、特定的Partition进行join，那么这个依赖关系也是窄依赖。对于这种有规则的数据的join，并不会引入昂贵的Shuffle。<br>对于窄依赖，由于RDD每个Partition依赖固定数量的parent RDD(s)的Partition(s)，因此可以通过一个计算任务来处理这些Partition，并且这些Partition相互独立，这些计算任务也就可以并行执行了。<br>对于groupByKey，子RDD的所有Partition(s)会依赖于parent RDD的所有Partition(s)，子RDD的Partition是parent RDD的所有Partition Shuffle的结果，因此这两个RDD是不能通过一个计算任务来完成的。同样，对于需要parent RDD的所有Partition进行join的转换，也是需要Shuffle，这类join的依赖就是宽依赖而不是前面提到的窄依赖了。<br>不同的操作依据其特性，可能会产生不同的依赖。例如map、filter操作会产生 narrow dependency 。reduceBykey操作会产生 wide / shuffle dependency。<br>通俗点来说，RDD的每个Partition，仅仅依赖于父RDD中的一个Partition，这才是窄。 就这么简单！<br>反正，子Rdd的partition和父Rdd的Partition如果是一对一就是窄依赖，这样理解就好区分了 　　　　　　　　　<br>捋一下这里的源码：<br>所有的依赖都要实现<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">trait Dependency[T]：</span><br><span class="line">abstract class Dependency[T] extends Serializable &#123;</span><br><span class="line">    def rdd: RDD[T]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中rdd就是依赖的parent RDD。<br>对于窄依赖的实现（有两种）<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] &#123;</span><br><span class="line">    <span class="comment">//返回子RDD的partitionId依赖的所有的parent RDD的Partition(s)</span></span><br><span class="line">    <span class="function">def <span class="title">getParents</span><span class="params">(partitionId: Int)</span>: Seq[Int]</span></span><br><span class="line"><span class="function">    override def rdd: RDD[T] </span>= _rdd</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+窄依赖是有两种具体实现，分别如下：<br>一种是一对一的依赖，即OneToOneDependency：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) &#123;</span><br><span class="line">    <span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= List(partitionId)</span><br><span class="line">    通过getParents的实现不难看出，RDD仅仅依赖于parent RDD相同ID的Partition。</span><br></pre></td></tr></table></figure>
+还有一个是范围的依赖，即RangeDependency，它仅仅被org.apache.spark.rdd.UnionRDD使用。UnionRDD是把多个RDD合成一个RDD，这些RDD是被拼接而成，即每个parent RDD的Partition的相对顺序不会变，只不过每个parent RDD在UnionRDD中的Partition的起始位置不同。因此它的getPartents如下：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= &#123;</span><br><span class="line">    <span class="keyword">if</span>(partitionId &gt;= outStart &amp;&amp; partitionId &lt; outStart + length) &#123;</span><br><span class="line">       List(partitionId - outStart + inStart)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       Nil</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中，inStart是parent RDD中Partition的起始位置，outStart是在UnionRDD中的起始位置，length就是parent RDD中Partition的数量。<br>对于宽依赖的实现（只有一种）<br>宽依赖的实现只有一种：ShuffleDependency。子RDD依赖于parent RDD的所有Partition，因此需要Shuffle过程：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class ShuffleDependency[K, V, C](</span><br><span class="line">    <span class="meta">@transient</span> _rdd: RDD[_ &lt;: Product2[K, V]],</span><br><span class="line">    val partitioner: Partitioner,</span><br><span class="line">    val serializer: Option[Serializer] = None,</span><br><span class="line">    val keyOrdering: Option[Ordering[K]] = None,</span><br><span class="line">    val aggregator: Option[Aggregator[K, V, C]] = None,</span><br><span class="line">    val mapSideCombine: Boolean = <span class="keyword">false</span>)</span><br><span class="line">extends Dependency[Product2[K, V]] &#123;</span><br><span class="line"> </span><br><span class="line">override def rdd = _rdd.asInstanceOf[RDD[Product2[K, V]]]</span><br><span class="line"><span class="comment">//获取新的shuffleId</span></span><br><span class="line">val shuffleId: Int = _rdd.context.newShuffleId()</span><br><span class="line"><span class="comment">//向ShuffleManager注册Shuffle的信息</span></span><br><span class="line">val shuffleHandle: ShuffleHandle =</span><br><span class="line">_rdd.context.env.shuffleManager.registerShuffle(</span><br><span class="line">    shuffleId, _rdd.partitions.size, <span class="keyword">this</span>)</span><br><span class="line">    _rdd.sparkContext.cleaner.foreach(_.registerShuffleForCleanup(<span class="keyword">this</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+注意：宽依赖支持两种Shuffle Manager。<br>即org.apache.spark.shuffle.hash.HashShuffleManager（基于Hash的Shuffle机制）和<br>org.apache.spark.shuffle.sort.SortShuffleManager（基于排序的Shuffle机制）。</li>
+</ul>
+<ol start="4">
+<li><p>可选：KV RDD可重分区。当前Spark中实现了两种类型的分片函数，一个是基于哈希的HashPartitioner，另外一个是基于范围的RangePartitioner。只有对于key-value的RDD才会有Partitioner，非key-value的RDD的Partitioner的值是None。Partitioner函数不但决定了RDD本身的分片数量，也决定了parent RDD Shuffle输出时的分片数量。</p>
+</li>
+<li><p>可选：移动计算，存储存取每个Partition的优先位置。对于一个HDFS文件来说，这个列表保存的就是每个Partition所在块的位置。</p>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>Spark RDD</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>SparkSQL 基础</title>
     <url>/2018/10/10/SparkSQL/</url>
     <content><![CDATA[<p>SparkSQL 基础内容</p>
@@ -1830,50 +1875,6 @@ csv读取数据注意使用几个参数</li>
       <tags>
         <tag>Spark</tag>
         <tag>SparkSQL</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Spark RDD浅谈</title>
-    <url>/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/</url>
-    <content><![CDATA[<p>对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念</p>
-<p>它是分布式的，可以分布在多台机器上，进行计算</p>
-<p>它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换</p>
-<p>它表示已被分区，不可变的并能够被并行操作的数据集合</p>
-<p>这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？</p>
-<a id="more"></a>
-<hr>
-<h4 id="对RDD的理解"><a href="#对RDD的理解" class="headerlink" title="对RDD的理解"></a>对RDD的理解</h4><h5 id="官方在源码中对RDD的注释："><a href="#官方在源码中对RDD的注释：" class="headerlink" title="官方在源码中对RDD的注释："></a>官方在源码中对RDD的注释：</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">* Internally, each RDD is characterized by five main properties:</span><br><span class="line">*   </span><br><span class="line">*  - A list of partitions  一个分区的列表</span><br><span class="line">*  - A function <span class="keyword">for</span> computing each split  一个计算每个分区的函数，即RDD的分片函数</span><br><span class="line">*  - A list of dependencies on other RDDs    RDD之间的依赖关系 </span><br><span class="line">*  - Optionally, a Partitioner <span class="keyword">for</span> key-<span class="function">value <span class="title">RDDs</span> <span class="params">(e.g. to say that the RDD is hash-partitioned)</span>    可选：一个Partitioner</span></span><br><span class="line"><span class="function">*  - Optionally, a list of preferred locations to compute each split <span class="title">on</span> <span class="params">(e.g. block locations <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">*    an HDFS file)</span>    可选：一个列表，存储存取每个Partition的优先位置</span></span><br><span class="line"><span class="function">*</span></span><br><span class="line"><span class="function">* All of the scheduling and execution in Spark is done based on these methods, allowing each RDD</span></span><br><span class="line"><span class="function">* to implement its own way of computing itself. Indeed, users can implement custom <span class="title">RDDs</span> <span class="params">(e.g. <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">* reading data from a new storage system)</span> by overriding these functions. Please refer to the</span></span><br><span class="line"><span class="function">* [[http:<span class="comment">//www.cs.berkeley.edu/~matei/papers/2012/nsdi_spark.pdf Spark paper]] for more details</span></span></span><br><span class="line"><span class="function">* on RDD internals.</span></span><br><span class="line"><span class="function">*/</span></span><br></pre></td></tr></table></figure>
-<p>通过官方的注释，我们可以了解到，每个RDD都有五个重要的属性。</p>
-<ol>
-<li><p>一个分区的列表。我们可以理解为是一组分片，分片就是数据集的基本组成单位，对于RDD来说，每个分片都会被一个计算任务处理，并决定并行计算的粒度。<br>用户创建RDD时，可以指定RDD的分片个数，若没有指定，则采用默认（默认值：程序所分配的CPU Cores数目），下图描述了分区存储的计算模型，每个分配的存储是有BlockManager实现的。<br>每个分区都会被逻辑映射成BlockManager的一个block，而这个block会被一个Task负责计算。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png" alt="RDD Partiton 的存储和计算模型"></p>
-</li>
-<li><p>一个计算每个分区的函数。即RDD的计算分片compute函数，Spark中的RDD计算是以分片为单位的，每个RDD都会实现compute函数以达到这个目的。compute函数会对迭代器进行复核，不需要保存每次计算的结果。</p>
-</li>
-<li><p>RDD之间的依赖关系。这里要说一下RDD的依赖关系<br>RDD和它的依赖的parent RDD(s)的关系有两种不同的类型，即宽依赖和窄依赖</p>
-</li>
-</ol>
-<ul>
-<li>窄依赖指的是每一个parent RDD的partition最多被子RDD的一个partition使用</li>
-<li>宽依赖是指多个子RDD的partition会依赖同一个parent RDD的partition<br>接下来，从不同类型的转换来进一步理解RDD的窄依赖和宽依赖的区别，如下图所示。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png" alt="RDD 宽依赖 窄依赖"><br>对于map和filter形式的转换来说，它们只是将Partition的数据根据转换的规则进行转化，并不涉及其他的处理，可以简单地认为只是将数据从一个形式转换到另一个形式。<br>对于union，只是将多个RDD合并成一个，parent RDD的Partition(s)不会有任何的变化，可以认为只是把parent RDD的Partition(s)简单进行复制与合并。<br>对于join，如果每个Partition仅仅和已知的、特定的Partition进行join，那么这个依赖关系也是窄依赖。对于这种有规则的数据的join，并不会引入昂贵的Shuffle。<br>对于窄依赖，由于RDD每个Partition依赖固定数量的parent RDD(s)的Partition(s)，因此可以通过一个计算任务来处理这些Partition，并且这些Partition相互独立，这些计算任务也就可以并行执行了。<br>对于groupByKey，子RDD的所有Partition(s)会依赖于parent RDD的所有Partition(s)，子RDD的Partition是parent RDD的所有Partition Shuffle的结果，因此这两个RDD是不能通过一个计算任务来完成的。同样，对于需要parent RDD的所有Partition进行join的转换，也是需要Shuffle，这类join的依赖就是宽依赖而不是前面提到的窄依赖了。<br>不同的操作依据其特性，可能会产生不同的依赖。例如map、filter操作会产生 narrow dependency 。reduceBykey操作会产生 wide / shuffle dependency。<br>通俗点来说，RDD的每个Partition，仅仅依赖于父RDD中的一个Partition，这才是窄。 就这么简单！<br>反正，子Rdd的partition和父Rdd的Partition如果是一对一就是窄依赖，这样理解就好区分了 　　　　　　　　　<br>捋一下这里的源码：<br>所有的依赖都要实现<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">trait Dependency[T]：</span><br><span class="line">abstract class Dependency[T] extends Serializable &#123;</span><br><span class="line">    def rdd: RDD[T]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-其中rdd就是依赖的parent RDD。<br>对于窄依赖的实现（有两种）<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] &#123;</span><br><span class="line">    <span class="comment">//返回子RDD的partitionId依赖的所有的parent RDD的Partition(s)</span></span><br><span class="line">    <span class="function">def <span class="title">getParents</span><span class="params">(partitionId: Int)</span>: Seq[Int]</span></span><br><span class="line"><span class="function">    override def rdd: RDD[T] </span>= _rdd</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-窄依赖是有两种具体实现，分别如下：<br>一种是一对一的依赖，即OneToOneDependency：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) &#123;</span><br><span class="line">    <span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= List(partitionId)</span><br><span class="line">    通过getParents的实现不难看出，RDD仅仅依赖于parent RDD相同ID的Partition。</span><br></pre></td></tr></table></figure>
-还有一个是范围的依赖，即RangeDependency，它仅仅被org.apache.spark.rdd.UnionRDD使用。UnionRDD是把多个RDD合成一个RDD，这些RDD是被拼接而成，即每个parent RDD的Partition的相对顺序不会变，只不过每个parent RDD在UnionRDD中的Partition的起始位置不同。因此它的getPartents如下：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= &#123;</span><br><span class="line">    <span class="keyword">if</span>(partitionId &gt;= outStart &amp;&amp; partitionId &lt; outStart + length) &#123;</span><br><span class="line">       List(partitionId - outStart + inStart)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       Nil</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-其中，inStart是parent RDD中Partition的起始位置，outStart是在UnionRDD中的起始位置，length就是parent RDD中Partition的数量。<br>对于宽依赖的实现（只有一种）<br>宽依赖的实现只有一种：ShuffleDependency。子RDD依赖于parent RDD的所有Partition，因此需要Shuffle过程：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">class ShuffleDependency[K, V, C](</span><br><span class="line">    <span class="meta">@transient</span> _rdd: RDD[_ &lt;: Product2[K, V]],</span><br><span class="line">    val partitioner: Partitioner,</span><br><span class="line">    val serializer: Option[Serializer] = None,</span><br><span class="line">    val keyOrdering: Option[Ordering[K]] = None,</span><br><span class="line">    val aggregator: Option[Aggregator[K, V, C]] = None,</span><br><span class="line">    val mapSideCombine: Boolean = <span class="keyword">false</span>)</span><br><span class="line">extends Dependency[Product2[K, V]] &#123;</span><br><span class="line"> </span><br><span class="line">override def rdd = _rdd.asInstanceOf[RDD[Product2[K, V]]]</span><br><span class="line"><span class="comment">//获取新的shuffleId</span></span><br><span class="line">val shuffleId: Int = _rdd.context.newShuffleId()</span><br><span class="line"><span class="comment">//向ShuffleManager注册Shuffle的信息</span></span><br><span class="line">val shuffleHandle: ShuffleHandle =</span><br><span class="line">_rdd.context.env.shuffleManager.registerShuffle(</span><br><span class="line">    shuffleId, _rdd.partitions.size, <span class="keyword">this</span>)</span><br><span class="line">    _rdd.sparkContext.cleaner.foreach(_.registerShuffleForCleanup(<span class="keyword">this</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-注意：宽依赖支持两种Shuffle Manager。<br>即org.apache.spark.shuffle.hash.HashShuffleManager（基于Hash的Shuffle机制）和<br>org.apache.spark.shuffle.sort.SortShuffleManager（基于排序的Shuffle机制）。</li>
-</ul>
-<ol start="4">
-<li><p>可选：KV RDD可重分区。当前Spark中实现了两种类型的分片函数，一个是基于哈希的HashPartitioner，另外一个是基于范围的RangePartitioner。只有对于key-value的RDD才会有Partitioner，非key-value的RDD的Partitioner的值是None。Partitioner函数不但决定了RDD本身的分片数量，也决定了parent RDD Shuffle输出时的分片数量。</p>
-</li>
-<li><p>可选：移动计算，存储存取每个Partition的优先位置。对于一个HDFS文件来说，这个列表保存的就是每个Partition所在块的位置。</p>
-</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-        <tag>Spark RDD</tag>
       </tags>
   </entry>
   <entry>
@@ -2187,24 +2188,6 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>Spark 序列化</title>
-    <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
-    <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
-
-<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
-<h3 id="Java-serialization"><a href="#Java-serialization" class="headerlink" title="Java serialization"></a>Java serialization</h3><p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
-<h3 id="Kryo-serialization"><a href="#Kryo-serialization" class="headerlink" title="Kryo serialization"></a>Kryo serialization</h3><p>Spark还可以使用Kryo库（版本4）来更快地序列化对象。Kryo比Java串行化（通常多达10倍）要快得多，也更紧凑，但是不支持所有可串行化类型，并且要求您提前注册您将在程序中使用的类，以获得最佳性能。</p>
-<p>您可以通过使用SparkConf初始化作业并调用conf.set（“ spark.serializer”，“ org.apache.spark.serializer.KryoSerializer”）来切换为使用Kryo。</p>
-<p>要向Kryo注册您自己的自定义类，请使用registerKryoClasses方法</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(...).setAppName(...)</span><br><span class="line">conf.registerKryoClasses(<span class="type">Array</span>(classOf[<span class="type">MyClass1</span>], classOf[<span class="type">MyClass2</span>]))</span><br><span class="line"><span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Spark</category>
-      </categories>
-      <tags>
-        <tag>Spark</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Spark 广播变量</title>
     <url>/2018/10/04/Spark%E5%B9%BF%E6%92%AD%E5%8F%98%E9%87%8F/</url>
     <content><![CDATA[<h5 id="为什么要将变量定义成广播变量？"><a href="#为什么要将变量定义成广播变量？" class="headerlink" title="为什么要将变量定义成广播变量？"></a>为什么要将变量定义成广播变量？</h5><p>如果我们要在分布式计算里面分发大对象，例如：字典，集合，黑白名单等，这个都会由Driver端进行分发，一般来讲，如果这个变量不是广播变量，那么每个task就会分发一份，这在task数目十分多的情况下Driver的带宽会成为系统的瓶颈，而且会大量消耗task服务器上的资源，如果将这个变量声明为广播变量，那么知识每个executor拥有一份，这个executor启动的task会共享这个变量，节省了通信的成本和服务器的资源。</p>
@@ -2258,18 +2241,21 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>Spark 经典案例</title>
-    <url>/2018/10/01/Spark%E7%BB%8F%E5%85%B8%E6%A1%88%E4%BE%8B/</url>
-    <content><![CDATA[<p>一个Spark的经典案例</p>
-<a id="more"></a>
-<hr>
-<h5 id="经典案例"><a href="#经典案例" class="headerlink" title="经典案例"></a>经典案例</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 用户     节目            展示 点击</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,1</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,0</span></span><br><span class="line"><span class="comment"> * 002,一起看|电视剧|军旅|士兵突击,1,1</span></span><br><span class="line"><span class="comment"> * ==&gt;</span></span><br><span class="line"><span class="comment"> * 001,一起看,2,1</span></span><br><span class="line"><span class="comment"> * 001,电视剧,2,1</span></span><br><span class="line"><span class="comment"> * 001,军旅,2,1</span></span><br><span class="line"><span class="comment"> * 001,亮剑,2,1</span></span><br><span class="line"><span class="comment"> **/</span></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">exercise02</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> linesRDD: <span class="type">RDD</span>[<span class="type">String</span>] = sc.textFile(<span class="string">"tunan-spark-core/data/test2.txt"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用map返回的是一个数组，我不要数组，就使用flatMap</span></span><br><span class="line">        <span class="keyword">import</span> com.tunan.spark.utils.<span class="type">ImplicitAspect</span>.rdd2RichRDD</span><br><span class="line">        <span class="keyword">val</span> map2RDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = linesRDD.flatMap(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words: <span class="type">Array</span>[<span class="type">String</span>] = line.split(<span class="string">","</span>)</span><br><span class="line">            <span class="keyword">val</span> programs: <span class="type">Array</span>[<span class="type">String</span>] = words(<span class="number">1</span>).split(<span class="string">"\\|"</span>)</span><br><span class="line">            <span class="keyword">val</span> mapRDD: <span class="type">Array</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = programs.map(program =&gt; ((words(<span class="number">0</span>), program), (words(<span class="number">2</span>).toInt, words(<span class="number">3</span>).toInt)))</span><br><span class="line">            mapRDD</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">val</span> groupRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), <span class="type">Iterable</span>[(<span class="type">Int</span>, <span class="type">Int</span>)])] = map2RDD.groupByKey()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//这里是mapValues很好的一个使用案例</span></span><br><span class="line">        <span class="keyword">val</span> mapVRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = groupRDD.mapValues(x =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> imps: <span class="type">Int</span> = x.map(_._1).sum</span><br><span class="line">            <span class="keyword">val</span> check: <span class="type">Int</span> = x.map(_._2).sum</span><br><span class="line">            (imps, check)</span><br><span class="line">        &#125;)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//格式化输出</span></span><br><span class="line">        mapVRDD.map(x =&gt; &#123;</span><br><span class="line">            (x._1._1,x._1._2,x._2._1,x._2._1)</span><br><span class="line">        &#125;).print()</span><br><span class="line"></span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+    <title>Spark 序列化</title>
+    <url>/2018/10/26/Spark%E5%BA%8F%E5%88%97%E5%8C%96/</url>
+    <content><![CDATA[<h5 id="官方文档：https-spark-apache-org-docs-latest-tuning-html"><a href="#官方文档：https-spark-apache-org-docs-latest-tuning-html" class="headerlink" title="官方文档：https://spark.apache.org/docs/latest/tuning.html"></a>官方文档：<a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">https://spark.apache.org/docs/latest/tuning.html</a></h5><a id="more"></a>
+
+<p>序列化在分布式应用的性能中扮演着重要的角色。格式化对象缓慢，或者消耗大量的字节格式化，会大大降低计算性能。通常这是在spark应用中第一件需要优化的事情。Spark的目标是在便利与性能中取得平衡，所以提供2种序列化的选择。</p>
+<h3 id="Java-serialization"><a href="#Java-serialization" class="headerlink" title="Java serialization"></a>Java serialization</h3><p>在默认情况下，Spark会使用Java的ObjectOutputStream框架对对象进行序列化，并且可以与任何实现java.io.Serializable的类一起工作。您还可以通过扩展java.io.Externalizable来更紧密地控制序列化的性能。Java序列化是灵活的，但通常相当慢，并且会导致许多类的大型序列化格式。</p>
+<h3 id="Kryo-serialization"><a href="#Kryo-serialization" class="headerlink" title="Kryo serialization"></a>Kryo serialization</h3><p>Spark还可以使用Kryo库（版本4）来更快地序列化对象。Kryo比Java串行化（通常多达10倍）要快得多，也更紧凑，但是不支持所有可串行化类型，并且要求您提前注册您将在程序中使用的类，以获得最佳性能。</p>
+<p>您可以通过使用SparkConf初始化作业并调用conf.set（“ spark.serializer”，“ org.apache.spark.serializer.KryoSerializer”）来切换为使用Kryo。</p>
+<p>要向Kryo注册您自己的自定义类，请使用registerKryoClasses方法</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setMaster(...).setAppName(...)</span><br><span class="line">conf.registerKryoClasses(<span class="type">Array</span>(classOf[<span class="type">MyClass1</span>], classOf[<span class="type">MyClass2</span>]))</span><br><span class="line"><span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>Spark</category>
       </categories>
       <tags>
         <tag>Spark</tag>
-        <tag>Spark算子</tag>
       </tags>
   </entry>
   <entry>
@@ -2311,6 +2297,38 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
+    <title>Spark 核心概念RDD</title>
+    <url>/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/</url>
+    <content><![CDATA[<p>转载来源:<br><a href="http://sharkdtu.com/posts/spark-rdd.html" target="_blank" rel="noopener">http://sharkdtu.com/posts/spark-rdd.html</a></p>
+<p>RDD全称叫做弹性分布式数据集(Resilient Distributed Datasets)，它是一种分布式的内存抽象，表示一个只读的记录分区的集合，它只能通过其他RDD转换而创建，为此，RDD支持丰富的转换操作(如map, join, filter, groupBy等)，通过这种转换操作，新的RDD则包含了如何从其他RDDs衍生所必需的信息，所以说RDDs之间是有依赖关系的。<br>基于RDDs之间的依赖，RDDs会形成一个有向无环图DAG，该DAG描述了整个流式计算的流程，实际执行的时候，RDD是通过血缘关系(Lineage)一气呵成的，即使出现数据分区丢失，也可以通过血缘关系重建分区，总结起来，基于RDD的流式计算任务可描述为：从稳定的物理存储(如分布式文件系统)中加载记录，记录被传入由一组确定性操作构成的DAG，然后写回稳定存储。<br>另外RDD还可以将数据集缓存到内存中，使得在多个操作之间可以重用数据集，基于这个特点可以很方便地构建迭代型应用(图计算、机器学习等)或者交互式数据分析应用。可以说Spark最初也就是实现RDD的一个分布式系统，后面通过不断发展壮大成为现在较为完善的大数据生态系统，简单来讲，Spark-RDD的关系类似于Hadoop-MapReduce关系。</p>
+<a id="more"></a>
+<hr>
+<h4 id="RDD特点"><a href="#RDD特点" class="headerlink" title="RDD特点"></a>RDD特点</h4><p>RDD表示只读的分区的数据集，对RDD进行改动，只能通过RDD的转换操作，由一个RDD得到一个新的RDD，新的RDD包含了从其他RDD衍生所必需的信息。<br>RDDs之间存在依赖，RDD的执行是按照血缘关系延时计算的。如果血缘关系较长，可以通过持久化RDD来切断血缘关系。</p>
+<h5 id="分区"><a href="#分区" class="headerlink" title="分区"></a>分区</h5><p>如下图所示，RDD逻辑上是分区的，每个分区的数据是抽象存在的，计算的时候会通过一个compute函数得到每个分区的数据。<br>如果RDD是通过已有的文件系统构建，则compute函数是读取指定文件系统中的数据，如果RDD是通过其他RDD转换而来，则compute函数是执行转换逻辑将其他RDD的数据进行转换。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png" alt="rdd partition"></p>
+<h5 id="只读"><a href="#只读" class="headerlink" title="只读"></a>只读</h5><p>如下图所示，RDD是只读的，要想改变RDD中的数据，只能在现有的RDD基础上创建新的RDD。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-readonly.png" alt="rdd readonly"></p>
+<p>由一个RDD转换到另一个RDD，可以通过丰富的操作算子实现，不再像MapReduce那样只能写map和reduce了，如下图所示。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transform.png" alt="rdd transform"></p>
+<p>RDD的操作算子包括两类，一类叫做transformations，它是用来将RDD进行转化，构建RDD的血缘关系；另一类叫做actions，它是用来触发RDD的计算，得到RDD的相关计算结果或者将RDD保存的文件系统中。下图是RDD所支持的操作算子列表。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transformations-actions.png" alt="rdd transformations actions"></p>
+<h5 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h5><p>RDDs通过操作算子进行转换，转换得到的新RDD包含了从其他RDDs衍生所必需的信息，RDDs之间维护着这种血缘关系，也称之为依赖。<br>如下图所示，依赖包括两种，一种是窄依赖，RDDs之间分区是一一对应的，另一种是宽依赖，下游RDD的每个分区与上游RDD(也称之为父RDD)的每个分区都有关，是多对多的关系。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dependency.png" alt="rdd dependency"></p>
+<p>通过RDDs之间的这种依赖关系，一个任务流可以描述为DAG(有向无环图)，如下图所示，在实际执行过程中宽依赖对应于Shuffle(图中的reduceByKey和join)，窄依赖中的所有转换操作可以通过类似于管道的方式一气呵成执行(图中map和union可以一起执行)。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dag.png" alt="rdd dag"></p>
+<h5 id="缓存"><a href="#缓存" class="headerlink" title="缓存"></a>缓存</h5><p>如果在应用程序中多次使用同一个RDD，可以将该RDD缓存起来，该RDD只有在第一次计算的时候会根据血缘关系得到分区的数据，在后续其他地方用到该RDD的时候，会直接从缓存处取而不用再根据血缘关系计算，这样就加速后期的重用。<br>如下图所示，RDD-1经过一系列的转换后得到RDD-n并保存到hdfs，RDD-1在这一过程中会有个中间结果，如果将其缓存到内存，那么在随后的RDD-1转换到RDD-m这一过程中，就不会计算其之前的RDD-0了。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-cache.png" alt="rdd cache"></p>
+<h5 id="checkpoint"><a href="#checkpoint" class="headerlink" title="checkpoint"></a>checkpoint</h5><p>虽然RDD的血缘关系天然地可以实现容错，当RDD的某个分区数据失败或丢失，可以通过血缘关系重建。<br>但是对于长时间迭代型应用来说，随着迭代的进行，RDDs之间的血缘关系会越来越长，一旦在后续迭代过程中出错，则需要通过非常长的血缘关系去重建，势必影响性能。<br>为此，RDD支持checkpoint将数据保存到持久化的存储中，这样就可以切断之前的血缘关系，因为checkpoint后的RDD不需要知道它的父RDDs了，它可以从checkpoint处拿到数据。</p>
+<h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p>总结起来，给定一个RDD我们至少可以知道如下几点信息：<br>1、分区数以及分区方式；<br>2、由父RDDs衍生而来的相关依赖信息；<br>3、计算每个分区的数据，计算步骤为：<br>    1）如果被缓存，则从缓存中取的分区的数据；<br>    2）如果被checkpoint，则从checkpoint处恢复数据；<br>    3）根据血缘关系计算分区的数据。</p>
+<h4 id="编程模型"><a href="#编程模型" class="headerlink" title="编程模型"></a>编程模型</h4><p>在Spark中，RDD被表示为对象，通过对象上的方法调用来对RDD进行转换。<br>经过一系列的transformations定义RDD之后，就可以调用actions触发RDD的计算，action可以是向应用程序返回结果(count, collect等)，或者是向存储系统保存数据(saveAsTextFile等)。<br>在Spark中，只有遇到action，才会执行RDD的计算(即延迟计算)，这样在运行时可以通过管道的方式传输多个转换。</p>
+<p>要使用Spark，开发者需要编写一个Driver程序，它被提交到集群以调度运行Worker，如下图所示。<br>Driver中定义了一个或多个RDD，并调用RDD上的action，Worker则执行RDD分区计算任务。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-runtime.png" alt="spark runtime"></p>
+<h5 id="应用举例"><a href="#应用举例" class="headerlink" title="应用举例"></a>应用举例</h5><p>下面介绍一个简单的spark应用程序实例WordCount，统计一个数据集中每个单词出现的次数，首先将从hdfs中加载数据得到原始RDD-0，其中每条记录为数据中的一行句子，经过一个flatMap操作，将一行句子切分为多个独立的词，得到RDD-1，再通过map操作将每个词映射为key-value形式，其中key为词本身，value为初始计数值1，得到RDD-2，将RDD-2中的所有记录归并，统计每个词的计数，得到RDD-3，最后将其保存到hdfs。</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.spark._</span><br><span class="line"><span class="keyword">import</span> <span class="type">SparkContext</span>._</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">WordCount</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]) &#123;</span><br><span class="line">    <span class="keyword">if</span> (args.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">      <span class="type">System</span>.err.println(<span class="string">"Usage: WordCount &lt;inputfile&gt; &lt;outputfile&gt;"</span>);</span><br><span class="line">      <span class="type">System</span>.exit(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setAppName(<span class="string">"WordCount"</span>)</span><br><span class="line">    <span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br><span class="line">    <span class="keyword">val</span> result = sc.textFile(args(<span class="number">0</span>))</span><br><span class="line">                   .flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                   .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                   .reduceByKey(_ + _)</span><br><span class="line">    result.saveAsTextFile(args(<span class="number">1</span>))</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-wordcount.png" alt="spark wordcount"></p>
+<h5 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h5><p>基于RDD实现的Spark相比于传统的Hadoop MapReduce有什么优势呢？<br>总结起来应该至少有三点：<br>    1）RDD提供了丰富的操作算子，不再是只有map和reduce两个操作了，对于描述应用程序来说更加方便；<br>    2）通过RDDs之间的转换构建DAG，中间结果不用落地；<br>    3）RDD支持缓存，可以在内存中快速完成计算。</p>
+]]></content>
+      <categories>
+        <category>Spark</category>
+      </categories>
+      <tags>
+        <tag>Spark</tag>
+        <tag>Spark RDD</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Spark 计数器</title>
     <url>/2018/10/02/Spark%E8%AE%A1%E6%95%B0%E5%99%A8/</url>
     <content><![CDATA[<h5 id="为什么要定义计数器？"><a href="#为什么要定义计数器？" class="headerlink" title="为什么要定义计数器？"></a>为什么要定义计数器？</h5><p>在spark应用程序中，我们经常会有这样的需求，如异常监控，调试，记录符合某特性的数据的数目，这种需求都需要用到计数器，如果一个变量不被声明为一个累加器，那么它将在被改变时不会再driver端进行全局汇总，即在分布式运行时每个task运行的只是原始变量的一个副本，并不能改变原始变量的值，但是当这个变量被声明为累加器后，该变量就会有分布式计数的功能。</p>
@@ -2349,35 +2367,40 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>Spark 核心概念RDD</title>
-    <url>/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/</url>
-    <content><![CDATA[<p>转载来源:<br><a href="http://sharkdtu.com/posts/spark-rdd.html" target="_blank" rel="noopener">http://sharkdtu.com/posts/spark-rdd.html</a></p>
-<p>RDD全称叫做弹性分布式数据集(Resilient Distributed Datasets)，它是一种分布式的内存抽象，表示一个只读的记录分区的集合，它只能通过其他RDD转换而创建，为此，RDD支持丰富的转换操作(如map, join, filter, groupBy等)，通过这种转换操作，新的RDD则包含了如何从其他RDDs衍生所必需的信息，所以说RDDs之间是有依赖关系的。<br>基于RDDs之间的依赖，RDDs会形成一个有向无环图DAG，该DAG描述了整个流式计算的流程，实际执行的时候，RDD是通过血缘关系(Lineage)一气呵成的，即使出现数据分区丢失，也可以通过血缘关系重建分区，总结起来，基于RDD的流式计算任务可描述为：从稳定的物理存储(如分布式文件系统)中加载记录，记录被传入由一组确定性操作构成的DAG，然后写回稳定存储。<br>另外RDD还可以将数据集缓存到内存中，使得在多个操作之间可以重用数据集，基于这个特点可以很方便地构建迭代型应用(图计算、机器学习等)或者交互式数据分析应用。可以说Spark最初也就是实现RDD的一个分布式系统，后面通过不断发展壮大成为现在较为完善的大数据生态系统，简单来讲，Spark-RDD的关系类似于Hadoop-MapReduce关系。</p>
+    <title>Spark 经典案例</title>
+    <url>/2018/10/01/Spark%E7%BB%8F%E5%85%B8%E6%A1%88%E4%BE%8B/</url>
+    <content><![CDATA[<p>一个Spark的经典案例</p>
 <a id="more"></a>
 <hr>
-<h4 id="RDD特点"><a href="#RDD特点" class="headerlink" title="RDD特点"></a>RDD特点</h4><p>RDD表示只读的分区的数据集，对RDD进行改动，只能通过RDD的转换操作，由一个RDD得到一个新的RDD，新的RDD包含了从其他RDD衍生所必需的信息。<br>RDDs之间存在依赖，RDD的执行是按照血缘关系延时计算的。如果血缘关系较长，可以通过持久化RDD来切断血缘关系。</p>
-<h5 id="分区"><a href="#分区" class="headerlink" title="分区"></a>分区</h5><p>如下图所示，RDD逻辑上是分区的，每个分区的数据是抽象存在的，计算的时候会通过一个compute函数得到每个分区的数据。<br>如果RDD是通过已有的文件系统构建，则compute函数是读取指定文件系统中的数据，如果RDD是通过其他RDD转换而来，则compute函数是执行转换逻辑将其他RDD的数据进行转换。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png" alt="rdd partition"></p>
-<h5 id="只读"><a href="#只读" class="headerlink" title="只读"></a>只读</h5><p>如下图所示，RDD是只读的，要想改变RDD中的数据，只能在现有的RDD基础上创建新的RDD。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-readonly.png" alt="rdd readonly"></p>
-<p>由一个RDD转换到另一个RDD，可以通过丰富的操作算子实现，不再像MapReduce那样只能写map和reduce了，如下图所示。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transform.png" alt="rdd transform"></p>
-<p>RDD的操作算子包括两类，一类叫做transformations，它是用来将RDD进行转化，构建RDD的血缘关系；另一类叫做actions，它是用来触发RDD的计算，得到RDD的相关计算结果或者将RDD保存的文件系统中。下图是RDD所支持的操作算子列表。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transformations-actions.png" alt="rdd transformations actions"></p>
-<h5 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h5><p>RDDs通过操作算子进行转换，转换得到的新RDD包含了从其他RDDs衍生所必需的信息，RDDs之间维护着这种血缘关系，也称之为依赖。<br>如下图所示，依赖包括两种，一种是窄依赖，RDDs之间分区是一一对应的，另一种是宽依赖，下游RDD的每个分区与上游RDD(也称之为父RDD)的每个分区都有关，是多对多的关系。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dependency.png" alt="rdd dependency"></p>
-<p>通过RDDs之间的这种依赖关系，一个任务流可以描述为DAG(有向无环图)，如下图所示，在实际执行过程中宽依赖对应于Shuffle(图中的reduceByKey和join)，窄依赖中的所有转换操作可以通过类似于管道的方式一气呵成执行(图中map和union可以一起执行)。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dag.png" alt="rdd dag"></p>
-<h5 id="缓存"><a href="#缓存" class="headerlink" title="缓存"></a>缓存</h5><p>如果在应用程序中多次使用同一个RDD，可以将该RDD缓存起来，该RDD只有在第一次计算的时候会根据血缘关系得到分区的数据，在后续其他地方用到该RDD的时候，会直接从缓存处取而不用再根据血缘关系计算，这样就加速后期的重用。<br>如下图所示，RDD-1经过一系列的转换后得到RDD-n并保存到hdfs，RDD-1在这一过程中会有个中间结果，如果将其缓存到内存，那么在随后的RDD-1转换到RDD-m这一过程中，就不会计算其之前的RDD-0了。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-cache.png" alt="rdd cache"></p>
-<h5 id="checkpoint"><a href="#checkpoint" class="headerlink" title="checkpoint"></a>checkpoint</h5><p>虽然RDD的血缘关系天然地可以实现容错，当RDD的某个分区数据失败或丢失，可以通过血缘关系重建。<br>但是对于长时间迭代型应用来说，随着迭代的进行，RDDs之间的血缘关系会越来越长，一旦在后续迭代过程中出错，则需要通过非常长的血缘关系去重建，势必影响性能。<br>为此，RDD支持checkpoint将数据保存到持久化的存储中，这样就可以切断之前的血缘关系，因为checkpoint后的RDD不需要知道它的父RDDs了，它可以从checkpoint处拿到数据。</p>
-<h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p>总结起来，给定一个RDD我们至少可以知道如下几点信息：<br>1、分区数以及分区方式；<br>2、由父RDDs衍生而来的相关依赖信息；<br>3、计算每个分区的数据，计算步骤为：<br>    1）如果被缓存，则从缓存中取的分区的数据；<br>    2）如果被checkpoint，则从checkpoint处恢复数据；<br>    3）根据血缘关系计算分区的数据。</p>
-<h4 id="编程模型"><a href="#编程模型" class="headerlink" title="编程模型"></a>编程模型</h4><p>在Spark中，RDD被表示为对象，通过对象上的方法调用来对RDD进行转换。<br>经过一系列的transformations定义RDD之后，就可以调用actions触发RDD的计算，action可以是向应用程序返回结果(count, collect等)，或者是向存储系统保存数据(saveAsTextFile等)。<br>在Spark中，只有遇到action，才会执行RDD的计算(即延迟计算)，这样在运行时可以通过管道的方式传输多个转换。</p>
-<p>要使用Spark，开发者需要编写一个Driver程序，它被提交到集群以调度运行Worker，如下图所示。<br>Driver中定义了一个或多个RDD，并调用RDD上的action，Worker则执行RDD分区计算任务。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-runtime.png" alt="spark runtime"></p>
-<h5 id="应用举例"><a href="#应用举例" class="headerlink" title="应用举例"></a>应用举例</h5><p>下面介绍一个简单的spark应用程序实例WordCount，统计一个数据集中每个单词出现的次数，首先将从hdfs中加载数据得到原始RDD-0，其中每条记录为数据中的一行句子，经过一个flatMap操作，将一行句子切分为多个独立的词，得到RDD-1，再通过map操作将每个词映射为key-value形式，其中key为词本身，value为初始计数值1，得到RDD-2，将RDD-2中的所有记录归并，统计每个词的计数，得到RDD-3，最后将其保存到hdfs。</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.spark._</span><br><span class="line"><span class="keyword">import</span> <span class="type">SparkContext</span>._</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">WordCount</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]) &#123;</span><br><span class="line">    <span class="keyword">if</span> (args.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">      <span class="type">System</span>.err.println(<span class="string">"Usage: WordCount &lt;inputfile&gt; &lt;outputfile&gt;"</span>);</span><br><span class="line">      <span class="type">System</span>.exit(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setAppName(<span class="string">"WordCount"</span>)</span><br><span class="line">    <span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br><span class="line">    <span class="keyword">val</span> result = sc.textFile(args(<span class="number">0</span>))</span><br><span class="line">                   .flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                   .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                   .reduceByKey(_ + _)</span><br><span class="line">    result.saveAsTextFile(args(<span class="number">1</span>))</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-wordcount.png" alt="spark wordcount"></p>
-<h5 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h5><p>基于RDD实现的Spark相比于传统的Hadoop MapReduce有什么优势呢？<br>总结起来应该至少有三点：<br>    1）RDD提供了丰富的操作算子，不再是只有map和reduce两个操作了，对于描述应用程序来说更加方便；<br>    2）通过RDDs之间的转换构建DAG，中间结果不用落地；<br>    3）RDD支持缓存，可以在内存中快速完成计算。</p>
-]]></content>
+<h5 id="经典案例"><a href="#经典案例" class="headerlink" title="经典案例"></a>经典案例</h5><figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 用户     节目            展示 点击</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,1</span></span><br><span class="line"><span class="comment"> * 001,一起看|电视剧|军旅|亮剑,1,0</span></span><br><span class="line"><span class="comment"> * 002,一起看|电视剧|军旅|士兵突击,1,1</span></span><br><span class="line"><span class="comment"> * ==&gt;</span></span><br><span class="line"><span class="comment"> * 001,一起看,2,1</span></span><br><span class="line"><span class="comment"> * 001,电视剧,2,1</span></span><br><span class="line"><span class="comment"> * 001,军旅,2,1</span></span><br><span class="line"><span class="comment"> * 001,亮剑,2,1</span></span><br><span class="line"><span class="comment"> **/</span></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">exercise02</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="type">ContextUtils</span>.getSparkContext(<span class="keyword">this</span>.getClass.getSimpleName)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">val</span> linesRDD: <span class="type">RDD</span>[<span class="type">String</span>] = sc.textFile(<span class="string">"tunan-spark-core/data/test2.txt"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用map返回的是一个数组，我不要数组，就使用flatMap</span></span><br><span class="line">        <span class="keyword">import</span> com.tunan.spark.utils.<span class="type">ImplicitAspect</span>.rdd2RichRDD</span><br><span class="line">        <span class="keyword">val</span> map2RDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = linesRDD.flatMap(line =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> words: <span class="type">Array</span>[<span class="type">String</span>] = line.split(<span class="string">","</span>)</span><br><span class="line">            <span class="keyword">val</span> programs: <span class="type">Array</span>[<span class="type">String</span>] = words(<span class="number">1</span>).split(<span class="string">"\\|"</span>)</span><br><span class="line">            <span class="keyword">val</span> mapRDD: <span class="type">Array</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = programs.map(program =&gt; ((words(<span class="number">0</span>), program), (words(<span class="number">2</span>).toInt, words(<span class="number">3</span>).toInt)))</span><br><span class="line">            mapRDD</span><br><span class="line">        &#125;)</span><br><span class="line">        <span class="keyword">val</span> groupRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), <span class="type">Iterable</span>[(<span class="type">Int</span>, <span class="type">Int</span>)])] = map2RDD.groupByKey()</span><br><span class="line"></span><br><span class="line">        <span class="comment">//这里是mapValues很好的一个使用案例</span></span><br><span class="line">        <span class="keyword">val</span> mapVRDD: <span class="type">RDD</span>[((<span class="type">String</span>, <span class="type">String</span>), (<span class="type">Int</span>, <span class="type">Int</span>))] = groupRDD.mapValues(x =&gt; &#123;</span><br><span class="line">            <span class="keyword">val</span> imps: <span class="type">Int</span> = x.map(_._1).sum</span><br><span class="line">            <span class="keyword">val</span> check: <span class="type">Int</span> = x.map(_._2).sum</span><br><span class="line">            (imps, check)</span><br><span class="line">        &#125;)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//格式化输出</span></span><br><span class="line">        mapVRDD.map(x =&gt; &#123;</span><br><span class="line">            (x._1._1,x._1._2,x._2._1,x._2._1)</span><br><span class="line">        &#125;).print()</span><br><span class="line"></span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>Spark</category>
       </categories>
       <tags>
         <tag>Spark</tag>
-        <tag>Spark RDD</tag>
+        <tag>Spark算子</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Tableau 移除</title>
+    <url>/2021/03/24/Tableau%E7%A7%BB%E9%99%A4/</url>
+    <content><![CDATA[<p>对Linux Tableau Server 进行移除操作。</p>
+<a id="more"></a>
+<hr>
+<p><a href="https://help.tableau.com/current/server-linux/zh-cn/remove_tableau.htm" target="_blank" rel="noopener">Tableau 移除 官方文档</a></p>
+<h4 id="Tableau-许可移除"><a href="#Tableau-许可移除" class="headerlink" title="Tableau 许可移除"></a>Tableau 许可移除</h4><p>停用任何活动产品密钥</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tsm licenses deactivate -k &lt;product_key&gt;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Tableau-Server移除"><a href="#Tableau-Server移除" class="headerlink" title="Tableau Server移除"></a>Tableau Server移除</h4><p>运行 <code>tableau-server-obliterate</code> 脚本</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo /opt/tableau/tableau_server/packages/scripts.&lt;version_code&gt;/ tableau-server-obliterate -a -y -y -y -l</span><br></pre></td></tr></table></figure>
+
+<p>如果有 Tableau Server 的多节点（分布式）安装，请在群集中的每个节点上运行 <code>tableau-server-obliterate</code> 脚本。您无需在任何其他节点上停用许可证。</p>
+]]></content>
+      <categories>
+        <category>Tableau</category>
+      </categories>
+      <tags>
+        <tag>Tableau</tag>
       </tags>
   </entry>
   <entry>
@@ -2418,28 +2441,6 @@ csv读取数据注意使用几个参数</li>
 
 <h6 id="重新启动服务器"><a href="#重新启动服务器" class="headerlink" title="重新启动服务器"></a>重新启动服务器</h6><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tsm start</span><br></pre></td></tr></table></figure>
 
-]]></content>
-      <categories>
-        <category>Tableau</category>
-      </categories>
-      <tags>
-        <tag>Tableau</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Tableau 移除</title>
-    <url>/2021/03/24/Tableau%E7%A7%BB%E9%99%A4/</url>
-    <content><![CDATA[<p>对Linux Tableau Server 进行移除操作。</p>
-<a id="more"></a>
-<hr>
-<p><a href="https://help.tableau.com/current/server-linux/zh-cn/remove_tableau.htm" target="_blank" rel="noopener">Tableau 移除 官方文档</a></p>
-<h4 id="Tableau-许可移除"><a href="#Tableau-许可移除" class="headerlink" title="Tableau 许可移除"></a>Tableau 许可移除</h4><p>停用任何活动产品密钥</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tsm licenses deactivate -k &lt;product_key&gt;</span><br></pre></td></tr></table></figure>
-
-<h4 id="Tableau-Server移除"><a href="#Tableau-Server移除" class="headerlink" title="Tableau Server移除"></a>Tableau Server移除</h4><p>运行 <code>tableau-server-obliterate</code> 脚本</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">sudo /opt/tableau/tableau_server/packages/scripts.&lt;version_code&gt;/ tableau-server-obliterate -a -y -y -y -l</span><br></pre></td></tr></table></figure>
-
-<p>如果有 Tableau Server 的多节点（分布式）安装，请在群集中的每个节点上运行 <code>tableau-server-obliterate</code> 脚本。您无需在任何其他节点上停用许可证。</p>
 ]]></content>
       <categories>
         <category>Tableau</category>
