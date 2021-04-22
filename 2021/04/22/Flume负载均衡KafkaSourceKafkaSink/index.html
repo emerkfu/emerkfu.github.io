@@ -31,13 +31,13 @@
 <meta property="og:site_name" content="Emerk&#39;s blog">
 <meta property="og:description" content="Flume使用的版本为1.6.0。 Flume配置负载均衡，Kafka Source -&gt; Avro -&gt; Avro -&gt; Kafka Sink 场景。">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink.PNG">
+<meta property="og:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/D:%5Cblog%5Chexo%5CEmerkBlog%5Csource_posts%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink.PNG">
 <meta property="article:published_time" content="2021-04-22T01:23:00.000Z">
-<meta property="article:modified_time" content="2021-04-22T02:01:00.519Z">
+<meta property="article:modified_time" content="2021-04-22T02:04:46.438Z">
 <meta property="article:author" content="EmerkFu">
 <meta property="article:tag" content="Flume">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink.PNG">
+<meta name="twitter:image" content="https://emerkfu:Fushuai0410@emerkfu.github.io/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/D:%5Cblog%5Chexo%5CEmerkBlog%5Csource_posts%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink.PNG">
 
 
 <link rel="canonical" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/">
@@ -333,7 +333,7 @@
 <p>Flume配置负载均衡，Kafka Source -&gt; Avro -&gt; Avro -&gt; Kafka Sink 场景。</p>
 <a id="more"></a>
 <hr>
-<h3 id="Kafka-Source-Sink-To-Kafka"><a href="#Kafka-Source-Sink-To-Kafka" class="headerlink" title="Kafka Source Sink To Kafka"></a>Kafka Source Sink To Kafka</h3><h4 id="结构信息"><a href="#结构信息" class="headerlink" title="结构信息"></a>结构信息</h4><p><img src="/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink.PNG" alt="Flume负载均衡KafkaSourceKafkaSink"></p>
+<h3 id="Kafka-Source-Sink-To-Kafka"><a href="#Kafka-Source-Sink-To-Kafka" class="headerlink" title="Kafka Source Sink To Kafka"></a>Kafka Source Sink To Kafka</h3><h4 id="结构信息"><a href="#结构信息" class="headerlink" title="结构信息"></a>结构信息</h4><p><img src="/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/D:%5Cblog%5Chexo%5CEmerkBlog%5Csource_posts%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink%5CFlume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink.PNG" alt="Flume负载均衡KafkaSourceKafkaSink"></p>
 <h4 id="配置信息"><a href="#配置信息" class="headerlink" title="配置信息"></a>配置信息</h4><h5 id="Agent节点配置"><a href="#Agent节点配置" class="headerlink" title="Agent节点配置"></a>Agent节点配置</h5><p>flume_analysys_loadbalance_agent.conf</p>
 <p>sink port ip 为目标机器 ip</p>
 <p>Tips：<strong>拦截器一定要配置！！！</strong></p>
