@@ -98,44 +98,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Doris 实时表使用Hive 数据初始化</title>
-    <url>/2021/05/21/Doris%E5%AE%9E%E6%97%B6%E8%A1%A8%E4%BD%BF%E7%94%A8Hive%E6%95%B0%E6%8D%AE%E5%88%9D%E5%A7%8B%E5%8C%96/</url>
-    <content><![CDATA[<p>Doris 实时表使用 Hive 数据进行数据初始化操作流程。</p>
-<a id="more"></a>
-<hr>
-<h3 id="1-Doris-table-建表语句确认"><a href="#1-Doris-table-建表语句确认" class="headerlink" title="1. Doris table 建表语句确认"></a>1. Doris table 建表语句确认</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">show create table dwd_homedo_real.dwd_sub_account_info;</span><br></pre></td></tr></table></figure>
-
-<h3 id="2-Doris-临时表创建"><a href="#2-Doris-临时表创建" class="headerlink" title="2. Doris 临时表创建"></a>2. Doris 临时表创建</h3><p>因为Hive 表字段全部为小写，为了避免字段大小写不一致，所以需要创建doris全字段小写表</p>
-<p>将步骤1查询到的交表语句字段修改为小写，并建表。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">CREATE TABLE &#96;dwd_sub_account_info_test&#96; (</span><br><span class="line">&#96;account_id&#96; bigint(20) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;account_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_company_id&#96; bigint(20) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_company_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;org_code&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;org_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_credit&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;credit_amount&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;amount_cycle_bymonth&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;amount_cycle_byday&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;amount_cycle_type&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_used_amount_cycle&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_used_credit_amount&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;integral_balance&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;change_recommended_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;recommended_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;recommended_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;recommended_source&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;channel&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;flag_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;flag_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;parent_account_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;follower_account_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;ketuo_xiaoneng_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;aladdin_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;ctype&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;ctype_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_inner&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_handler&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_effect&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_channel&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_jicai&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;jicai_audit_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;jicai_overdue_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;registered_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_status&#96; int(11) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_status_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;account_status&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;account_status_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_vip&#96; bigint(20) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;vip_level&#96; varchar(1000) NULL COMMENT &quot;&quot;</span><br><span class="line">) ENGINE&#x3D;OLAP</span><br><span class="line">UNIQUE KEY(&#96;account_id&#96;)</span><br><span class="line">COMMENT &quot;OLAP&quot;</span><br><span class="line">DISTRIBUTED BY HASH(&#96;account_id&#96;) BUCKETS 3</span><br><span class="line">PROPERTIES (</span><br><span class="line">&quot;replication_num&quot; &#x3D; &quot;3&quot;,</span><br><span class="line">&quot;in_memory&quot; &#x3D; &quot;false&quot;,</span><br><span class="line">&quot;storage_format&quot; &#x3D; &quot;V2&quot;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
-
-<h3 id="3-Hive-临时表创建"><a href="#3-Hive-临时表创建" class="headerlink" title="3. Hive 临时表创建"></a>3. Hive 临时表创建</h3><p>字段顺序和 Doirs table一样，hive 不区分大小写，默认小写</p>
-<p>Hive 临时表创建的目的有两个：</p>
-<ol>
-<li>为了统一Hive 和 Doris的字段顺序和字段数量</li>
-<li>将Hive 的存储类型统一为 parquet</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">CREATE TABLE dwd_homedo.dwd_sub_account_info_test (</span><br><span class="line">account_id string,</span><br><span class="line">account_name string,</span><br><span class="line">audit_company_id string,</span><br><span class="line">audit_company_name string,</span><br><span class="line">org_code string,</span><br><span class="line">org_name string,</span><br><span class="line">is_credit string,</span><br><span class="line">credit_amount string,</span><br><span class="line">amount_cycle_bymonth string,</span><br><span class="line">amount_cycle_byday string,</span><br><span class="line">amount_cycle_type string,</span><br><span class="line">is_used_amount_cycle string,</span><br><span class="line">is_used_credit_amount string,</span><br><span class="line">integral_balance string,</span><br><span class="line">change_recommended_time string,</span><br><span class="line">recommended_id string,</span><br><span class="line">recommended_name string,</span><br><span class="line">recommended_source string,</span><br><span class="line">channel string,</span><br><span class="line">flag_id string,</span><br><span class="line">flag_name string,</span><br><span class="line">parent_account_id string,</span><br><span class="line">follower_account_id string,</span><br><span class="line">ketuo_xiaoneng_id string,</span><br><span class="line">aladdin_id string,</span><br><span class="line">ctype string,</span><br><span class="line">ctype_name string,</span><br><span class="line">is_inner string,</span><br><span class="line">is_handler string,</span><br><span class="line">is_effect string,</span><br><span class="line">is_channel string,</span><br><span class="line">is_jicai string,</span><br><span class="line">jicai_audit_time string,</span><br><span class="line">jicai_overdue_time string,</span><br><span class="line">registered_time string,</span><br><span class="line">audit_time string,</span><br><span class="line">audit_status string,</span><br><span class="line">audit_status_name string,</span><br><span class="line">account_status string,</span><br><span class="line">account_status_name string,</span><br><span class="line">is_VIP string,</span><br><span class="line">VIP_level string</span><br><span class="line">) stored as parquet</span><br><span class="line">location &#39;&#x2F;opt&#x2F;user&#x2F;HomedoDB&#x2F;warehouse&#x2F;dwd_homedo&#x2F;dwd_sub_account_info_test&#39;;</span><br></pre></td></tr></table></figure>
-
-<h3 id="4-Hive-临时表数据导入"><a href="#4-Hive-临时表数据导入" class="headerlink" title="4. Hive 临时表数据导入"></a>4. Hive 临时表数据导入</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">insert overwrite table dwd_homedo.dwd_sub_account_info_test</span><br><span class="line">select</span><br><span class="line">account_id,</span><br><span class="line">account_name,</span><br><span class="line">audit_company_id,</span><br><span class="line">audit_company_name,</span><br><span class="line">org_code,</span><br><span class="line">org_name,</span><br><span class="line">is_credit,</span><br><span class="line">credit_amount,</span><br><span class="line">amount_cycle_bymonth,</span><br><span class="line">amount_cycle_byday,</span><br><span class="line">amount_cycle_type,</span><br><span class="line">is_used_amount_cycle,</span><br><span class="line">is_used_credit_amount,</span><br><span class="line">integral_balance,</span><br><span class="line">change_recommended_time,</span><br><span class="line">recommended_id,</span><br><span class="line">recommended_name,</span><br><span class="line">recommended_source,</span><br><span class="line">channel,</span><br><span class="line">flag_id,</span><br><span class="line">flag_name,</span><br><span class="line">parent_account_id,</span><br><span class="line">follower_account_id,</span><br><span class="line">ketuo_xiaoneng_id,</span><br><span class="line">aladdin_id,</span><br><span class="line">ctype_id,</span><br><span class="line">ctype_name,</span><br><span class="line">is_inner,</span><br><span class="line">is_handler,</span><br><span class="line">is_effect,</span><br><span class="line">is_channel,</span><br><span class="line">is_jicai,</span><br><span class="line">jicai_audit_time,</span><br><span class="line">jicai_overdue_time,</span><br><span class="line">registered_time,</span><br><span class="line">audit_time,</span><br><span class="line">audit_status,</span><br><span class="line">audit_status_name,</span><br><span class="line">account_status,</span><br><span class="line">account_status_name,</span><br><span class="line">is_VIP,</span><br><span class="line">VIP_level from dwd_homedo.dwd_sub_account_info;</span><br></pre></td></tr></table></figure>
-
-<h3 id="5-Hive-数据导入-Doris-临时表"><a href="#5-Hive-数据导入-Doris-临时表" class="headerlink" title="5. Hive 数据导入 Doris 临时表"></a>5. Hive 数据导入 Doris 临时表</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">use dwd_homedo_real; -- Doris 库名</span><br><span class="line"> </span><br><span class="line">LOAD LABEL label_dwd_sub_account_info1(</span><br><span class="line">DATA INFILE(&quot;hdfs:&#x2F;&#x2F;hmdservice&#x2F;opt&#x2F;user&#x2F;HomedoDB&#x2F;warehouse&#x2F;dwd_homedo&#x2F;dwd_sub_account_info_test&#x2F;*&quot;) -- hive表路径</span><br><span class="line">INTO TABLE &#96;dwd_sub_account_info_test&#96; -- Doris 表</span><br><span class="line">FORMAT AS &quot;parquet&quot;</span><br><span class="line">)</span><br><span class="line">WITH BROKER broker_name</span><br><span class="line">PROPERTIES(</span><br><span class="line">&quot;timeout&quot;&#x3D;&quot;3600&quot;,</span><br><span class="line">&quot;max_filter_ratio&quot;&#x3D;&quot;0.1&quot; );</span><br></pre></td></tr></table></figure>
-
-<h3 id="6-Doris-数据导入运行结果查看"><a href="#6-Doris-数据导入运行结果查看" class="headerlink" title="6. Doris 数据导入运行结果查看"></a>6. Doris 数据导入运行结果查看</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SHOW LOAD WHERE LABEL &#x3D; &#39;label_dwd_sub_account_info1&#39;;</span><br></pre></td></tr></table></figure>
-
-<h3 id="7-Doris-实时表数据导入"><a href="#7-Doris-实时表数据导入" class="headerlink" title="7. Doris 实时表数据导入"></a>7. Doris 实时表数据导入</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">INSERT INTO dwd_homedo_real.dwd_homedo_promotion_flag (</span><br><span class="line">promotionId,</span><br><span class="line">tagGroupId,</span><br><span class="line">tagId,</span><br><span class="line">tagValue,</span><br><span class="line">mark</span><br><span class="line">)</span><br><span class="line">SELECT</span><br><span class="line">promotionid,</span><br><span class="line">taggroupid,</span><br><span class="line">tagid,</span><br><span class="line">tagvalue,</span><br><span class="line">mark</span><br><span class="line">FROM dwd_homedo_real.dwd_homedo_promotion_flag_test;</span><br></pre></td></tr></table></figure>
-
-<h3 id="8-数据量确认"><a href="#8-数据量确认" class="headerlink" title="8. 数据量确认"></a>8. 数据量确认</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">select SUM(t.a)</span><br><span class="line">from</span><br><span class="line">(select COUNT(DISTINCT promotionId) a from dwd_homedo_real.dwd_homedo_promotion_flag group by promotionId) t;</span><br><span class="line"> </span><br><span class="line">select SUM(t.a)</span><br><span class="line">from</span><br><span class="line">(select COUNT(DISTINCT promotionid) a from dwd_homedo_real.dwd_homedo_promotion_flag_test group by promotionid) t;</span><br></pre></td></tr></table></figure>
-
-<h3 id="9-临时表删除"><a href="#9-临时表删除" class="headerlink" title="9. 临时表删除"></a>9. 临时表删除</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-- Hive 临时表删除</span><br><span class="line">drop table dwd_homedo.dwd_sub_account_info_test;</span><br><span class="line"> </span><br><span class="line">-- Doris 临时表删除</span><br><span class="line">drop table dwd_homedo_real.dwd_homedo_promotion_flag_test;</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Doris</category>
-      </categories>
-      <tags>
-        <tag>Doris</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Doris 模型使用说明</title>
     <url>/2021/04/13/Doris%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/</url>
     <content><![CDATA[<p>Doris 三种模型的使用场景、方法说明。</p>
@@ -359,6 +321,77 @@
       </tags>
   </entry>
   <entry>
+    <title>Doris 实时表使用Hive 数据初始化</title>
+    <url>/2021/05/21/Doris%E5%AE%9E%E6%97%B6%E8%A1%A8%E4%BD%BF%E7%94%A8Hive%E6%95%B0%E6%8D%AE%E5%88%9D%E5%A7%8B%E5%8C%96/</url>
+    <content><![CDATA[<p>Doris 实时表使用 Hive 数据进行数据初始化操作流程。</p>
+<a id="more"></a>
+<hr>
+<h3 id="1-Doris-table-建表语句确认"><a href="#1-Doris-table-建表语句确认" class="headerlink" title="1. Doris table 建表语句确认"></a>1. Doris table 建表语句确认</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">show create table dwd_homedo_real.dwd_sub_account_info;</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-Doris-临时表创建"><a href="#2-Doris-临时表创建" class="headerlink" title="2. Doris 临时表创建"></a>2. Doris 临时表创建</h3><p>因为Hive 表字段全部为小写，为了避免字段大小写不一致，所以需要创建doris全字段小写表</p>
+<p>将步骤1查询到的交表语句字段修改为小写，并建表。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">CREATE TABLE &#96;dwd_sub_account_info_test&#96; (</span><br><span class="line">&#96;account_id&#96; bigint(20) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;account_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_company_id&#96; bigint(20) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_company_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;org_code&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;org_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_credit&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;credit_amount&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;amount_cycle_bymonth&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;amount_cycle_byday&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;amount_cycle_type&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_used_amount_cycle&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_used_credit_amount&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;integral_balance&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;change_recommended_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;recommended_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;recommended_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;recommended_source&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;channel&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;flag_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;flag_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;parent_account_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;follower_account_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;ketuo_xiaoneng_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;aladdin_id&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;ctype&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;ctype_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_inner&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_handler&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_effect&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_channel&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_jicai&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;jicai_audit_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;jicai_overdue_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;registered_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_time&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_status&#96; int(11) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;audit_status_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;account_status&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;account_status_name&#96; varchar(1000) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;is_vip&#96; bigint(20) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;vip_level&#96; varchar(1000) NULL COMMENT &quot;&quot;</span><br><span class="line">) ENGINE&#x3D;OLAP</span><br><span class="line">UNIQUE KEY(&#96;account_id&#96;)</span><br><span class="line">COMMENT &quot;OLAP&quot;</span><br><span class="line">DISTRIBUTED BY HASH(&#96;account_id&#96;) BUCKETS 3</span><br><span class="line">PROPERTIES (</span><br><span class="line">&quot;replication_num&quot; &#x3D; &quot;3&quot;,</span><br><span class="line">&quot;in_memory&quot; &#x3D; &quot;false&quot;,</span><br><span class="line">&quot;storage_format&quot; &#x3D; &quot;V2&quot;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-Hive-临时表创建"><a href="#3-Hive-临时表创建" class="headerlink" title="3. Hive 临时表创建"></a>3. Hive 临时表创建</h3><p>字段顺序和 Doirs table一样，hive 不区分大小写，默认小写</p>
+<p>Hive 临时表创建的目的有两个：</p>
+<ol>
+<li>为了统一Hive 和 Doris的字段顺序和字段数量</li>
+<li>将Hive 的存储类型统一为 parquet</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">CREATE TABLE dwd_homedo.dwd_sub_account_info_test (</span><br><span class="line">account_id string,</span><br><span class="line">account_name string,</span><br><span class="line">audit_company_id string,</span><br><span class="line">audit_company_name string,</span><br><span class="line">org_code string,</span><br><span class="line">org_name string,</span><br><span class="line">is_credit string,</span><br><span class="line">credit_amount string,</span><br><span class="line">amount_cycle_bymonth string,</span><br><span class="line">amount_cycle_byday string,</span><br><span class="line">amount_cycle_type string,</span><br><span class="line">is_used_amount_cycle string,</span><br><span class="line">is_used_credit_amount string,</span><br><span class="line">integral_balance string,</span><br><span class="line">change_recommended_time string,</span><br><span class="line">recommended_id string,</span><br><span class="line">recommended_name string,</span><br><span class="line">recommended_source string,</span><br><span class="line">channel string,</span><br><span class="line">flag_id string,</span><br><span class="line">flag_name string,</span><br><span class="line">parent_account_id string,</span><br><span class="line">follower_account_id string,</span><br><span class="line">ketuo_xiaoneng_id string,</span><br><span class="line">aladdin_id string,</span><br><span class="line">ctype string,</span><br><span class="line">ctype_name string,</span><br><span class="line">is_inner string,</span><br><span class="line">is_handler string,</span><br><span class="line">is_effect string,</span><br><span class="line">is_channel string,</span><br><span class="line">is_jicai string,</span><br><span class="line">jicai_audit_time string,</span><br><span class="line">jicai_overdue_time string,</span><br><span class="line">registered_time string,</span><br><span class="line">audit_time string,</span><br><span class="line">audit_status string,</span><br><span class="line">audit_status_name string,</span><br><span class="line">account_status string,</span><br><span class="line">account_status_name string,</span><br><span class="line">is_VIP string,</span><br><span class="line">VIP_level string</span><br><span class="line">) stored as parquet</span><br><span class="line">location &#39;&#x2F;opt&#x2F;user&#x2F;HomedoDB&#x2F;warehouse&#x2F;dwd_homedo&#x2F;dwd_sub_account_info_test&#39;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-Hive-临时表数据导入"><a href="#4-Hive-临时表数据导入" class="headerlink" title="4. Hive 临时表数据导入"></a>4. Hive 临时表数据导入</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">insert overwrite table dwd_homedo.dwd_sub_account_info_test</span><br><span class="line">select</span><br><span class="line">account_id,</span><br><span class="line">account_name,</span><br><span class="line">audit_company_id,</span><br><span class="line">audit_company_name,</span><br><span class="line">org_code,</span><br><span class="line">org_name,</span><br><span class="line">is_credit,</span><br><span class="line">credit_amount,</span><br><span class="line">amount_cycle_bymonth,</span><br><span class="line">amount_cycle_byday,</span><br><span class="line">amount_cycle_type,</span><br><span class="line">is_used_amount_cycle,</span><br><span class="line">is_used_credit_amount,</span><br><span class="line">integral_balance,</span><br><span class="line">change_recommended_time,</span><br><span class="line">recommended_id,</span><br><span class="line">recommended_name,</span><br><span class="line">recommended_source,</span><br><span class="line">channel,</span><br><span class="line">flag_id,</span><br><span class="line">flag_name,</span><br><span class="line">parent_account_id,</span><br><span class="line">follower_account_id,</span><br><span class="line">ketuo_xiaoneng_id,</span><br><span class="line">aladdin_id,</span><br><span class="line">ctype_id,</span><br><span class="line">ctype_name,</span><br><span class="line">is_inner,</span><br><span class="line">is_handler,</span><br><span class="line">is_effect,</span><br><span class="line">is_channel,</span><br><span class="line">is_jicai,</span><br><span class="line">jicai_audit_time,</span><br><span class="line">jicai_overdue_time,</span><br><span class="line">registered_time,</span><br><span class="line">audit_time,</span><br><span class="line">audit_status,</span><br><span class="line">audit_status_name,</span><br><span class="line">account_status,</span><br><span class="line">account_status_name,</span><br><span class="line">is_VIP,</span><br><span class="line">VIP_level from dwd_homedo.dwd_sub_account_info;</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-Hive-数据导入-Doris-临时表"><a href="#5-Hive-数据导入-Doris-临时表" class="headerlink" title="5. Hive 数据导入 Doris 临时表"></a>5. Hive 数据导入 Doris 临时表</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">use dwd_homedo_real; -- Doris 库名</span><br><span class="line"> </span><br><span class="line">LOAD LABEL label_dwd_sub_account_info1(</span><br><span class="line">DATA INFILE(&quot;hdfs:&#x2F;&#x2F;hmdservice&#x2F;opt&#x2F;user&#x2F;HomedoDB&#x2F;warehouse&#x2F;dwd_homedo&#x2F;dwd_sub_account_info_test&#x2F;*&quot;) -- hive表路径</span><br><span class="line">INTO TABLE &#96;dwd_sub_account_info_test&#96; -- Doris 表</span><br><span class="line">FORMAT AS &quot;parquet&quot;</span><br><span class="line">)</span><br><span class="line">WITH BROKER broker_name</span><br><span class="line">PROPERTIES(</span><br><span class="line">&quot;timeout&quot;&#x3D;&quot;3600&quot;,</span><br><span class="line">&quot;max_filter_ratio&quot;&#x3D;&quot;0.1&quot; );</span><br></pre></td></tr></table></figure>
+
+<h3 id="6-Doris-数据导入运行结果查看"><a href="#6-Doris-数据导入运行结果查看" class="headerlink" title="6. Doris 数据导入运行结果查看"></a>6. Doris 数据导入运行结果查看</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SHOW LOAD WHERE LABEL &#x3D; &#39;label_dwd_sub_account_info1&#39;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="7-Doris-实时表数据导入"><a href="#7-Doris-实时表数据导入" class="headerlink" title="7. Doris 实时表数据导入"></a>7. Doris 实时表数据导入</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">INSERT INTO dwd_homedo_real.dwd_homedo_promotion_flag (</span><br><span class="line">promotionId,</span><br><span class="line">tagGroupId,</span><br><span class="line">tagId,</span><br><span class="line">tagValue,</span><br><span class="line">mark</span><br><span class="line">)</span><br><span class="line">SELECT</span><br><span class="line">promotionid,</span><br><span class="line">taggroupid,</span><br><span class="line">tagid,</span><br><span class="line">tagvalue,</span><br><span class="line">mark</span><br><span class="line">FROM dwd_homedo_real.dwd_homedo_promotion_flag_test;</span><br></pre></td></tr></table></figure>
+
+<h3 id="8-数据量确认"><a href="#8-数据量确认" class="headerlink" title="8. 数据量确认"></a>8. 数据量确认</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">select SUM(t.a)</span><br><span class="line">from</span><br><span class="line">(select COUNT(DISTINCT promotionId) a from dwd_homedo_real.dwd_homedo_promotion_flag group by promotionId) t;</span><br><span class="line"> </span><br><span class="line">select SUM(t.a)</span><br><span class="line">from</span><br><span class="line">(select COUNT(DISTINCT promotionid) a from dwd_homedo_real.dwd_homedo_promotion_flag_test group by promotionid) t;</span><br></pre></td></tr></table></figure>
+
+<h3 id="9-临时表删除"><a href="#9-临时表删除" class="headerlink" title="9. 临时表删除"></a>9. 临时表删除</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-- Hive 临时表删除</span><br><span class="line">drop table dwd_homedo.dwd_sub_account_info_test;</span><br><span class="line"> </span><br><span class="line">-- Doris 临时表删除</span><br><span class="line">drop table dwd_homedo_real.dwd_homedo_promotion_flag_test;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Doris</category>
+      </categories>
+      <tags>
+        <tag>Doris</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume 应用配置</title>
+    <url>/2021/04/19/Flume%E5%BA%94%E7%94%A8%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>Flume使用的版本为1.6.0。</p>
+<p>几种Flume的使用场景Config配置。</p>
+<a id="more"></a>
+<hr>
+<h4 id="netcat-Source-Sink-To-Console"><a href="#netcat-Source-Sink-To-Console" class="headerlink" title="netcat Source Sink To Console"></a>netcat Source Sink To Console</h4><p>用于测试，控制台输入，控制台打印。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = kafkaSource</span><br><span class="line">agent1.channels = mc1</span><br><span class="line">agent1.sinks = avro-sink</span><br><span class="line"></span><br><span class="line">agent1.sources.kafkaSource.channels = mc1</span><br><span class="line">agent1.sinks.avro-sink.channel = mc1</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"><span class="built_in">source</span></span></span><br><span class="line">agent1.sources.kafkaSource.type = netcat</span><br><span class="line">agent1.sources.kafkaSource.bind = localhost</span><br><span class="line">agent1.sources.kafkaSource.port = 44444</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">channel1</span></span><br><span class="line">agent1.channels.mc1.type = memory</span><br><span class="line">agent1.channels.mc1.capacity = 10000</span><br><span class="line">agent1.channels.mc1.transactionCapacity = 10000</span><br><span class="line">agent1.channels.mc1.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink1</span></span><br><span class="line">agent1.sinks.avro-sink.type = logger</span><br></pre></td></tr></table></figure>
+
+<h4 id="Kafka-Source-Sink-To-Console"><a href="#Kafka-Source-Sink-To-Console" class="headerlink" title="Kafka Source Sink To Console"></a>Kafka Source Sink To Console</h4><p>用于测试，消费Kafka的数据，打印到控制台。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = logsource</span><br><span class="line">agent1.channels = mc1</span><br><span class="line">agent1.sinks = avro-sink</span><br><span class="line"></span><br><span class="line">agent1.sources.logsource.channels = mc1</span><br><span class="line">agent1.sinks.avro-sink.channel = mc1</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"><span class="built_in">source</span></span></span><br><span class="line">agent1.sources.logsource.type = org.apache.flume.source.kafka.KafkaSource</span><br><span class="line">agent1.sources.logsource.zookeeperConnect = cdh9:2181/kafka</span><br><span class="line">agent1.sources.logsource.topic = ubtDemo</span><br><span class="line">agent1.sources.logsource.groupId = flume</span><br><span class="line">agent1.sources.logsource.kafka.consumer.timeout.ms = 100</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">channel1</span></span><br><span class="line">agent1.channels.mc1.type = memory</span><br><span class="line">agent1.channels.mc1.capacity = 10000</span><br><span class="line">agent1.channels.mc1.transactionCapacity = 10000</span><br><span class="line">agent1.channels.mc1.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink1</span></span><br><span class="line">agent1.sinks.avro-sink.type = logger</span><br></pre></td></tr></table></figure>
+
+<p>启动命令：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">.&#x2F;flume-ng agent -c &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;conf -f &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;jobs&#x2F;flume-kafka-source1.conf -n agent1 -Dflume.root.logger&#x3D;INFO,console</span><br></pre></td></tr></table></figure>
+
+<h4 id="Kafka-Source-Sink-To-Kafka"><a href="#Kafka-Source-Sink-To-Kafka" class="headerlink" title="Kafka Source Sink To Kafka"></a>Kafka Source Sink To Kafka</h4><p>消费Kafka数据，Sink Kafka，数据的转发，</p>
+<p>我们的应用场景：Source Kafka版本过低且不方便更新，所以使用Flume做消息的高低版本适配。</p>
+<p>Flume 1.6.0 同时使用Kafka Source 、Kafka Sink时存在Bug：</p>
+<p>配置的Sink Topic name会被Source Topic name覆盖失效，数据不会Sink到目标Kafka Topic，会循环Sink到Source Kafka Topic。<br>增加拦截器，使Sink Topic name 生效，该问题解决。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">agent1.sources &#x3D; kafkaSource</span><br><span class="line">agent1.channels &#x3D; mc1</span><br><span class="line">agent1.sinks &#x3D; avro-sink</span><br><span class="line"></span><br><span class="line">agent1.sources.kafkaSource.channels &#x3D; mc1</span><br><span class="line">agent1.sinks.avro-sink.channel &#x3D; mc1</span><br><span class="line"></span><br><span class="line">#source</span><br><span class="line">agent1.sources.kafkaSource.type &#x3D; org.apache.flume.source.kafka.KafkaSource</span><br><span class="line">agent1.sources.kafkaSource.zookeeperConnect &#x3D; cdh9:2181&#x2F;kafka</span><br><span class="line">agent1.sources.kafkaSource.topic &#x3D; ubtDemo</span><br><span class="line">agent1.sources.kafkaSource.groupId &#x3D; flume</span><br><span class="line">agent1.sources.kafkaSource.kafka.consumer.timeout.ms &#x3D; 100</span><br><span class="line"></span><br><span class="line">#增加拦截器，使Sink Topic name 生效，解决Source Topic name覆盖失效问题</span><br><span class="line">agent1.sources.kafkaSource.interceptors &#x3D; i1</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.type &#x3D; static</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.key &#x3D; flumetest</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.preserveExisting &#x3D; false</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.value &#x3D; sinkTopic</span><br><span class="line"></span><br><span class="line">#channel1</span><br><span class="line">agent1.channels.mc1.type &#x3D; memory</span><br><span class="line">agent1.channels.mc1.capacity &#x3D; 10000</span><br><span class="line">agent1.channels.mc1.transactionCapacity &#x3D; 10000</span><br><span class="line">agent1.channels.mc1.keep-alive &#x3D; 60</span><br><span class="line"></span><br><span class="line">#sink1</span><br><span class="line">agent1.sinks.avro-sink.type &#x3D; org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">#agent1.sinks.avro-sink.topic &#x3D; flumetest</span><br><span class="line">agent1.sinks.avro-sink.brokerList &#x3D; cdh9:9092</span><br><span class="line">agent1.sinks.avro-sink.requiredAcks &#x3D; 1</span><br><span class="line">agent1.sinks.avro-sink.batchSize &#x3D; 20</span><br><span class="line">agent1.sinks.avro-sink.channel &#x3D; mc1</span><br></pre></td></tr></table></figure>
+
+<p>启动命令：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">.&#x2F;flume-ng agent -c &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;conf -f &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;jobs&#x2F;flume-kafka-source-kafka-sink.conf -n agent1 -Dflume.root.logger&#x3D;INFO,console</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Flume安装部署</title>
     <url>/2018/08/15/Flume%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<h4 id="安装地址"><a href="#安装地址" class="headerlink" title="安装地址"></a>安装地址</h4><p>Flume官网地址<br><a href="http://flume.apache.org/" target="_blank" rel="noopener">http://flume.apache.org/</a></p>
@@ -404,6 +437,53 @@
 <li><p>在Flume监听页面观察接收数据情况</p>
 </li>
 </ol>
+]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume架构基础</title>
+    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
+    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
+<a id="more"></a>
+<hr>
+<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
+<li>可以和任意存储进程集成。</li>
+<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
+<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
+</ol>
+<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
+<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
+<ul>
+<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
+</li>
+<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
+</li>
+<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
+</li>
+</ul>
+<ol>
+<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
+<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
+</ol>
+<ul>
+<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
+</li>
+<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
+</li>
+</ul>
+<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
+<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
+<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
+<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
+<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
+<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
+<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
+<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
 ]]></content>
       <categories>
         <category>Flume</category>
@@ -472,86 +552,6 @@
       </categories>
       <tags>
         <tag>Doris</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Flume 应用配置</title>
-    <url>/2021/04/19/Flume%E5%BA%94%E7%94%A8%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>Flume使用的版本为1.6.0。</p>
-<p>几种Flume的使用场景Config配置。</p>
-<a id="more"></a>
-<hr>
-<h4 id="netcat-Source-Sink-To-Console"><a href="#netcat-Source-Sink-To-Console" class="headerlink" title="netcat Source Sink To Console"></a>netcat Source Sink To Console</h4><p>用于测试，控制台输入，控制台打印。</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = kafkaSource</span><br><span class="line">agent1.channels = mc1</span><br><span class="line">agent1.sinks = avro-sink</span><br><span class="line"></span><br><span class="line">agent1.sources.kafkaSource.channels = mc1</span><br><span class="line">agent1.sinks.avro-sink.channel = mc1</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"><span class="built_in">source</span></span></span><br><span class="line">agent1.sources.kafkaSource.type = netcat</span><br><span class="line">agent1.sources.kafkaSource.bind = localhost</span><br><span class="line">agent1.sources.kafkaSource.port = 44444</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">channel1</span></span><br><span class="line">agent1.channels.mc1.type = memory</span><br><span class="line">agent1.channels.mc1.capacity = 10000</span><br><span class="line">agent1.channels.mc1.transactionCapacity = 10000</span><br><span class="line">agent1.channels.mc1.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink1</span></span><br><span class="line">agent1.sinks.avro-sink.type = logger</span><br></pre></td></tr></table></figure>
-
-<h4 id="Kafka-Source-Sink-To-Console"><a href="#Kafka-Source-Sink-To-Console" class="headerlink" title="Kafka Source Sink To Console"></a>Kafka Source Sink To Console</h4><p>用于测试，消费Kafka的数据，打印到控制台。</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = logsource</span><br><span class="line">agent1.channels = mc1</span><br><span class="line">agent1.sinks = avro-sink</span><br><span class="line"></span><br><span class="line">agent1.sources.logsource.channels = mc1</span><br><span class="line">agent1.sinks.avro-sink.channel = mc1</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"><span class="built_in">source</span></span></span><br><span class="line">agent1.sources.logsource.type = org.apache.flume.source.kafka.KafkaSource</span><br><span class="line">agent1.sources.logsource.zookeeperConnect = cdh9:2181/kafka</span><br><span class="line">agent1.sources.logsource.topic = ubtDemo</span><br><span class="line">agent1.sources.logsource.groupId = flume</span><br><span class="line">agent1.sources.logsource.kafka.consumer.timeout.ms = 100</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">channel1</span></span><br><span class="line">agent1.channels.mc1.type = memory</span><br><span class="line">agent1.channels.mc1.capacity = 10000</span><br><span class="line">agent1.channels.mc1.transactionCapacity = 10000</span><br><span class="line">agent1.channels.mc1.keep-alive = 60</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">sink1</span></span><br><span class="line">agent1.sinks.avro-sink.type = logger</span><br></pre></td></tr></table></figure>
-
-<p>启动命令：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">.&#x2F;flume-ng agent -c &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;conf -f &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;jobs&#x2F;flume-kafka-source1.conf -n agent1 -Dflume.root.logger&#x3D;INFO,console</span><br></pre></td></tr></table></figure>
-
-<h4 id="Kafka-Source-Sink-To-Kafka"><a href="#Kafka-Source-Sink-To-Kafka" class="headerlink" title="Kafka Source Sink To Kafka"></a>Kafka Source Sink To Kafka</h4><p>消费Kafka数据，Sink Kafka，数据的转发，</p>
-<p>我们的应用场景：Source Kafka版本过低且不方便更新，所以使用Flume做消息的高低版本适配。</p>
-<p>Flume 1.6.0 同时使用Kafka Source 、Kafka Sink时存在Bug：</p>
-<p>配置的Sink Topic name会被Source Topic name覆盖失效，数据不会Sink到目标Kafka Topic，会循环Sink到Source Kafka Topic。<br>增加拦截器，使Sink Topic name 生效，该问题解决。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">agent1.sources &#x3D; kafkaSource</span><br><span class="line">agent1.channels &#x3D; mc1</span><br><span class="line">agent1.sinks &#x3D; avro-sink</span><br><span class="line"></span><br><span class="line">agent1.sources.kafkaSource.channels &#x3D; mc1</span><br><span class="line">agent1.sinks.avro-sink.channel &#x3D; mc1</span><br><span class="line"></span><br><span class="line">#source</span><br><span class="line">agent1.sources.kafkaSource.type &#x3D; org.apache.flume.source.kafka.KafkaSource</span><br><span class="line">agent1.sources.kafkaSource.zookeeperConnect &#x3D; cdh9:2181&#x2F;kafka</span><br><span class="line">agent1.sources.kafkaSource.topic &#x3D; ubtDemo</span><br><span class="line">agent1.sources.kafkaSource.groupId &#x3D; flume</span><br><span class="line">agent1.sources.kafkaSource.kafka.consumer.timeout.ms &#x3D; 100</span><br><span class="line"></span><br><span class="line">#增加拦截器，使Sink Topic name 生效，解决Source Topic name覆盖失效问题</span><br><span class="line">agent1.sources.kafkaSource.interceptors &#x3D; i1</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.type &#x3D; static</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.key &#x3D; flumetest</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.preserveExisting &#x3D; false</span><br><span class="line">agent1.sources.kafkaSource.interceptors.i1.value &#x3D; sinkTopic</span><br><span class="line"></span><br><span class="line">#channel1</span><br><span class="line">agent1.channels.mc1.type &#x3D; memory</span><br><span class="line">agent1.channels.mc1.capacity &#x3D; 10000</span><br><span class="line">agent1.channels.mc1.transactionCapacity &#x3D; 10000</span><br><span class="line">agent1.channels.mc1.keep-alive &#x3D; 60</span><br><span class="line"></span><br><span class="line">#sink1</span><br><span class="line">agent1.sinks.avro-sink.type &#x3D; org.apache.flume.sink.kafka.KafkaSink</span><br><span class="line">#agent1.sinks.avro-sink.topic &#x3D; flumetest</span><br><span class="line">agent1.sinks.avro-sink.brokerList &#x3D; cdh9:9092</span><br><span class="line">agent1.sinks.avro-sink.requiredAcks &#x3D; 1</span><br><span class="line">agent1.sinks.avro-sink.batchSize &#x3D; 20</span><br><span class="line">agent1.sinks.avro-sink.channel &#x3D; mc1</span><br></pre></td></tr></table></figure>
-
-<p>启动命令：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">.&#x2F;flume-ng agent -c &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;conf -f &#x2F;opt&#x2F;software&#x2F;flume&#x2F;apache-flume-1.6.0-bin&#x2F;jobs&#x2F;flume-kafka-source-kafka-sink.conf -n agent1 -Dflume.root.logger&#x3D;INFO,console</span><br></pre></td></tr></table></figure>
-
-]]></content>
-      <categories>
-        <category>Flume</category>
-      </categories>
-      <tags>
-        <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Flume架构基础</title>
-    <url>/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/</url>
-    <content><![CDATA[<h4 id="Flume定义"><a href="#Flume定义" class="headerlink" title="Flume定义"></a>Flume定义</h4><p>Flume是Cloudera提供的一个高可用的，高可靠的，分布式的海量日志采集、聚合和传输的系统。<br>Flume基于流式架构，灵活简单。</p>
-<a id="more"></a>
-<hr>
-<h4 id="Flume的优点"><a href="#Flume的优点" class="headerlink" title="Flume的优点"></a>Flume的优点</h4><ol>
-<li>可以和任意存储进程集成。</li>
-<li>输入的的数据速率大于写入目的存储的速率，flume会进行缓冲，减小hdfs的压力。</li>
-<li>flume中的事务基于channel，使用了两个事务模型（sender + receiver），确保消息被可靠发送。</li>
-</ol>
-<p>Flume使用两个独立的事务分别负责从soucrce到channel，以及从channel到sink的事件传递。一旦事务中所有的数据全部成功提交到channel，那么source才认为该数据读取完成。同理，只有成功被sink写出去的数据，才会从channel中移除。</p>
-<h4 id="Flume组成架构"><a href="#Flume组成架构" class="headerlink" title="Flume组成架构"></a>Flume组成架构</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume.jpg" alt="Flume组成架构"></p>
-<ul>
-<li><p>Agent<br>Agent是一个JVM进程，它以事件的形式将数据从源头送至目的。<br>Agent主要有3个部分组成，Source、Channel、Sink。</p>
-</li>
-<li><p>Source<br>Source是负责接收数据到Flume Agent的组件。<br>Source组件可以处理各种类型、各种格式的日志数据，包括avro、thrift、exec、jms、spooling directory、netcat、sequence generator、syslog、http、legacy。</p>
-</li>
-<li><p>Channel<br>Channel是位于Source和Sink之间的缓冲区。因此，Channel允许Source和Sink运作在不同的速率上。Channel是线程安全的，可以同时处理几个Source的写入操作和几个Sink的读取操作。<br>Flume自带两种Channel：Memory Channel和File Channel。</p>
-</li>
-</ul>
-<ol>
-<li>Memory Channel是内存中的队列。Memory Channel在不需要关心数据丢失的情景下适用。如果需要关心数据丢失，那么Memory Channel就不应该使用，因为程序死亡、机器宕机或者重启都会导致数据丢失。</li>
-<li>File Channel将所有事件写到磁盘。因此在程序关闭或机器宕机的情况下不会丢失数据。</li>
-</ol>
-<ul>
-<li><p>Sink<br>Sink不断地轮询Channel中的事件且批量地移除它们，并将这些事件批量写入到存储或索引系统、或者被发送到另一个Flume Agent。<br>Sink是完全事务性的。在从Channel批量删除数据之前，每个Sink用Channel启动一个事务。批量事件一旦成功写出到存储系统或下一个Flume Agent，Sink就利用Channel提交事务。事务一旦被提交，该Channel从自己的内部缓冲区删除事件。<br>Sink组件目的地包括hdfs、logger、avro、thrift、ipc、file、null、HBase、solr、自定义。</p>
-</li>
-<li><p>Event<br>传输单元，Flume数据传输的基本单元，以事件的形式将数据从源头送至目的地。 Event由可选的header和载有数据的一个byte array 构成。Header是容纳了key-value字符串对的HashMap。</p>
-</li>
-</ul>
-<h3 id="Flume拓扑结构"><a href="#Flume拓扑结构" class="headerlink" title="Flume拓扑结构"></a>Flume拓扑结构</h3><h4 id="Flume-Agent连接"><a href="#Flume-Agent连接" class="headerlink" title="Flume Agent连接"></a>Flume Agent连接</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume2.jpg" alt="Flume Agent连接"></p>
-<p>这种模式是将多个flume给顺序连接起来了，从最初的source开始到最终sink传送的目的存储系统。此模式不建议桥接过多的flume数量， flume数量过多不仅会影响传输速率，而且一旦传输过程中某个节点flume宕机，会影响整个传输系统。</p>
-<h4 id="单source，多channel、sink"><a href="#单source，多channel、sink" class="headerlink" title="单source，多channel、sink"></a>单source，多channel、sink</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume3.jpg" alt="Flume 单source，多channel、sink"></p>
-<p>Flume支持将事件流向一个或者多个目的地。这种模式将数据源复制到多个channel中，每个channel都有相同的数据，sink可以选择传送的不同的目的地。</p>
-<h4 id="Flume负载均衡"><a href="#Flume负载均衡" class="headerlink" title="Flume负载均衡"></a>Flume负载均衡</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume4.jpg" alt="Flume Flume负载均衡"></p>
-<p>Flume支持使用将多个sink逻辑上分到一个sink组，flume将数据发送到不同的sink，主要解决负载均衡和故障转移问题。</p>
-<h4 id="Flume-Agent聚合"><a href="#Flume-Agent聚合" class="headerlink" title="Flume Agent聚合"></a>Flume Agent聚合</h4><p><img src="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/flume5.jpg" alt="Flume Flume负载均衡"></p>
-<p>这种模式是我们最常见的，也非常实用，日常web应用通常分布在上百个服务器，大者甚至上千个、上万个服务器。产生的日志，处理起来也非常麻烦。用flume的这种组合方式能很好的解决这一问题，每台服务器部署一个flume采集日志，传送到一个集中收集日志的flume，再由此flume上传到hdfs、hive、hbase、jms等，进行日志分析。</p>
-]]></content>
-      <categories>
-        <category>Flume</category>
-      </categories>
-      <tags>
-        <tag>Flume</tag>
       </tags>
   </entry>
   <entry>
@@ -773,37 +773,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Flume 负载均衡配置</title>
-    <url>/2021/04/21/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>Flume使用的版本为1.6.0。</p>
-<p>Flume配置负载均衡案例。</p>
-<a id="more"></a>
-<hr>
-<h3 id="netcat-Source-Sink-To-Console"><a href="#netcat-Source-Sink-To-Console" class="headerlink" title="netcat Source Sink To Console"></a>netcat Source Sink To Console</h3><h4 id="配置信息"><a href="#配置信息" class="headerlink" title="配置信息"></a>配置信息</h4><h5 id="Agent节点配置"><a href="#Agent节点配置" class="headerlink" title="Agent节点配置"></a>Agent节点配置</h5><p>sink port ip 为目标机器 ip</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agentX.sources = sX</span><br><span class="line">agentX.channels = chX</span><br><span class="line">agentX.sinks = sk1 sk2</span><br><span class="line"></span><br><span class="line">agentX.sources.sX.channels = chX</span><br><span class="line">agentX.sources.sX.type = netcat</span><br><span class="line">agentX.sources.sX.bind = localhost</span><br><span class="line">agentX.sources.sX.port = 44444</span><br><span class="line"></span><br><span class="line">agentX.channels.chX.type = memory</span><br><span class="line">agentX.channels.chX.capacity = 1000</span><br><span class="line">agentX.channels.chX.transactionCapacity = 100</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure sinks</span></span><br><span class="line">agentX.sinks.sk1.channel = chX</span><br><span class="line">agentX.sinks.sk1.type = avro</span><br><span class="line">agentX.sinks.sk1.hostname = 10.0.15.181</span><br><span class="line">agentX.sinks.sk1.port = 44441</span><br><span class="line">agentX.sinks.sk2.channel = chX</span><br><span class="line">agentX.sinks.sk2.type = avro</span><br><span class="line">agentX.sinks.sk2.hostname = 10.0.15.133</span><br><span class="line">agentX.sinks.sk2.port = 44441</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure loadbalance</span></span><br><span class="line">agentX.sinkgroups = g1</span><br><span class="line">agentX.sinkgroups.g1.sinks = sk1 sk2</span><br><span class="line">agentX.sinkgroups.g1.processor.type = load_balance</span><br><span class="line">agentX.sinkgroups.g1.processor.backoff=true</span><br><span class="line">agentX.sinkgroups.g1.processor.selector=round_robin</span><br><span class="line"><span class="meta">#</span><span class="bash">agentX.sinkgroups.g1.processor.selector=random</span></span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-1-节点配置"><a href="#load-balance-1-节点配置" class="headerlink" title="load balance 1 节点配置"></a>load balance 1 节点配置</h5><p>bind配置的ip为本机ip</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = s1</span><br><span class="line">agent1.channels = ch1</span><br><span class="line">agent1.sinks = sk1</span><br><span class="line">agent1.sources.s1.channels = ch1</span><br><span class="line">agent1.sources.s1.type = avro</span><br><span class="line">agent1.sources.s1.bind = 10.0.15.181</span><br><span class="line">agent1.sources.s1.port = 44441</span><br><span class="line">agent1.channels.ch1.type = memory</span><br><span class="line">agent1.channels.ch1.capacity = 1000</span><br><span class="line">agent1.channels.ch1.transactionCapacity = 100</span><br><span class="line">agent1.sinks.sk1.channel = ch1</span><br><span class="line">agent1.sinks.sk1.type = logger</span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-2-节点配置"><a href="#load-balance-2-节点配置" class="headerlink" title="load balance 2 节点配置"></a>load balance 2 节点配置</h5><p>bind配置的ip为本机ip</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent2.sources = s2</span><br><span class="line">agent2.channels = ch2</span><br><span class="line">agent2.sinks = sk2</span><br><span class="line">agent2.sources.s2.channels = ch2</span><br><span class="line">agent2.sources.s2.type = avro</span><br><span class="line">agent2.sources.s2.bind = 10.0.15.133</span><br><span class="line">agent2.sources.s2.port = 44441</span><br><span class="line">agent2.channels.ch2.type = memory</span><br><span class="line">agent2.channels.ch2.capacity = 1000</span><br><span class="line">agent2.channels.ch2.transactionCapacity = 100</span><br><span class="line">agent2.sinks.sk2.channel = ch2</span><br><span class="line">agent2.sinks.sk2.type = logger</span><br></pre></td></tr></table></figure>
-
-<h4 id="启动命令"><a href="#启动命令" class="headerlink" title="启动命令"></a>启动命令</h4><p>启动顺序：load balance节点 -&gt; agent节点</p>
-<h5 id="load-balance-1-节点启动"><a href="#load-balance-1-节点启动" class="headerlink" title="load balance 1 节点启动"></a>load balance 1 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector1.conf -n agent1 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
-
-<h5 id="load-balance-2-节点启动"><a href="#load-balance-2-节点启动" class="headerlink" title="load balance 2 节点启动"></a>load balance 2 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector2.conf -n agent2 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
-
-<h5 id="agent-节点启动"><a href="#agent-节点启动" class="headerlink" title="agent 节点启动"></a>agent 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_agent.conf -n agentX -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
-
-]]></content>
-      <categories>
-        <category>Flume</category>
-      </categories>
-      <tags>
-        <tag>Flume</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>HBase 基本概念和使用</title>
     <url>/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/</url>
     <content><![CDATA[<h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
@@ -939,6 +908,71 @@
         <tag>HBase</tag>
         <tag>基本概念</tag>
         <tag>常用命令</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Flume 负载均衡配置</title>
+    <url>/2021/04/21/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>Flume使用的版本为1.6.0。</p>
+<p>Flume配置负载均衡案例。</p>
+<a id="more"></a>
+<hr>
+<h3 id="netcat-Source-Sink-To-Console"><a href="#netcat-Source-Sink-To-Console" class="headerlink" title="netcat Source Sink To Console"></a>netcat Source Sink To Console</h3><h4 id="配置信息"><a href="#配置信息" class="headerlink" title="配置信息"></a>配置信息</h4><h5 id="Agent节点配置"><a href="#Agent节点配置" class="headerlink" title="Agent节点配置"></a>Agent节点配置</h5><p>sink port ip 为目标机器 ip</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agentX.sources = sX</span><br><span class="line">agentX.channels = chX</span><br><span class="line">agentX.sinks = sk1 sk2</span><br><span class="line"></span><br><span class="line">agentX.sources.sX.channels = chX</span><br><span class="line">agentX.sources.sX.type = netcat</span><br><span class="line">agentX.sources.sX.bind = localhost</span><br><span class="line">agentX.sources.sX.port = 44444</span><br><span class="line"></span><br><span class="line">agentX.channels.chX.type = memory</span><br><span class="line">agentX.channels.chX.capacity = 1000</span><br><span class="line">agentX.channels.chX.transactionCapacity = 100</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure sinks</span></span><br><span class="line">agentX.sinks.sk1.channel = chX</span><br><span class="line">agentX.sinks.sk1.type = avro</span><br><span class="line">agentX.sinks.sk1.hostname = 10.0.15.181</span><br><span class="line">agentX.sinks.sk1.port = 44441</span><br><span class="line">agentX.sinks.sk2.channel = chX</span><br><span class="line">agentX.sinks.sk2.type = avro</span><br><span class="line">agentX.sinks.sk2.hostname = 10.0.15.133</span><br><span class="line">agentX.sinks.sk2.port = 44441</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> Configure loadbalance</span></span><br><span class="line">agentX.sinkgroups = g1</span><br><span class="line">agentX.sinkgroups.g1.sinks = sk1 sk2</span><br><span class="line">agentX.sinkgroups.g1.processor.type = load_balance</span><br><span class="line">agentX.sinkgroups.g1.processor.backoff=true</span><br><span class="line">agentX.sinkgroups.g1.processor.selector=round_robin</span><br><span class="line"><span class="meta">#</span><span class="bash">agentX.sinkgroups.g1.processor.selector=random</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-1-节点配置"><a href="#load-balance-1-节点配置" class="headerlink" title="load balance 1 节点配置"></a>load balance 1 节点配置</h5><p>bind配置的ip为本机ip</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent1.sources = s1</span><br><span class="line">agent1.channels = ch1</span><br><span class="line">agent1.sinks = sk1</span><br><span class="line">agent1.sources.s1.channels = ch1</span><br><span class="line">agent1.sources.s1.type = avro</span><br><span class="line">agent1.sources.s1.bind = 10.0.15.181</span><br><span class="line">agent1.sources.s1.port = 44441</span><br><span class="line">agent1.channels.ch1.type = memory</span><br><span class="line">agent1.channels.ch1.capacity = 1000</span><br><span class="line">agent1.channels.ch1.transactionCapacity = 100</span><br><span class="line">agent1.sinks.sk1.channel = ch1</span><br><span class="line">agent1.sinks.sk1.type = logger</span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-2-节点配置"><a href="#load-balance-2-节点配置" class="headerlink" title="load balance 2 节点配置"></a>load balance 2 节点配置</h5><p>bind配置的ip为本机ip</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">agent2.sources = s2</span><br><span class="line">agent2.channels = ch2</span><br><span class="line">agent2.sinks = sk2</span><br><span class="line">agent2.sources.s2.channels = ch2</span><br><span class="line">agent2.sources.s2.type = avro</span><br><span class="line">agent2.sources.s2.bind = 10.0.15.133</span><br><span class="line">agent2.sources.s2.port = 44441</span><br><span class="line">agent2.channels.ch2.type = memory</span><br><span class="line">agent2.channels.ch2.capacity = 1000</span><br><span class="line">agent2.channels.ch2.transactionCapacity = 100</span><br><span class="line">agent2.sinks.sk2.channel = ch2</span><br><span class="line">agent2.sinks.sk2.type = logger</span><br></pre></td></tr></table></figure>
+
+<h4 id="启动命令"><a href="#启动命令" class="headerlink" title="启动命令"></a>启动命令</h4><p>启动顺序：load balance节点 -&gt; agent节点</p>
+<h5 id="load-balance-1-节点启动"><a href="#load-balance-1-节点启动" class="headerlink" title="load balance 1 节点启动"></a>load balance 1 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector1.conf -n agent1 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
+
+<h5 id="load-balance-2-节点启动"><a href="#load-balance-2-节点启动" class="headerlink" title="load balance 2 节点启动"></a>load balance 2 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_collector2.conf -n agent2 -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
+
+<h5 id="agent-节点启动"><a href="#agent-节点启动" class="headerlink" title="agent 节点启动"></a>agent 节点启动</h5><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./flume-ng agent -c /opt/software/flume/apache-flume-1.6.0-bin/conf -f /opt/software/flume/apache-flume-1.6.0-bin/jobs/flume_loadbalance_agent.conf -n agentX -Dflume.root.logger=INFO,console</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>Flume</category>
+      </categories>
+      <tags>
+        <tag>Flume</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HDFS 读写流程</title>
+    <url>/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
+    <content><![CDATA[<p>关于HDFS文件的读写流程</p>
+<a id="more"></a>
+<hr>
+<hr>
+<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"></p>
+<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
+<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
+<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
+<li>Client调用FSDataInputStream.close()方法，关闭输入流。</li>
+</ol>
+<hr>
+<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"></p>
+<h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5><ol>
+<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创  建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
+<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
+<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
+<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>基本概念</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1096,40 +1130,6 @@
       </tags>
   </entry>
   <entry>
-    <title>HDFS 读写流程</title>
-    <url>/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/</url>
-    <content><![CDATA[<p>关于HDFS文件的读写流程</p>
-<a id="more"></a>
-<hr>
-<hr>
-<h4 id="读流程（FSDataInputStream）"><a href="#读流程（FSDataInputStream）" class="headerlink" title="读流程（FSDataInputStream）"></a>读流程（FSDataInputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -get /test.log</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-input.png" alt="HDFS文件写流程"></p>
-<h5 id="HDFS读的过程："><a href="#HDFS读的过程：" class="headerlink" title="HDFS读的过程："></a>HDFS读的过程：</h5><ol>
-<li>Client调用FileSystem.open(filePath)方法，与NN进行[RPC]通信，返回该文件的部分或者全部的block列表，也就是返回FSDataInputStream对象。</li>
-<li>Client调用FSDataInputStream.read()方法。<br>a.与第一个块最近的DN进行read，读取完成后，会check；假如OK，就关闭与当前DN的通信；假如失败，会记录失败块+DN信息，下次不会再读取，会去该块的第二个DN地址读取。<br>b.接着去第二个块的最近的DN上通信读取，check后，关闭通信。<br>c.假如block列表读取完成后，文件还未结束，FileSystem会再次从NN获取该文件的下一批次的block列表。<br>（感觉就是连续的数据流，对于客户端操作是透明无感知的）</li>
-<li>Client调用FSDataInputStream.close()方法，关闭输入流。</li>
-</ol>
-<hr>
-<h4 id="写流程（FSDataOutputStream）"><a href="#写流程（FSDataOutputStream）" class="headerlink" title="写流程（FSDataOutputStream）"></a>写流程（FSDataOutputStream）</h4><p>Client上传文件到HDFS，也就是类似于下面的命令：</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hadoop fs -put test.log /</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/06/16/HDFS%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B/hdfs-output.png" alt="HDFS文件写流程"></p>
-<h5 id="HDFS写的过程："><a href="#HDFS写的过程：" class="headerlink" title="HDFS写的过程："></a>HDFS写的过程：</h5><ol>
-<li>Client 调用FileSystem.create(filePath)方法，与NN进行[RPC]通信，check是否存在及是否有权限创建。假如不OK，就返回错误信息；假如OK，就创  建一个新文件，不关联任何的block块，返回一个FSDataOutputStream对象。</li>
-<li>Client调用FSDataOutputStream对象的write()方法，先将第一块的第一个副本写到第一个DN，第一个副本写完就传输给第二个DN，第二个副本写完就传输给第三个DN，直至写完第三个副本。然后返回一个ack packet确认包给第二个DN，第二个DN接收到第三个的ack packet确认包加上自身OK，就返回一个ack packet确认包给第一个DN，第一个DN接收到第二个DN的ack packet确认包加上自身OK，就返回ack packet确认包给FSDataOutputStream对象，标志第一个块的3个副本写完。依次写完余下的块。</li>
-<li>当文件写入数据完成后，Client调用FSDataOutputStream.close()方法，关闭输出流。</li>
-<li>然后调用FileSystem.complete()方法，告诉NN该文件写入成功。</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hadoop Shuffle机制</title>
     <url>/2018/06/20/HadoopShuffle%E6%9C%BA%E5%88%B6/</url>
     <content><![CDATA[<p>Hadoop Shuffle机制 Shuffle过程</p>
@@ -1154,6 +1154,21 @@
         <tag>基本概念</tag>
         <tag>Hadoop</tag>
         <tag>Shuffle</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>HDFS 常用命令</title>
+    <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<p>Hadoop的常用命令</p>
+<a id="more"></a>
+
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">查看hdfs某路径的大小</span><br><span class="line">hadoop fs -du -s -h /</span><br><span class="line">hadoop fs -du -s /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Hadoop</category>
+      </categories>
+      <tags>
+        <tag>常用命令</tag>
+        <tag>Hadoop</tag>
       </tags>
   </entry>
   <entry>
@@ -1199,18 +1214,113 @@
       </tags>
   </entry>
   <entry>
-    <title>HDFS 常用命令</title>
-    <url>/2018/06/24/Hadoop%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<p>Hadoop的常用命令</p>
+    <title>Hadoop 数据切片 &amp; MapTask并行度机制</title>
+    <url>/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&amp;MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<p>Hadoop 数据切片 MapTask并行度</p>
 <a id="more"></a>
-
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">创建路径</span><br><span class="line">hadoop fs -mkdir -p /</span><br><span class="line"></span><br><span class="line">删除</span><br><span class="line">hadoop fs -rm /</span><br><span class="line"></span><br><span class="line">读文件</span><br><span class="line">hadoop fs -text /</span><br><span class="line"></span><br><span class="line">查看hdfs根目录下的文件</span><br><span class="line">hadoop fs -ls /</span><br><span class="line"></span><br><span class="line">查看hdfs某路径的大小</span><br><span class="line">hadoop fs -du -s -h /</span><br><span class="line">hadoop fs -du -s /</span><br><span class="line"></span><br><span class="line">将本地test.log文件上传至hdfs根目录</span><br><span class="line">hadoop fs -put test.log /</span><br><span class="line"></span><br><span class="line">将hdfs根目录下的test.log下载至本地当前目录下</span><br><span class="line">hadoop fs -get /test.log ./</span><br><span class="line"></span><br><span class="line">删除hdfs根目录下的test.log，如果设置了回收站，会放入回收站</span><br><span class="line">hadoop fs -rm /test.log</span><br><span class="line"></span><br><span class="line">直接删除test.log</span><br><span class="line">hadoop fs -rm -skipTrash /test.log</span><br><span class="line"></span><br><span class="line">类似于上面的-put</span><br><span class="line">hadoop fs -copyFromLocal test.log /</span><br><span class="line"></span><br><span class="line">类似于上面的-get</span><br><span class="line">hadoop fs -copyToLocal /test.log ./</span><br></pre></td></tr></table></figure>]]></content>
+<hr>
+<h4 id="input-split与map-task的关系"><a href="#input-split与map-task的关系" class="headerlink" title="input split与map task的关系"></a>input split与map task的关系</h4><p>split数量和map task数量一一对应。</p>
+<p>下图是wordcount的流程：<br><img src="/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/wordcount-mr.png" alt="wordcount流程"></p>
+<p>可以看到，一个job的Map阶段map task并行度（个数），由客户端提交job时的切片个数决定。</p>
+<h4 id="数据切片-MapTask并行度机制"><a href="#数据切片-MapTask并行度机制" class="headerlink" title="数据切片 MapTask并行度机制"></a>数据切片 MapTask并行度机制</h4><p>假如有以下两个文件，blocksize=128M，则split和map task的关系如下图所示：<br><img src="/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/split-maptask.png" alt="split-maptask的关系"></p>
+<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
+<h4 id="切片机制"><a href="#切片机制" class="headerlink" title="切片机制"></a>切片机制</h4><p>默认使用FileInputFormat类处理数据输入，遵循如下的切片机制：</p>
+<ul>
+<li>按照文件的内容长度进行切片</li>
+<li>切片大小，默认等于block大小</li>
+<li>切片时不考虑数据集整体，而是逐个针对每一个文件单独切片</li>
+</ul>
+<p>比如待处理数据有两个文件：</p>
+<p>file01.txt 320M</p>
+<p>file02.txt 10M</p>
+<p>经过FileInputFormat的切片机制运算后，形成的切片信息如下：</p>
+<p>file01.txt.split1– 0~128</p>
+<p>file01.txt.split2– 128~256</p>
+<p>file01.txt.split3– 256~320</p>
+<p>file02.txt.split1– 0~10M</p>
+<p>那么切片的数量是否就是分块的数量+小文件的数据量呢？其实是不一定的，因为源码中还有这样一个参数：private static final double SPLIT_SLOP = 1.1，也就是还有10%的切片裕度，下面结合源码进行说明。</p>
+<h4 id="切片机制-1"><a href="#切片机制-1" class="headerlink" title="切片机制"></a>切片机制</h4><p>整体流程：</p>
+<ol>
+<li>找到数据存储的目录。</li>
+<li>遍历处理（规划切片）目录下的每一个文件。</li>
+<li>遍历第一个文件<ol>
+<li>获取文件大小。</li>
+<li>计算切片大小，默认情况下，切片大小=blocksize。</li>
+<li>每次切片时，都要判断切完剩下的部分是否大于块的1.1倍，不大于1.1倍就划分为一块切片。</li>
+<li>将切片信息写到一个切片规划文件中。</li>
+<li>整个切片的核心过程在getSplit()方法中完成。</li>
+<li>数据切片只是在逻辑上对输入数据进行分片，并不会在磁盘上将其切分成分片进行存储。InputSplit只记录了分片的元数据信息，比如起始位置、长度以及所在的节点列表等。</li>
+<li>注意：block是HDFS物理上存储的数据，切片是对数据逻辑上的划分。</li>
+</ol>
+</li>
+<li>提交切片规划文件到YARN上，YARN上的AppMaster就可以根据切片规划文件计算开启map task个数。</li>
+</ol>
+<p>总结：所以，切片的数量并不一定等于分块的数量+小文件的数据量，还要考虑大文件切分后剩余的部分是否大于块的1.1倍。</p>
+]]></content>
       <categories>
         <category>Hadoop</category>
       </categories>
       <tags>
-        <tag>常用命令</tag>
+        <tag>基本概念</tag>
         <tag>Hadoop</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hive 数据倾斜</title>
+    <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
+    <content><![CDATA[<p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
+<a id="more"></a>
+
+<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
+<ol>
+<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>两个表的bucket数量相等</li>
+<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
+<li>必须是应用在bucket mapjoin 的场景中</li>
+<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
+<li>hive.enforce.sorting 设置为true</li>
+<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
+<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>案例<ol>
+<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
+domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
+<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+</li>
+</ol>
+<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
+<p>user表为用户基本表，domain为用户访问域名的宽表</p>
+<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
+<ol>
+<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
+<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
+<ol>
+<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
+<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
+</ol>
+<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
+<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
+<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
+</ol>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+        <tag>数据倾斜</tag>
       </tags>
   </entry>
   <entry>
@@ -1318,139 +1428,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Hive 数据倾斜</title>
-    <url>/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/</url>
-    <content><![CDATA[<p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
-<a id="more"></a>
-
-<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
-<ol>
-<li>设置参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>两个表的bucket数量相等</li>
-<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
-<li>必须是应用在bucket mapjoin 的场景中</li>
-<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
-<li>hive.enforce.sorting 设置为true</li>
-<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
-<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-</ul>
-</li>
-<li>案例<ol>
-<li>设置先关参数<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
-<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
-domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
-<li>查询<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-</li>
-</ol>
-<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
-<p>user表为用户基本表，domain为用户访问域名的宽表</p>
-<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
-<ol>
-<li>创建中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
-<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
-<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
-
-</li>
-</ol>
-<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
-<ol>
-<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
-<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
-<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
-</ol>
-<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
-<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
-<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
-</ol>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
-        <tag>数据倾斜</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hadoop 数据切片 &amp; MapTask并行度机制</title>
-    <url>/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&amp;MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/</url>
-    <content><![CDATA[<p>Hadoop 数据切片 MapTask并行度</p>
-<a id="more"></a>
-<hr>
-<h4 id="input-split与map-task的关系"><a href="#input-split与map-task的关系" class="headerlink" title="input split与map task的关系"></a>input split与map task的关系</h4><p>split数量和map task数量一一对应。</p>
-<p>下图是wordcount的流程：<br><img src="/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/wordcount-mr.png" alt="wordcount流程"></p>
-<p>可以看到，一个job的Map阶段map task并行度（个数），由客户端提交job时的切片个数决定。</p>
-<h4 id="数据切片-MapTask并行度机制"><a href="#数据切片-MapTask并行度机制" class="headerlink" title="数据切片 MapTask并行度机制"></a>数据切片 MapTask并行度机制</h4><p>假如有以下两个文件，blocksize=128M，则split和map task的关系如下图所示：<br><img src="/2018/06/19/Hadoop%E6%95%B0%E6%8D%AE%E5%88%87%E7%89%87&MapTask%E5%B9%B6%E8%A1%8C%E5%BA%A6%E6%9C%BA%E5%88%B6/split-maptask.png" alt="split-maptask的关系"></p>
-<p>也就是说，有多少个切片，就会启动相应数量的map task进行数据处理。那么，如果需要确定map task的数量，只需要确定切片的实际数量即可。</p>
-<h4 id="切片机制"><a href="#切片机制" class="headerlink" title="切片机制"></a>切片机制</h4><p>默认使用FileInputFormat类处理数据输入，遵循如下的切片机制：</p>
-<ul>
-<li>按照文件的内容长度进行切片</li>
-<li>切片大小，默认等于block大小</li>
-<li>切片时不考虑数据集整体，而是逐个针对每一个文件单独切片</li>
-</ul>
-<p>比如待处理数据有两个文件：</p>
-<p>file01.txt 320M</p>
-<p>file02.txt 10M</p>
-<p>经过FileInputFormat的切片机制运算后，形成的切片信息如下：</p>
-<p>file01.txt.split1– 0~128</p>
-<p>file01.txt.split2– 128~256</p>
-<p>file01.txt.split3– 256~320</p>
-<p>file02.txt.split1– 0~10M</p>
-<p>那么切片的数量是否就是分块的数量+小文件的数据量呢？其实是不一定的，因为源码中还有这样一个参数：private static final double SPLIT_SLOP = 1.1，也就是还有10%的切片裕度，下面结合源码进行说明。</p>
-<h4 id="切片机制-1"><a href="#切片机制-1" class="headerlink" title="切片机制"></a>切片机制</h4><p>整体流程：</p>
-<ol>
-<li>找到数据存储的目录。</li>
-<li>遍历处理（规划切片）目录下的每一个文件。</li>
-<li>遍历第一个文件<ol>
-<li>获取文件大小。</li>
-<li>计算切片大小，默认情况下，切片大小=blocksize。</li>
-<li>每次切片时，都要判断切完剩下的部分是否大于块的1.1倍，不大于1.1倍就划分为一块切片。</li>
-<li>将切片信息写到一个切片规划文件中。</li>
-<li>整个切片的核心过程在getSplit()方法中完成。</li>
-<li>数据切片只是在逻辑上对输入数据进行分片，并不会在磁盘上将其切分成分片进行存储。InputSplit只记录了分片的元数据信息，比如起始位置、长度以及所在的节点列表等。</li>
-<li>注意：block是HDFS物理上存储的数据，切片是对数据逻辑上的划分。</li>
-</ol>
-</li>
-<li>提交切片规划文件到YARN上，YARN上的AppMaster就可以根据切片规划文件计算开启map task个数。</li>
-</ol>
-<p>总结：所以，切片的数量并不一定等于分块的数量+小文件的数据量，还要考虑大文件切分后剩余的部分是否大于块的1.1倍。</p>
-]]></content>
-      <categories>
-        <category>Hadoop</category>
-      </categories>
-      <tags>
-        <tag>基本概念</tag>
-        <tag>Hadoop</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Hive 行列转换</title>
-    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
-    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
-<a id="more"></a>
-
-<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
-<hr>
-<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
-]]></content>
-      <categories>
-        <category>Hive</category>
-      </categories>
-      <tags>
-        <tag>Hive</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hue 部署</title>
     <url>/2019/03/09/Hue_%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<h4 id="hue-3-9-0-cdh5-16-2-的部署"><a href="#hue-3-9-0-cdh5-16-2-的部署" class="headerlink" title="hue-3.9.0-cdh5.16.2 的部署"></a>hue-3.9.0-cdh5.16.2 的部署</h4><p>本文主要包括以下内容：</p>
@@ -1490,6 +1467,29 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Hive 行列转换</title>
+    <url>/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/</url>
+    <content><![CDATA[<p>Hive 行列转换的sql写法</p>
+<a id="more"></a>
+
+<h3 id="列转行"><a href="#列转行" class="headerlink" title="列转行"></a>列转行</h3><p>使用函数：lateral view explode(split(column, ‘,’)) num<br>eg: 如表：t_row_to_column_tmp 数据如下，对tag列进行拆分<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/1.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,tag,tag_new</span><br><span class="line"><span class="keyword">from</span> t_row_to_column_tmp</span><br><span class="line"><span class="keyword">lateral</span> <span class="keyword">view</span> <span class="keyword">explode</span>(<span class="keyword">split</span>(tag, <span class="string">','</span>)) <span class="keyword">num</span> <span class="keyword">as</span> tag_new</span><br><span class="line"><span class="keyword">where</span> <span class="keyword">id</span>=<span class="number">212022894</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/2.png" alt></p>
+<hr>
+<h3 id="行转列"><a href="#行转列" class="headerlink" title="行转列"></a>行转列</h3><p>使用函数：concat_ws(‘,’,collect_set(column))<br>说明：collect_list 不去重，collect_set 去重。 column 的数据类型要求是 string<br>eg：如表：t_column_to_row ，根据id，对tag_new 进行合并<br><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/3.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_set(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/4.png" alt></p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="keyword">id</span>,</span><br><span class="line"><span class="keyword">concat_ws</span>(<span class="string">','</span>,collect_list(tag_new)) <span class="keyword">as</span> tag_col</span><br><span class="line"><span class="keyword">from</span> t_column_to_row</span><br><span class="line"><span class="keyword">group</span> <span class="keyword">by</span> <span class="keyword">id</span>;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/5.png" alt></p>
+]]></content>
+      <categories>
+        <category>Hive</category>
+      </categories>
+      <tags>
+        <tag>Hive</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>KafkaEagle安装部署</title>
     <url>/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/</url>
     <content><![CDATA[<p>Kafka Eagle安装部署和常用命令</p>
@@ -1518,17 +1518,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
 <p>kafka-eagle 下载地址:    <a href="http://download.smartloli.org/" target="_blank" rel="noopener">http://download.smartloli.org/</a></p>
 <p>kafka-eagle git地址:        <a href="https://github.com/smartloli/kafka-eagle" target="_blank" rel="noopener">https://github.com/smartloli/kafka-eagle</a></p>
 ]]></content>
-      <categories>
-        <category>Kafka</category>
-      </categories>
-      <tags>
-        <tag>Kafka</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Kafka 常用命令</title>
-    <url>/2021/05/24/Kafka%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
-    <content><![CDATA[<h2 id="Kafka-常用命令"><a href="#Kafka-常用命令" class="headerlink" title="Kafka 常用命令"></a>Kafka 常用命令</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">创建主题</span></span><br><span class="line">kafka-topics --create --topic dwd_homedo_dwd_trd_order_received --partitions 2 --replication-factor 2 --zookeeper 10.0.15.130:2181,10.0.15.131:2181,10.0.15.132:2181/kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">删除主题</span></span><br><span class="line">kafka-topics --delete --topic dwd_homedo_dwd_trd_order_received --zookeeper 10.0.15.130:2181,10.0.15.131:2181,10.0.15.132:2181/kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">控制台发送消息</span></span><br><span class="line">kafka-console-producer --topic dwd_homedo_dwd_trd_order_received --broker-list 10.0.15.130:9092</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">控制台消费主题</span></span><br><span class="line">kafka-console-consumer --topic dwd_homedo_dwd_trd_order_received --bootstrap-server 10.0.15.130:9092</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">控制台消费主题（从头开始）</span></span><br><span class="line">kafka-console-consumer --from-beginning --topic dwd_homedo_dwd_trd_order_received --bootstrap-server 10.0.15.130:9092</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">查看主题列表</span></span><br><span class="line">kafka-topics --list --zookeeper 10.0.15.130:2181,10.0.15.131:2181,10.0.15.132:2181/kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">查看主题详情</span></span><br><span class="line">kafka-topics --describe --topic dwd_homedo_dwd_trd_order_received --bootstrap-server 10.0.15.130:9092</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>Kafka</category>
       </categories>
@@ -1620,6 +1609,17 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
+    <title>Kafka 常用命令</title>
+    <url>/2021/05/24/Kafka%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
+    <content><![CDATA[<h2 id="Kafka-常用命令"><a href="#Kafka-常用命令" class="headerlink" title="Kafka 常用命令"></a>Kafka 常用命令</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">创建主题</span></span><br><span class="line">kafka-topics --create --topic dwd_homedo_dwd_trd_order_received --partitions 2 --replication-factor 2 --zookeeper 10.0.15.130:2181,10.0.15.131:2181,10.0.15.132:2181/kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">删除主题</span></span><br><span class="line">kafka-topics --delete --topic dwd_homedo_dwd_trd_order_received --zookeeper 10.0.15.130:2181,10.0.15.131:2181,10.0.15.132:2181/kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">控制台发送消息</span></span><br><span class="line">kafka-console-producer --topic dwd_homedo_dwd_trd_order_received --broker-list 10.0.15.130:9092</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">控制台消费主题</span></span><br><span class="line">kafka-console-consumer --topic dwd_homedo_dwd_trd_order_received --bootstrap-server 10.0.15.130:9092</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">控制台消费主题（从头开始）</span></span><br><span class="line">kafka-console-consumer --from-beginning --topic dwd_homedo_dwd_trd_order_received --bootstrap-server 10.0.15.130:9092</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">查看主题列表</span></span><br><span class="line">kafka-topics --list --zookeeper 10.0.15.130:2181,10.0.15.131:2181,10.0.15.132:2181/kafka</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash">查看主题详情</span></span><br><span class="line">kafka-topics --describe --topic dwd_homedo_dwd_trd_order_received --bootstrap-server 10.0.15.130:9092</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>Kafka</category>
+      </categories>
+      <tags>
+        <tag>Kafka</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Linux dmesg 命令查看 kill 程序的日志</title>
     <url>/2021/06/01/Linuxdmseg%E5%91%BD%E4%BB%A4/</url>
     <content><![CDATA[<p>程序被 kill 掉，但是并不知道为什么被 kill，</p>
@@ -1690,41 +1690,6 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </tags>
   </entry>
   <entry>
-    <title>Scala 使用ScalikeJDBC操作MySQL</title>
-    <url>/2018/05/13/Scala%20%E4%BD%BF%E7%94%A8ScalikeJDBC%E6%93%8D%E4%BD%9CMySQL/</url>
-    <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
-<li>简介</li>
-<li>配置</li>
-<li>操作数据库</li>
-</ol>
-<a id="more"></a>
-<hr>
-<h4 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h4><p>ScalikeJDBC是一款给Scala开发者使用的简介访问类库，它是基于SQL的，使用者只需要关注SQL逻辑的编写，所有的数据库操作都交给ScalikeJDBC。<br>这个类库内置包含了JDBCAPI，并且给用户提供了简单易用并且非常灵活的API。<br>并且，QueryDSl（通用查询查询框架）使你的代码类型安全，半年过去可重复使用。我们可以在生产环境大胆地使用这款DB访问类库。</p>
-<h4 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h4><p>解决依赖</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">&lt;properties&gt;</span><br><span class="line">    &lt;scala.version&gt;<span class="number">2.11</span><span class="number">.8</span>&lt;/scala.version&gt;</span><br><span class="line">    &lt;scalikejdbc.version&gt;<span class="number">3.3</span><span class="number">.2</span>&lt;/scalikejdbc.version&gt;</span><br><span class="line">    &lt;mysql.jdbc.version&gt;<span class="number">5.1</span><span class="number">.38</span>&lt;/mysql.jdbc.version&gt;</span><br><span class="line">&lt;/properties&gt;</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">&lt;!--<span class="type">Scala</span>相关依赖--&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.scala-lang&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;scala-library&lt;/artifactId&gt;</span><br><span class="line">&lt;version&gt;$&#123;scala.version&#125;&lt;/version&gt;</span><br><span class="line"></span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;!--scalikejdbc相关依赖--&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.scalikejdbc&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;scalikejdbc_2<span class="number">.11</span>&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;$&#123;scalikejdbc.version&#125;&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.scalikejdbc&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;scalikejdbc-config_2<span class="number">.11</span>&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;$&#123;scalikejdbc.version&#125;&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;$&#123;mysql.jdbc.version&#125;&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
-
-<h4 id="解决配置"><a href="#解决配置" class="headerlink" title="解决配置"></a>解决配置</h4><p>在src的main目录下配置一个resource文件夹，文件夹下再创建一个application.conf</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">db.<span class="keyword">default</span>.driver=<span class="string">"com.mysql.jdbc.Driver"</span></span><br><span class="line">db.<span class="keyword">default</span>.url=<span class="string">"jdbc:mysql://hadoop001/ruoze_d6?characterEncoding=utf-8"</span></span><br><span class="line">db.<span class="keyword">default</span>.user=<span class="string">"root"</span></span><br><span class="line">db.<span class="keyword">default</span>.password=<span class="string">"123456"</span></span><br><span class="line"></span><br><span class="line"># <span class="type">Connection</span> <span class="type">Pool</span> settings</span><br><span class="line">db.<span class="keyword">default</span>.poolInitialSize=<span class="number">10</span></span><br><span class="line">db.<span class="keyword">default</span>.poolMaxSize=<span class="number">20</span></span><br><span class="line">db.<span class="keyword">default</span>.connectionTimeoutMillis=<span class="number">1000</span></span><br></pre></td></tr></table></figure>
-
-<h4 id="操作数据库"><a href="#操作数据库" class="headerlink" title="操作数据库"></a>操作数据库</h4><ol>
-<li><p>建表</p>
-<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> Employer(</span><br><span class="line">    <span class="keyword">name</span> <span class="built_in">varchar</span>(<span class="number">10</span>),</span><br><span class="line">    age <span class="built_in">varchar</span>(<span class="number">4</span>),</span><br><span class="line">    salary  <span class="built_in">varchar</span>(<span class="number">10</span>)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>scala编程实现增删改查操作</p>
-<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.wsk.bigdata.scala.scalikejdbc</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> scalikejdbc._</span><br><span class="line"><span class="keyword">import</span> scalikejdbc.config._</span><br><span class="line"></span><br><span class="line"><span class="comment">//定义样例类获取数据</span></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Employer</span>(<span class="params">name: <span class="type">String</span>, age: <span class="type">Int</span>, salary: <span class="type">Long</span></span>)</span></span><br><span class="line"><span class="class"></span></span><br><span class="line"><span class="class"><span class="title">object</span> <span class="title">JdbcTest</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="type">DBs</span>.setupAll()	<span class="comment">//初始化配置</span></span><br><span class="line">	</span><br><span class="line">    <span class="comment">//数据</span></span><br><span class="line">    <span class="keyword">val</span> employers = <span class="type">List</span>(<span class="type">Employer</span>(<span class="string">"zhangsan"</span>, <span class="number">20</span>, <span class="number">18000</span>), <span class="type">Employer</span>(<span class="string">"zhangliu"</span>, <span class="number">50</span>, <span class="number">300000</span>), <span class="type">Employer</span>(<span class="string">"lisi"</span>, <span class="number">22</span>, <span class="number">22000</span>))</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//批量插入</span></span><br><span class="line">    insert(employers)</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//查询出结果</span></span><br><span class="line">    <span class="keyword">val</span> results = select()</span><br><span class="line">    <span class="keyword">for</span> (employer &lt;- results) &#123;</span><br><span class="line">      println(employer.name, employer.age, employer.salary)</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//修改</span></span><br><span class="line">    update(<span class="number">1000</span>, <span class="string">"zhangsan"</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//根据条件删除</span></span><br><span class="line">    deleteByname(<span class="string">"zhangliu"</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//删除所有</span></span><br><span class="line">    deleteAll()</span><br><span class="line"></span><br><span class="line">   	<span class="comment">//关闭资源</span></span><br><span class="line">    <span class="type">DBs</span>.closeAll()</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="comment">//插入数据</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">insert</span></span>(employers: <span class="type">List</span>[<span class="type">Employer</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">//事物插入</span></span><br><span class="line">    <span class="type">DB</span>.localTx &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="keyword">for</span> (employer &lt;- employers) &#123;</span><br><span class="line">        		<span class="type">SQL</span>(<span class="string">"insert into wsktest(name,age,salary) values(?,?,?)"</span>)</span><br><span class="line">          		.bind(employer.name, employer.age, employer.salary)</span><br><span class="line">          		.update()	<span class="comment">//更新操作</span></span><br><span class="line">                .apply()</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="comment">//查询操作</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">select</span></span>(): <span class="type">List</span>[<span class="type">Employer</span>] = &#123;</span><br><span class="line">    <span class="type">DB</span>.readOnly &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"select * from wsktest"</span>)</span><br><span class="line">        	.map(rs =&gt; <span class="type">Employer</span>(rs.string(<span class="string">"name"</span>), rs.int(<span class="string">"age"</span>), rs.long(<span class="string">"salary"</span>)))</span><br><span class="line">        	.list()  <span class="comment">//结果转换成list</span></span><br><span class="line">        	.apply() </span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">//更新操作</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">update</span></span>(age: <span class="type">Int</span>, name: <span class="type">String</span>) &#123;</span><br><span class="line">    <span class="type">DB</span>.autoCommit &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"update wsktest set age = ? where name = ?"</span>)</span><br><span class="line">        	.bind(age, name)</span><br><span class="line">        	.update()	<span class="comment">//更新操作</span></span><br><span class="line">        	.apply()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//根据条件删除</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">deleteByname</span></span>(name: <span class="type">String</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="type">DB</span>.autoCommit &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"delete from wsktest where name = ?"</span>)</span><br><span class="line">        	.bind(name)	<span class="comment">//更新操作</span></span><br><span class="line">        	.update()</span><br><span class="line">        	.apply()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//删除所有</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">deleteAll</span></span>(): <span class="type">Unit</span> =&#123;</span><br><span class="line">    <span class="type">DB</span>.autoCommit &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"delete from wsktest "</span>)</span><br><span class="line">        	.update()	<span class="comment">//更新操作</span></span><br><span class="line">        	.apply()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
-</ol>
-]]></content>
-      <categories>
-        <category>Scala</category>
-      </categories>
-      <tags>
-        <tag>Scala</tag>
-        <tag>ScalikeJDBC</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>RowKey设计原则、热点问题、设计实践</title>
     <url>/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/</url>
     <content><![CDATA[<p>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</p>
@@ -1765,6 +1730,41 @@ domain表<figure class="highlight sql"><table><tr><td class="code"><pre><span cl
       </categories>
       <tags>
         <tag>HBase</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Scala 使用ScalikeJDBC操作MySQL</title>
+    <url>/2018/05/13/Scala%20%E4%BD%BF%E7%94%A8ScalikeJDBC%E6%93%8D%E4%BD%9CMySQL/</url>
+    <content><![CDATA[<h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
+<li>简介</li>
+<li>配置</li>
+<li>操作数据库</li>
+</ol>
+<a id="more"></a>
+<hr>
+<h4 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h4><p>ScalikeJDBC是一款给Scala开发者使用的简介访问类库，它是基于SQL的，使用者只需要关注SQL逻辑的编写，所有的数据库操作都交给ScalikeJDBC。<br>这个类库内置包含了JDBCAPI，并且给用户提供了简单易用并且非常灵活的API。<br>并且，QueryDSl（通用查询查询框架）使你的代码类型安全，半年过去可重复使用。我们可以在生产环境大胆地使用这款DB访问类库。</p>
+<h4 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h4><p>解决依赖</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">&lt;properties&gt;</span><br><span class="line">    &lt;scala.version&gt;<span class="number">2.11</span><span class="number">.8</span>&lt;/scala.version&gt;</span><br><span class="line">    &lt;scalikejdbc.version&gt;<span class="number">3.3</span><span class="number">.2</span>&lt;/scalikejdbc.version&gt;</span><br><span class="line">    &lt;mysql.jdbc.version&gt;<span class="number">5.1</span><span class="number">.38</span>&lt;/mysql.jdbc.version&gt;</span><br><span class="line">&lt;/properties&gt;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">&lt;!--<span class="type">Scala</span>相关依赖--&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.scala-lang&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;scala-library&lt;/artifactId&gt;</span><br><span class="line">&lt;version&gt;$&#123;scala.version&#125;&lt;/version&gt;</span><br><span class="line"></span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;!--scalikejdbc相关依赖--&gt;</span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.scalikejdbc&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;scalikejdbc_2<span class="number">.11</span>&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;$&#123;scalikejdbc.version&#125;&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;org.scalikejdbc&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;scalikejdbc-config_2<span class="number">.11</span>&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;$&#123;scalikejdbc.version&#125;&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br><span class="line"></span><br><span class="line">&lt;dependency&gt;</span><br><span class="line">    &lt;groupId&gt;mysql&lt;/groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;</span><br><span class="line">    &lt;version&gt;$&#123;mysql.jdbc.version&#125;&lt;/version&gt;</span><br><span class="line">&lt;/dependency&gt;</span><br></pre></td></tr></table></figure>
+
+<h4 id="解决配置"><a href="#解决配置" class="headerlink" title="解决配置"></a>解决配置</h4><p>在src的main目录下配置一个resource文件夹，文件夹下再创建一个application.conf</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line">db.<span class="keyword">default</span>.driver=<span class="string">"com.mysql.jdbc.Driver"</span></span><br><span class="line">db.<span class="keyword">default</span>.url=<span class="string">"jdbc:mysql://hadoop001/ruoze_d6?characterEncoding=utf-8"</span></span><br><span class="line">db.<span class="keyword">default</span>.user=<span class="string">"root"</span></span><br><span class="line">db.<span class="keyword">default</span>.password=<span class="string">"123456"</span></span><br><span class="line"></span><br><span class="line"># <span class="type">Connection</span> <span class="type">Pool</span> settings</span><br><span class="line">db.<span class="keyword">default</span>.poolInitialSize=<span class="number">10</span></span><br><span class="line">db.<span class="keyword">default</span>.poolMaxSize=<span class="number">20</span></span><br><span class="line">db.<span class="keyword">default</span>.connectionTimeoutMillis=<span class="number">1000</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="操作数据库"><a href="#操作数据库" class="headerlink" title="操作数据库"></a>操作数据库</h4><ol>
+<li><p>建表</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> Employer(</span><br><span class="line">    <span class="keyword">name</span> <span class="built_in">varchar</span>(<span class="number">10</span>),</span><br><span class="line">    age <span class="built_in">varchar</span>(<span class="number">4</span>),</span><br><span class="line">    salary  <span class="built_in">varchar</span>(<span class="number">10</span>)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>scala编程实现增删改查操作</p>
+<figure class="highlight scala"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.wsk.bigdata.scala.scalikejdbc</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> scalikejdbc._</span><br><span class="line"><span class="keyword">import</span> scalikejdbc.config._</span><br><span class="line"></span><br><span class="line"><span class="comment">//定义样例类获取数据</span></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Employer</span>(<span class="params">name: <span class="type">String</span>, age: <span class="type">Int</span>, salary: <span class="type">Long</span></span>)</span></span><br><span class="line"><span class="class"></span></span><br><span class="line"><span class="class"><span class="title">object</span> <span class="title">JdbcTest</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="type">DBs</span>.setupAll()	<span class="comment">//初始化配置</span></span><br><span class="line">	</span><br><span class="line">    <span class="comment">//数据</span></span><br><span class="line">    <span class="keyword">val</span> employers = <span class="type">List</span>(<span class="type">Employer</span>(<span class="string">"zhangsan"</span>, <span class="number">20</span>, <span class="number">18000</span>), <span class="type">Employer</span>(<span class="string">"zhangliu"</span>, <span class="number">50</span>, <span class="number">300000</span>), <span class="type">Employer</span>(<span class="string">"lisi"</span>, <span class="number">22</span>, <span class="number">22000</span>))</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//批量插入</span></span><br><span class="line">    insert(employers)</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//查询出结果</span></span><br><span class="line">    <span class="keyword">val</span> results = select()</span><br><span class="line">    <span class="keyword">for</span> (employer &lt;- results) &#123;</span><br><span class="line">      println(employer.name, employer.age, employer.salary)</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//修改</span></span><br><span class="line">    update(<span class="number">1000</span>, <span class="string">"zhangsan"</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//根据条件删除</span></span><br><span class="line">    deleteByname(<span class="string">"zhangliu"</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//删除所有</span></span><br><span class="line">    deleteAll()</span><br><span class="line"></span><br><span class="line">   	<span class="comment">//关闭资源</span></span><br><span class="line">    <span class="type">DBs</span>.closeAll()</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  <span class="comment">//插入数据</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">insert</span></span>(employers: <span class="type">List</span>[<span class="type">Employer</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="comment">//事物插入</span></span><br><span class="line">    <span class="type">DB</span>.localTx &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="keyword">for</span> (employer &lt;- employers) &#123;</span><br><span class="line">        		<span class="type">SQL</span>(<span class="string">"insert into wsktest(name,age,salary) values(?,?,?)"</span>)</span><br><span class="line">          		.bind(employer.name, employer.age, employer.salary)</span><br><span class="line">          		.update()	<span class="comment">//更新操作</span></span><br><span class="line">                .apply()</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="comment">//查询操作</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">select</span></span>(): <span class="type">List</span>[<span class="type">Employer</span>] = &#123;</span><br><span class="line">    <span class="type">DB</span>.readOnly &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"select * from wsktest"</span>)</span><br><span class="line">        	.map(rs =&gt; <span class="type">Employer</span>(rs.string(<span class="string">"name"</span>), rs.int(<span class="string">"age"</span>), rs.long(<span class="string">"salary"</span>)))</span><br><span class="line">        	.list()  <span class="comment">//结果转换成list</span></span><br><span class="line">        	.apply() </span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">//更新操作</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">update</span></span>(age: <span class="type">Int</span>, name: <span class="type">String</span>) &#123;</span><br><span class="line">    <span class="type">DB</span>.autoCommit &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"update wsktest set age = ? where name = ?"</span>)</span><br><span class="line">        	.bind(age, name)</span><br><span class="line">        	.update()	<span class="comment">//更新操作</span></span><br><span class="line">        	.apply()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//根据条件删除</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">deleteByname</span></span>(name: <span class="type">String</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    <span class="type">DB</span>.autoCommit &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"delete from wsktest where name = ?"</span>)</span><br><span class="line">        	.bind(name)	<span class="comment">//更新操作</span></span><br><span class="line">        	.update()</span><br><span class="line">        	.apply()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//删除所有</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">deleteAll</span></span>(): <span class="type">Unit</span> =&#123;</span><br><span class="line">    <span class="type">DB</span>.autoCommit &#123; </span><br><span class="line">        <span class="keyword">implicit</span> session =&gt;</span><br><span class="line">      		<span class="type">SQL</span>(<span class="string">"delete from wsktest "</span>)</span><br><span class="line">        	.update()	<span class="comment">//更新操作</span></span><br><span class="line">        	.apply()</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></li>
+</ol>
+]]></content>
+      <categories>
+        <category>Scala</category>
+      </categories>
+      <tags>
+        <tag>Scala</tag>
+        <tag>ScalikeJDBC</tag>
       </tags>
   </entry>
   <entry>
@@ -2977,41 +2977,6 @@ csv读取数据注意使用几个参数</li>
       </tags>
   </entry>
   <entry>
-    <title>单节点部署三台Kafka</title>
-    <url>/2019/04/12/%E5%8D%95%E8%8A%82%E7%82%B9%E9%83%A8%E7%BD%B2%E4%B8%89%E5%8F%B0Kafka/</url>
-    <content><![CDATA[<p>单节点部署三台Kafka、启动及测试</p>
-<a id="more"></a>
-<hr>
-<h4 id="下载地址"><a href="#下载地址" class="headerlink" title="下载地址"></a>下载地址</h4><p><a href="http://archive.cloudera.com/kafka/kafka/4/kafka-2.2.1-kafka4.1.0.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/kafka/kafka/4/kafka-2.2.1-kafka4.1.0.tar.gz</a></p>
-<h4 id="解压"><a href="#解压" class="headerlink" title="解压"></a>解压</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tar -zxvf kafka-2.2.1-kafka4.1.0.tar.gz -C ../app</span><br></pre></td></tr></table></figure>
-<h4 id="部署Kafka之前，检测Zookeeper是ok的"><a href="#部署Kafka之前，检测Zookeeper是ok的" class="headerlink" title="部署Kafka之前，检测Zookeeper是ok的"></a>部署Kafka之前，检测Zookeeper是ok的</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 0] ls /</span><br><span class="line">[zktest, tunan, zookeeper, kafka]</span><br></pre></td></tr></table></figure>
-<h4 id="编辑config-server-properties文件"><a href="#编辑config-server-properties文件" class="headerlink" title="编辑config/server.properties文件"></a>编辑config/server.properties文件</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">broker.id=0</span></span><br><span class="line"><span class="meta">#</span><span class="bash">log.dirs=/tmp/kafka-logs</span></span><br><span class="line"></span><br><span class="line">broker.id=0</span><br><span class="line">host.name=hadoop</span><br><span class="line">port=9090</span><br><span class="line">log.dirs=/home/hadoop/tmp/kafka-logs00</span><br><span class="line">zookeeper.connect=hadoop:2181/kafka</span><br></pre></td></tr></table></figure>
-<h4 id="复制Kafka文件夹为三份"><a href="#复制Kafka文件夹为三份" class="headerlink" title="复制Kafka文件夹为三份"></a>复制Kafka文件夹为三份</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cp -R kafka_2.11-2.2.1-kafka-4.1.0/ kafka01</span><br><span class="line">cp -R kafka_2.11-2.2.1-kafka-4.1.0/ kafka02</span><br><span class="line">mv  kafka_2.11-2.2.1-kafka-4.1.0/ kafka03</span><br></pre></td></tr></table></figure>
-<h4 id="修改kafka02的config-server-properties文件"><a href="#修改kafka02的config-server-properties文件" class="headerlink" title="修改kafka02的config/server.properties文件"></a>修改kafka02的config/server.properties文件</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">broker.id=2</span><br><span class="line">host.name=hadoop</span><br><span class="line">port=9092</span><br><span class="line">log.dirs=/home/hadoop/tmp/kafka-logs02</span><br><span class="line">zookeeper.connect=hadoop:2181/kafka</span><br></pre></td></tr></table></figure>
-<h4 id="启动-三台都需要输入命令"><a href="#启动-三台都需要输入命令" class="headerlink" title="启动(三台都需要输入命令)"></a>启动(三台都需要输入命令)</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">bin/kafka-server-start.sh -daemon config/server.properties</span><br></pre></td></tr></table></figure>
-<h4 id="创建topic"><a href="#创建topic" class="headerlink" title="创建topic"></a>创建topic</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./kafka-topics.sh \</span><br><span class="line">--create \</span><br><span class="line">--zookeeper hadoop:2181/kafka \</span><br><span class="line">--partitions 3 \</span><br><span class="line">--replication-factor 2 \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
-<h4 id="查看指定topic的状况"><a href="#查看指定topic的状况" class="headerlink" title="查看指定topic的状况"></a>查看指定topic的状况</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./kafka-topics.sh \</span><br><span class="line">--describe \</span><br><span class="line">--zookeeper hadoop:2181/kafka \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
-<h4 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h4><p>启动生产者</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./kafka-console-producer.sh \</span><br><span class="line">--broker-list hadoop:9090,hadoop:9091,hadoop:9092 \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
-<p>启动消费者</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">bin/kafka-console-consumer.sh \</span><br><span class="line">--bootstrap-server hadoop:9090,hadoop:9091,hadoop:9092 \</span><br><span class="line">--from-beginning \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
-<p>发送数据</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">&gt;</span><span class="bash">a</span></span><br><span class="line"><span class="meta">&gt;</span><span class="bash">a</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
-<p>接收数据</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">a</span><br><span class="line">a</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
-<h4 id="关闭kafka集群-每台都要执行"><a href="#关闭kafka集群-每台都要执行" class="headerlink" title="关闭kafka集群(每台都要执行)"></a>关闭kafka集群(每台都要执行)</h4><p>修改kafka-server-stop.sh</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">PIDS=$(ps ax | grep -i 'kafka\.Kafka' | grep java | grep -v grep | awk '&#123;print $1&#125;')</span><br><span class="line">修改为</span><br><span class="line">PIDS=$(jps -lm | grep -i 'kafka'| awk '&#123;print $1&#125;')</span><br></pre></td></tr></table></figure>
-<p>命令详解：<br>使用jps -lm命令列出所有的java进程，然后通过管道，利用grep -i ‘kafka.Kafka’命令将kafka进程筛出来，最后再接一管道命令，利用awk将进程号取出来。</p>
-<p>分别执行kafka-server-stop.sh</p>
-]]></content>
-      <categories>
-        <category>Kafka</category>
-      </categories>
-      <tags>
-        <tag>Kafka</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Yarn 调度流程</title>
     <url>/2018/06/18/yarn%E8%B0%83%E5%BA%A6%E6%B5%81%E7%A8%8B/</url>
     <content><![CDATA[<h4 id="Yarn-调度流程"><a href="#Yarn-调度流程" class="headerlink" title="Yarn 调度流程"></a>Yarn 调度流程</h4><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。</p>
@@ -3054,6 +3019,41 @@ csv读取数据注意使用几个参数</li>
       <tags>
         <tag>基本概念</tag>
         <tag>Yarn</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>单节点部署三台Kafka</title>
+    <url>/2019/04/12/%E5%8D%95%E8%8A%82%E7%82%B9%E9%83%A8%E7%BD%B2%E4%B8%89%E5%8F%B0Kafka/</url>
+    <content><![CDATA[<p>单节点部署三台Kafka、启动及测试</p>
+<a id="more"></a>
+<hr>
+<h4 id="下载地址"><a href="#下载地址" class="headerlink" title="下载地址"></a>下载地址</h4><p><a href="http://archive.cloudera.com/kafka/kafka/4/kafka-2.2.1-kafka4.1.0.tar.gz" target="_blank" rel="noopener">http://archive.cloudera.com/kafka/kafka/4/kafka-2.2.1-kafka4.1.0.tar.gz</a></p>
+<h4 id="解压"><a href="#解压" class="headerlink" title="解压"></a>解压</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">tar -zxvf kafka-2.2.1-kafka4.1.0.tar.gz -C ../app</span><br></pre></td></tr></table></figure>
+<h4 id="部署Kafka之前，检测Zookeeper是ok的"><a href="#部署Kafka之前，检测Zookeeper是ok的" class="headerlink" title="部署Kafka之前，检测Zookeeper是ok的"></a>部署Kafka之前，检测Zookeeper是ok的</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">[zk: localhost:2181(CONNECTED) 0] ls /</span><br><span class="line">[zktest, tunan, zookeeper, kafka]</span><br></pre></td></tr></table></figure>
+<h4 id="编辑config-server-properties文件"><a href="#编辑config-server-properties文件" class="headerlink" title="编辑config/server.properties文件"></a>编辑config/server.properties文件</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">broker.id=0</span></span><br><span class="line"><span class="meta">#</span><span class="bash">log.dirs=/tmp/kafka-logs</span></span><br><span class="line"></span><br><span class="line">broker.id=0</span><br><span class="line">host.name=hadoop</span><br><span class="line">port=9090</span><br><span class="line">log.dirs=/home/hadoop/tmp/kafka-logs00</span><br><span class="line">zookeeper.connect=hadoop:2181/kafka</span><br></pre></td></tr></table></figure>
+<h4 id="复制Kafka文件夹为三份"><a href="#复制Kafka文件夹为三份" class="headerlink" title="复制Kafka文件夹为三份"></a>复制Kafka文件夹为三份</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">cp -R kafka_2.11-2.2.1-kafka-4.1.0/ kafka01</span><br><span class="line">cp -R kafka_2.11-2.2.1-kafka-4.1.0/ kafka02</span><br><span class="line">mv  kafka_2.11-2.2.1-kafka-4.1.0/ kafka03</span><br></pre></td></tr></table></figure>
+<h4 id="修改kafka02的config-server-properties文件"><a href="#修改kafka02的config-server-properties文件" class="headerlink" title="修改kafka02的config/server.properties文件"></a>修改kafka02的config/server.properties文件</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">broker.id=2</span><br><span class="line">host.name=hadoop</span><br><span class="line">port=9092</span><br><span class="line">log.dirs=/home/hadoop/tmp/kafka-logs02</span><br><span class="line">zookeeper.connect=hadoop:2181/kafka</span><br></pre></td></tr></table></figure>
+<h4 id="启动-三台都需要输入命令"><a href="#启动-三台都需要输入命令" class="headerlink" title="启动(三台都需要输入命令)"></a>启动(三台都需要输入命令)</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">bin/kafka-server-start.sh -daemon config/server.properties</span><br></pre></td></tr></table></figure>
+<h4 id="创建topic"><a href="#创建topic" class="headerlink" title="创建topic"></a>创建topic</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./kafka-topics.sh \</span><br><span class="line">--create \</span><br><span class="line">--zookeeper hadoop:2181/kafka \</span><br><span class="line">--partitions 3 \</span><br><span class="line">--replication-factor 2 \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
+<h4 id="查看指定topic的状况"><a href="#查看指定topic的状况" class="headerlink" title="查看指定topic的状况"></a>查看指定topic的状况</h4><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./kafka-topics.sh \</span><br><span class="line">--describe \</span><br><span class="line">--zookeeper hadoop:2181/kafka \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
+<h4 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h4><p>启动生产者</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">./kafka-console-producer.sh \</span><br><span class="line">--broker-list hadoop:9090,hadoop:9091,hadoop:9092 \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
+<p>启动消费者</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">bin/kafka-console-consumer.sh \</span><br><span class="line">--bootstrap-server hadoop:9090,hadoop:9091,hadoop:9092 \</span><br><span class="line">--from-beginning \</span><br><span class="line">--topic test</span><br></pre></td></tr></table></figure>
+<p>发送数据</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">&gt;</span><span class="bash">a</span></span><br><span class="line"><span class="meta">&gt;</span><span class="bash">a</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>接收数据</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">a</span><br><span class="line">a</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<h4 id="关闭kafka集群-每台都要执行"><a href="#关闭kafka集群-每台都要执行" class="headerlink" title="关闭kafka集群(每台都要执行)"></a>关闭kafka集群(每台都要执行)</h4><p>修改kafka-server-stop.sh</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">PIDS=$(ps ax | grep -i 'kafka\.Kafka' | grep java | grep -v grep | awk '&#123;print $1&#125;')</span><br><span class="line">修改为</span><br><span class="line">PIDS=$(jps -lm | grep -i 'kafka'| awk '&#123;print $1&#125;')</span><br></pre></td></tr></table></figure>
+<p>命令详解：<br>使用jps -lm命令列出所有的java进程，然后通过管道，利用grep -i ‘kafka.Kafka’命令将kafka进程筛出来，最后再接一管道命令，利用awk将进程号取出来。</p>
+<p>分别执行kafka-server-stop.sh</p>
+]]></content>
+      <categories>
+        <category>Kafka</category>
+      </categories>
+      <tags>
+        <tag>Kafka</tag>
       </tags>
   </entry>
   <entry>
