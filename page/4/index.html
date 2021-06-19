@@ -136,17 +136,17 @@
   </li>
         <li class="menu-item menu-item-tags">
 
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">25</span></a>
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">26</span></a>
 
   </li>
         <li class="menu-item menu-item-categories">
 
-    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">13</span></a>
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">14</span></a>
 
   </li>
         <li class="menu-item menu-item-archives">
 
-    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">59</span></a>
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">60</span></a>
 
   </li>
       <li class="menu-item menu-item-search">
@@ -218,20 +218,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">59</span>
+          <span class="site-state-item-count">60</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-count">14</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-count">26</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -269,6 +269,91 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/" class="post-title-link" itemprop="url">RowKey设计原则、热点问题、设计实践</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2020-06-30 23:36:18" itemprop="dateCreated datePublished" datetime="2020-06-30T23:36:18+08:00">2020-06-30</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/HBase/" itemprop="url" rel="index"><span itemprop="name">HBase</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <p>HBase由于其存储和读写的高性能，在OLAP即时分析中越来越发挥重要的作用。</p>
+<p>作为Nosql数据库的一员，HBase查询只能通过其Rowkey来查询(Rowkey用来表示唯一一行记录)，Rowkey设计的优劣直接影响读写性能。Rowkey的ASCII字典顺序进行全局排序的，下面举例说明：</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -280,7 +365,8 @@
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Emerk's blog">
     </span>
-      <header class="post-header">
+        <header class="post-header">
+
         <h2 class="post-title" itemprop="name headline">
           <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" class="post-title-link" itemprop="url">HBase 基本概念和使用</a>
         </h2>
@@ -308,7 +394,10 @@
   
 </div>
 
+
+		  
         </div>
+
       </header>
 
     
@@ -363,7 +452,8 @@
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Emerk's blog">
     </span>
-      <header class="post-header">
+        <header class="post-header">
+
         <h2 class="post-title" itemprop="name headline">
           <a href="/2020/03/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/" class="post-title-link" itemprop="url">生产相关配置</a>
         </h2>
@@ -391,7 +481,10 @@
   
 </div>
 
+
+		  
         </div>
+
       </header>
 
     
@@ -443,7 +536,8 @@
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Emerk's blog">
     </span>
-      <header class="post-header">
+        <header class="post-header">
+
         <h2 class="post-title" itemprop="name headline">
           <a href="/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/" class="post-title-link" itemprop="url">SparkStreaming 进阶</a>
         </h2>
@@ -471,7 +565,10 @@
   
 </div>
 
+
+		  
         </div>
+
       </header>
 
     
@@ -529,7 +626,8 @@
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
       <meta itemprop="name" content="Emerk's blog">
     </span>
-      <header class="post-header">
+        <header class="post-header">
+
         <h2 class="post-title" itemprop="name headline">
           <a href="/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/" class="post-title-link" itemprop="url">KafkaEagle安装部署</a>
         </h2>
@@ -557,7 +655,10 @@
   
 </div>
 
+
+		  
         </div>
+
       </header>
 
     
@@ -568,86 +669,6 @@
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="EmerkFu">
-      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Emerk's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/" class="post-title-link" itemprop="url">Kafka工作流程</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2019-04-13 21:42:51" itemprop="dateCreated datePublished" datetime="2019-04-13T21:42:51+08:00">2019-04-13</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/Kafka/" itemprop="url" rel="index"><span itemprop="name">Kafka</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>Kafka工作流程的相关内容</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
