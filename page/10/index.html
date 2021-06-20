@@ -606,7 +606,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu:Fushuai0410@emerkfu.github.io/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -620,7 +620,7 @@
         <header class="post-header">
 
         <h2 class="post-title" itemprop="name headline">
-          <a href="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/" class="post-title-link" itemprop="url">Hadoop HDFS架构 NameNode和DataNode工作机制</a>
+          <a href="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">Hadoop Block和副本数&小文件问题</a>
         </h2>
 
         <div class="post-meta-container">
@@ -656,10 +656,12 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <h4 id="Hadoop-HDFS架构"><a href="#Hadoop-HDFS架构" class="headerlink" title="Hadoop HDFS架构"></a>Hadoop HDFS架构</h4><p>HDFS主要由3个组件构成：NameNode, DataNode, SecondaryNameNode。<br>HDFS是以master/slave模式运行的，通常NameNode, SecondaryNameNode运行在master节点，DataNode运行在slave节点。</p>
+          <h4 id="机架感知（副本放置策略）"><a href="#机架感知（副本放置策略）" class="headerlink" title="机架感知（副本放置策略）"></a>机架感知（副本放置策略）</h4><p>官网地址：</p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-common/RackAwareness.html" target="_blank" rel="noopener">Rack Awareness</a></p>
+<p><a href="http://hadoop.apache.org/docs/r2.7.2/hadoop-project-dist/hadoop-hdfs/HdfsDesign.html#Data_Replication" target="_blank" rel="noopener">HDFS Architecture</a></p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/2018/06/20/HadoopHDFS%E6%9E%B6%E6%9E%84NameNode%E5%92%8CDataNode%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6/#more" rel="contents">
+              <a class="btn" href="/2018/06/20/HadoopBLOCK%E5%92%8C%E5%89%AF%E6%9C%AC%E6%95%B0&%E5%B0%8F%E6%96%87%E4%BB%B6%E9%97%AE%E9%A2%98/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
