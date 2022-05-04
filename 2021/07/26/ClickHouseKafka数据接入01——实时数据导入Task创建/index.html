@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="Kafka 接入 ClickHouse，数据实时进入 ClickHouse 表 这个功能和 Doris 和 Routine Load 功能类似，只是有些操作更复杂一些（Offset 操作） 相比于 Doris Routine Load，ClickHouse 的 Kafka 接入更灵活一些">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ClickHouse Kafka 数据接入 —— 实时数据导入 Task 创建">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2021/07/26/ClickHouseKafka%E6%95%B0%E6%8D%AE%E6%8E%A5%E5%85%A501%E2%80%94%E2%80%94%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5Task%E5%88%9B%E5%BB%BA/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="Kafka 接入 ClickHouse，数据实时进入 ClickHouse 表 这个功能和 Doris 和 Routine Load 功能类似，只是有些操作更复杂一些（Offset 操作） 相比于 Doris Routine Load，ClickHouse 的 Kafka 接入更灵活一些">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-07-26T01:23:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:21:46.791Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="ClickHouse">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2021/07/26/ClickHouseKafka%E6%95%B0%E6%8D%AE%E6%8E%A5%E5%85%A501%E2%80%94%E2%80%94%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5Task%E5%88%9B%E5%BB%BA/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>ClickHouse Kafka 数据接入 —— 实时数据导入 Task 创建 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建-kafka-source"><span class="nav-number">1.</span> <span class="nav-text">创建 kafka_source</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建-target-表"><span class="nav-number">2.</span> <span class="nav-text">创建 target 表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#创建物化视图"><span class="nav-number">3.</span> <span class="nav-text">创建物化视图</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Tips"><span class="nav-number">4.</span> <span class="nav-text">Tips</span></a></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2021/07/26/ClickHouseKafka%E6%95%B0%E6%8D%AE%E6%8E%A5%E5%85%A501%E2%80%94%E2%80%94%E5%AE%9E%E6%97%B6%E6%95%B0%E6%8D%AE%E5%AF%BC%E5%85%A5Task%E5%88%9B%E5%BB%BA/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          ClickHouse Kafka 数据接入 —— 实时数据导入 Task 创建
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2021-07-26 09:23:00" itemprop="dateCreated datePublished" datetime="2021-07-26T09:23:00+08:00">2021-07-26</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/ClickHouse/" itemprop="url" rel="index"><span itemprop="name">ClickHouse</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>Kafka 接入 ClickHouse，数据实时进入 ClickHouse 表</p>
+<p>这个功能和 Doris 和 Routine Load 功能类似，只是有些操作更复杂一些（Offset 操作）</p>
+<p>相比于 Doris Routine Load，ClickHouse 的 Kafka 接入更灵活一些</p>
+<a id="more"></a>
+<hr>
+<h4 id="创建-kafka-source"><a href="#创建-kafka-source" class="headerlink" title="创建 kafka_source"></a>创建 kafka_source</h4><p>kafka_source 表直接对接 Kafka Topic，是 Kafka 消息订阅引擎 </p>
+<p>消费的消息会被自动追踪，因此每个消息在不同的消费组里<strong>只会记录一次</strong>，这句话非常重要</p>
+<p>所以我们不能随便对 kafka_source 表进行查询操作，</p>
+<p>因为每条消息在一个消费组内只记录一次，所以查询操作会导致下游数据的丢失</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> kafka_source (</span><br><span class="line">  ts UInt64,</span><br><span class="line">  <span class="keyword">level</span> <span class="keyword">String</span>,</span><br><span class="line">  message <span class="keyword">String</span></span><br><span class="line">)</span><br><span class="line"><span class="keyword">ENGINE</span> = Kafka</span><br><span class="line"><span class="keyword">SETTINGS</span> kafka_broker_list = <span class="string">'10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092'</span>,</span><br><span class="line">         kafka_topic_list = <span class="string">'ck_test'</span>,</span><br><span class="line">         kafka_group_name = <span class="string">'test01'</span>,</span><br><span class="line">         kafka_format = <span class="string">'JSONEachRow'</span>,</span><br><span class="line">         kafka_num_consumers = <span class="number">2</span>;</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建-target-表"><a href="#创建-target-表" class="headerlink" title="创建 target 表"></a>创建 target 表</h4><p>target 表为 Kafka -&gt; ClickHouse 的目标表</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">CREATE TABLE target</span><br><span class="line">(</span><br><span class="line">  ts DateTime,</span><br><span class="line">  level String,</span><br><span class="line">  message String</span><br><span class="line">)</span><br><span class="line">ENGINE &#x3D; MergeTree()</span><br><span class="line">PARTITION BY toYYYYMM(ts)</span><br><span class="line">ORDER BY level;</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建物化视图"><a href="#创建物化视图" class="headerlink" title="创建物化视图"></a>创建物化视图</h4><p>source_target_mv 物化视图为 kafka_source 和 target 之间的连接器</p>
+<p>控制数据从哪来、到哪去</p>
+<p>还可以进行数据落地前的逻辑加工</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">CREATE MATERIALIZED VIEW source_target_mv TO target AS</span><br><span class="line">SELECT</span><br><span class="line">  toDateTime(ts) AS ts,</span><br><span class="line">  level,</span><br><span class="line">  message</span><br><span class="line">FROM kafka_source;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Tips"><a href="#Tips" class="headerlink" title="Tips"></a>Tips</h4><p>1.不要手动对 kafka_source 表进行任何查询操作！！</p>
+<p>2.Kafka 数据接入时，会对 Json 中的 Key 字段进行赋值，</p>
+<p>   因为 Value 为空时，Json 的 Key 会进行缺省，缺省的 Key 对应的字段落表时值为空。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/ClickHouse/" rel="tag"># ClickHouse</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/07/26/Flink%E6%9C%AC%E5%9C%B0%E8%B0%83%E8%AF%95WebUI/" rel="prev" title="Flink 本地开发 Web UI DashBoard">
+                  <i class="fa fa-chevron-left"></i> Flink 本地开发 Web UI DashBoard
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/07/27/ClickHouseKafka%E6%95%B0%E6%8D%AE%E6%8E%A5%E5%85%A502%E2%80%94%E2%80%94Schema%E4%BF%AE%E6%94%B9%E6%B5%81%E7%A8%8B/" rel="next" title="ClickHouse Kafka 数据接入 —— Schema 修改流程">
+                  ClickHouse Kafka 数据接入 —— Schema 修改流程 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

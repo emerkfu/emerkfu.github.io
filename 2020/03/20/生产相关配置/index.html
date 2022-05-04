@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="记录了生产的组件版本、数据量大小、提交方式、分配的资源数量">
+<meta property="og:type" content="article">
+<meta property="og:title" content="生产相关配置">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2020/03/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="记录了生产的组件版本、数据量大小、提交方式、分配的资源数量">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-03-20T14:32:05.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:21:45.531Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="生产配置">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2020/03/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>生产相关配置 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-overview-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2020/03/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          生产相关配置
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2020-03-20 22:32:05" itemprop="dateCreated datePublished" datetime="2020-03-20T22:32:05+08:00">2020-03-20</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/" itemprop="url" rel="index"><span itemprop="name">生产配置</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <div id="hexo-blog-encrypt" data-wpm="Oh, this is an invalid password. Check and try again, please." data-whm="OOPS, these decrypted content may changed, but you can still have a look.">
+  <div class="hbe-input-container">
+  <input type="password" id="hbePass" placeholder="" />
+    <label for="hbePass">请输入密码...</label>
+    <div class="bottom-line"></div>
+  </div>
+  <script id="hbeData" type="hbeData" data-hmacdigest="133ced714506e802a6d1d2f8c459c127c8c8d3b25b19c6d8ed4a81f2761b8518">f823c662eca778d05e596040a718e3a5582662ef883b6b44d6f0f0f086c0e5df3b966349e5cd1517b04c7e000c2481b1ac1e495c0ee8f2560e07f70a5f1acad0e84a49940551f4e2da7502f83af326dc47ede7d94ad048a8768d88b2bb351aef29c8b14238ea4a852ea19c1459451fc067b622dbb1c5be49fb849a096892d96446e6afbbd90b6af838454510a166b743eb57741eddf582538ceab6f21c9bbc51142d0fc6e615094dc7e381c14af7078a082460a60153f2fa4efb5d54b219027d7ced1cabbb413fbf686be203f5343f0ec1bfbf8c4e9dbc5bcdadcd8798fed8057c7824383ec8611e5d8dbeb41ce578b85108c01003820455df0bf85a66660ab35634d57ef2c48c9f3f2625f40ec339bc372b2d832b3a1747174535fcb7b4219599245a83b8b135f78809feda65c86ea736c88b0504054d34896a5b61d7c76e18da7aab622b88109b770ba96c798225db89ac5e3d2045699347dbdb2ea9f3437afca06b7526c4531d89a178c53196514dc10965b7ea0ca4937ad1b72ab0a6b7b87e47eb7ead73c27d7c620ea7a0d18178df5cec50becc03202794fffbab8ad6fa474b60c3da942bf8740d543dee2963a1068841524ecdea900daee15aad7bb1f6a2be182cc410b8d0038ed448b7037a6f96792559950001302d1691fb3ad823884f48ff89ba32adc1ebdb3e69ee805bc7b3b56a8da11acec95f534956822dcb4a93d1eff5e276a118489a66d7a74ea4e5e4d282ce404f4d031b0ad810601926257602f7b58ee038b43871385e9815b63c9f78ce65ce9dccc5ba0bc444d89cfc9e6120bfa9081e5330f8873101f7075af71ec9393a093a3a94205423f510b45c1f6ca8cdba3f31de13330b21adfeea50c57178279d1d6770546f6d6a8cc40e8abcef2182265e858b57e478b1a97b1b2f3edb06a26bfbed27921ff931cbe13c9cdd0ad281f6b3bf00b4a59896c10cfc1e8567f940801afc405b89693acfd879a5f995d3bcc9e1646c5b68e1b91cf0d48405ce4cbc3fa7d39d109339465760be0acb6380a6c3f41bae2454cd57e0eb7f1e9ae36ce143d7a61cb6f0706ac61ac0847b9b69cca89ed1901642b482b4a260f41927c0b18265c5b1fcd9f253a4e62b4ef7eb28c3c66f635eebf9014b4d27fee94938f805ddb3edc7c75d17e1d7aea1086ec5c5b0134df490388f04de10f3473b117e0f2d63586334c684dcbe1e61d6dde1d984ddc26ab377b8407e625935c1121775117ffa8d60a1977469e9afe2940bee991432b7738b905fa48b87c0701249061892fca717984b3ecaec5fd32b8227c062d47520793c2f5aec7b7e36e6f54cc45037f015491ee478169b1162c34c93603b79e698b14ddf105f646e81639732575e0cd303339b80b549452b99d60c06a8ddb75747f90526858f47c268ce4180b3078d73b01e3e79275fd0f3e06af569392319a163b47d344cfed6ecca71fd0954ced125c596e98974bca96b320becf56e27e3daea07529c72f1effe1c60c92017ec601d8b0f75299d054b4a497167bb15fede9d358fd884dfca2a971d33fc9906305561ef386b98b5bef025103070319d49db1cd5e2d3f7ea30d24cb72be7c8f122efab8e1facb87417dcc7cee2bb2604bc2b44db75798c4522101c8b75adb1732c526c3f7d785012d62c97b3a425c3ef843bf38e749fd9e41d7d945e16c39b3f604ad7d800ebba804d602a80696e425c435d6725b29672cf49ee980bc9c2f241f9e8f4809f6fb5ab0113d43d914c9f7b86d3c100498b0b90d8127a9cd63cb89a34613bf4df6a7e0f5a74a9f8c38cdee927df4934cd823740ce8001333e10ded4c5f56a1e63caa998566db9c1515c1a0683929ce704b65dcf15592a73cb292ecdbaf149528c26b5ef59f20f7bd2fe32eae5b347d454c3a60ecca9cf0bc4791d3ba9cf32975b897329dbddb061c2361582c70011afbf4e4d1d94efaf5b00e7bd874bd4febf4e1f0b9e2581f8f3a8fc3a528667a6091fc0cf44c05c3ec99dc4b224b8aee9deee00e528fef9aaf8ff43402e3a60f307bd6832a07ebff203fcfe334536a3b119e5e2ada85190ed49718f3010b7b5b08f7333ae750b89b5c0b2e283065b07262f9bb72e1a0eed79631eb88188d014dc9471dfacd64c4da0913a8331d1d2db00beb403c7a51f1cfeabf96014ca63e557d777594e959ba5c6c3dade274a05049c520dbde2a2bd94628cae17edfde088581799fbcfe6638d9e96051113ee4a014b22eac0911c321d282d051a972e3bfa71fefbe99d605c71e838b6a04ca76b53f75f9dd4d3ccafd51a41801b74896100a876d3d2263d0d724f7bf4bdae9081d48cdd0233c0a199919d2298e3f5b53bbff4e567e601bccbefdb33572a0cac226886d1468eab89043c6848897c44f3c36d598ef07eacfa4825d6fbacb6c0f2c44a76657f42fd1e6d96f73321676257b3ca4e5b7a8ebe4a15c9f757529ca141926ae0b2c8192b6b9bad891dbaf8e25d903995089002b18012c2f9e7000f511d2700505dd82cfa68dc2417044065e2abf5442498a27e030e8aa814024557faf9af9322ed487c7c878d1f9d1505c27a42e341dcd2f31612ce7f3d3f2b5f9906f6056c511ad9689de6eb1e19577e1220dd685eeca1a8a0c7fb5472572bf71ee7fd</script>
+</div>
+<script src="/lib/blog-encrypt.js"></script><link href="/css/blog-encrypt.css" rel="stylesheet" type="text/css">
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%94%9F%E4%BA%A7%E9%85%8D%E7%BD%AE/" rel="tag"># 生产配置</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2019/04/17/SparkStreaming%E8%BF%9B%E9%98%B6/" rel="prev" title="SparkStreaming 进阶">
+                  <i class="fa fa-chevron-left"></i> SparkStreaming 进阶
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="next" title="HBase 基本概念和使用">
+                  HBase 基本概念和使用 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

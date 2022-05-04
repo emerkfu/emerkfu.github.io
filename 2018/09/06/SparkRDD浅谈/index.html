@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念 它是分布式的，可以分布在多台机器上，进行计算 它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换 它表示已被分区，不可变的并能够被并行操作的数据集合 这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spark RDD浅谈">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念 它是分布式的，可以分布在多台机器上，进行计算 它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换 它表示已被分区，不可变的并能够被并行操作的数据集合 这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png">
+<meta property="article:published_time" content="2018-09-06T11:00:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:22:08.820Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Spark">
+<meta property="article:tag" content="Spark RDD">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Spark RDD浅谈 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#对RDD的理解"><span class="nav-number">1.</span> <span class="nav-text">对RDD的理解</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#官方在源码中对RDD的注释："><span class="nav-number">1.1.</span> <span class="nav-text">官方在源码中对RDD的注释：</span></a></li></ol></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Spark RDD浅谈
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2018-09-06 19:00:00" itemprop="dateCreated datePublished" datetime="2018-09-06T19:00:00+08:00">2018-09-06</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Spark/" itemprop="url" rel="index"><span itemprop="name">Spark</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>对于RDD的理解，RDD是做弹性分布式数据集，是Spark的核心概念</p>
+<p>它是分布式的，可以分布在多台机器上，进行计算</p>
+<p>它是弹性的，计算过程中内存不够时它会和磁盘进行数据交换</p>
+<p>它表示已被分区，不可变的并能够被并行操作的数据集合</p>
+<p>这些特性，大家都能说出来，觉得很简单，仅看过几篇文章的人，也能有同样的回答，但是对于RDD有独到的理解吗？</p>
+<a id="more"></a>
+<hr>
+<h4 id="对RDD的理解"><a href="#对RDD的理解" class="headerlink" title="对RDD的理解"></a>对RDD的理解</h4><h5 id="官方在源码中对RDD的注释："><a href="#官方在源码中对RDD的注释：" class="headerlink" title="官方在源码中对RDD的注释："></a>官方在源码中对RDD的注释：</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">* Internally, each RDD is characterized by five main properties:</span><br><span class="line">*   </span><br><span class="line">*  - A list of partitions  一个分区的列表</span><br><span class="line">*  - A function <span class="keyword">for</span> computing each split  一个计算每个分区的函数，即RDD的分片函数</span><br><span class="line">*  - A list of dependencies on other RDDs    RDD之间的依赖关系 </span><br><span class="line">*  - Optionally, a Partitioner <span class="keyword">for</span> key-<span class="function">value <span class="title">RDDs</span> <span class="params">(e.g. to say that the RDD is hash-partitioned)</span>    可选：一个Partitioner</span></span><br><span class="line"><span class="function">*  - Optionally, a list of preferred locations to compute each split <span class="title">on</span> <span class="params">(e.g. block locations <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">*    an HDFS file)</span>    可选：一个列表，存储存取每个Partition的优先位置</span></span><br><span class="line"><span class="function">*</span></span><br><span class="line"><span class="function">* All of the scheduling and execution in Spark is done based on these methods, allowing each RDD</span></span><br><span class="line"><span class="function">* to implement its own way of computing itself. Indeed, users can implement custom <span class="title">RDDs</span> <span class="params">(e.g. <span class="keyword">for</span></span></span></span><br><span class="line"><span class="function"><span class="params">* reading data from a new storage system)</span> by overriding these functions. Please refer to the</span></span><br><span class="line"><span class="function">* [[http:<span class="comment">//www.cs.berkeley.edu/~matei/papers/2012/nsdi_spark.pdf Spark paper]] for more details</span></span></span><br><span class="line"><span class="function">* on RDD internals.</span></span><br><span class="line"><span class="function">*/</span></span><br></pre></td></tr></table></figure>
+<p>通过官方的注释，我们可以了解到，每个RDD都有五个重要的属性。</p>
+<ol>
+<li><p>一个分区的列表。我们可以理解为是一组分片，分片就是数据集的基本组成单位，对于RDD来说，每个分片都会被一个计算任务处理，并决定并行计算的粒度。<br>用户创建RDD时，可以指定RDD的分片个数，若没有指定，则采用默认（默认值：程序所分配的CPU Cores数目），下图描述了分区存储的计算模型，每个分配的存储是有BlockManager实现的。<br>每个分区都会被逻辑映射成BlockManager的一个block，而这个block会被一个Task负责计算。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/RDD-Partiton.png" alt="RDD Partiton 的存储和计算模型"></p>
+</li>
+<li><p>一个计算每个分区的函数。即RDD的计算分片compute函数，Spark中的RDD计算是以分片为单位的，每个RDD都会实现compute函数以达到这个目的。compute函数会对迭代器进行复核，不需要保存每次计算的结果。</p>
+</li>
+<li><p>RDD之间的依赖关系。这里要说一下RDD的依赖关系<br>RDD和它的依赖的parent RDD(s)的关系有两种不同的类型，即宽依赖和窄依赖</p>
+</li>
+</ol>
+<ul>
+<li>窄依赖指的是每一个parent RDD的partition最多被子RDD的一个partition使用</li>
+<li>宽依赖是指多个子RDD的partition会依赖同一个parent RDD的partition<br>接下来，从不同类型的转换来进一步理解RDD的窄依赖和宽依赖的区别，如下图所示。<br><img src="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/20170920031301_87301.png" alt="RDD 宽依赖 窄依赖"><br>对于map和filter形式的转换来说，它们只是将Partition的数据根据转换的规则进行转化，并不涉及其他的处理，可以简单地认为只是将数据从一个形式转换到另一个形式。<br>对于union，只是将多个RDD合并成一个，parent RDD的Partition(s)不会有任何的变化，可以认为只是把parent RDD的Partition(s)简单进行复制与合并。<br>对于join，如果每个Partition仅仅和已知的、特定的Partition进行join，那么这个依赖关系也是窄依赖。对于这种有规则的数据的join，并不会引入昂贵的Shuffle。<br>对于窄依赖，由于RDD每个Partition依赖固定数量的parent RDD(s)的Partition(s)，因此可以通过一个计算任务来处理这些Partition，并且这些Partition相互独立，这些计算任务也就可以并行执行了。<br>对于groupByKey，子RDD的所有Partition(s)会依赖于parent RDD的所有Partition(s)，子RDD的Partition是parent RDD的所有Partition Shuffle的结果，因此这两个RDD是不能通过一个计算任务来完成的。同样，对于需要parent RDD的所有Partition进行join的转换，也是需要Shuffle，这类join的依赖就是宽依赖而不是前面提到的窄依赖了。<br>不同的操作依据其特性，可能会产生不同的依赖。例如map、filter操作会产生 narrow dependency 。reduceBykey操作会产生 wide / shuffle dependency。<br>通俗点来说，RDD的每个Partition，仅仅依赖于父RDD中的一个Partition，这才是窄。 就这么简单！<br>反正，子Rdd的partition和父Rdd的Partition如果是一对一就是窄依赖，这样理解就好区分了 　　　　　　　　　<br>捋一下这里的源码：<br>所有的依赖都要实现<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">trait Dependency[T]：</span><br><span class="line">abstract class Dependency[T] extends Serializable &#123;</span><br><span class="line">    def rdd: RDD[T]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中rdd就是依赖的parent RDD。<br>对于窄依赖的实现（有两种）<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] &#123;</span><br><span class="line">    <span class="comment">//返回子RDD的partitionId依赖的所有的parent RDD的Partition(s)</span></span><br><span class="line">    <span class="function">def <span class="title">getParents</span><span class="params">(partitionId: Int)</span>: Seq[Int]</span></span><br><span class="line"><span class="function">    override def rdd: RDD[T] </span>= _rdd</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+窄依赖是有两种具体实现，分别如下：<br>一种是一对一的依赖，即OneToOneDependency：<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) &#123;</span><br><span class="line">    <span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= List(partitionId)</span><br><span class="line">    通过getParents的实现不难看出，RDD仅仅依赖于parent RDD相同ID的Partition。</span><br></pre></td></tr></table></figure>
+还有一个是范围的依赖，即RangeDependency，它仅仅被org.apache.spark.rdd.UnionRDD使用。UnionRDD是把多个RDD合成一个RDD，这些RDD是被拼接而成，即每个parent RDD的Partition的相对顺序不会变，只不过每个parent RDD在UnionRDD中的Partition的起始位置不同。因此它的getPartents如下：<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">override def <span class="title">getParents</span><span class="params">(partitionId: Int)</span> </span>= &#123;</span><br><span class="line">    <span class="keyword">if</span>(partitionId &gt;= outStart &amp;&amp; partitionId &lt; outStart + length) &#123;</span><br><span class="line">       List(partitionId - outStart + inStart)</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">       Nil</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+其中，inStart是parent RDD中Partition的起始位置，outStart是在UnionRDD中的起始位置，length就是parent RDD中Partition的数量。<br>对于宽依赖的实现（只有一种）<br>宽依赖的实现只有一种：ShuffleDependency。子RDD依赖于parent RDD的所有Partition，因此需要Shuffle过程：<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">class ShuffleDependency[K, V, C](</span><br><span class="line">    <span class="meta">@transient</span> _rdd: RDD[_ &lt;: Product2[K, V]],</span><br><span class="line">    val partitioner: Partitioner,</span><br><span class="line">    val serializer: Option[Serializer] = None,</span><br><span class="line">    val keyOrdering: Option[Ordering[K]] = None,</span><br><span class="line">    val aggregator: Option[Aggregator[K, V, C]] = None,</span><br><span class="line">    val mapSideCombine: Boolean = <span class="keyword">false</span>)</span><br><span class="line">extends Dependency[Product2[K, V]] &#123;</span><br><span class="line"> </span><br><span class="line">override def rdd = _rdd.asInstanceOf[RDD[Product2[K, V]]]</span><br><span class="line"><span class="comment">//获取新的shuffleId</span></span><br><span class="line">val shuffleId: Int = _rdd.context.newShuffleId()</span><br><span class="line"><span class="comment">//向ShuffleManager注册Shuffle的信息</span></span><br><span class="line">val shuffleHandle: ShuffleHandle =</span><br><span class="line">_rdd.context.env.shuffleManager.registerShuffle(</span><br><span class="line">    shuffleId, _rdd.partitions.size, <span class="keyword">this</span>)</span><br><span class="line">    _rdd.sparkContext.cleaner.foreach(_.registerShuffleForCleanup(<span class="keyword">this</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+注意：宽依赖支持两种Shuffle Manager。<br>即org.apache.spark.shuffle.hash.HashShuffleManager（基于Hash的Shuffle机制）和<br>org.apache.spark.shuffle.sort.SortShuffleManager（基于排序的Shuffle机制）。</li>
+</ul>
+<ol start="4">
+<li><p>可选：KV RDD可重分区。当前Spark中实现了两种类型的分片函数，一个是基于哈希的HashPartitioner，另外一个是基于范围的RangePartitioner。只有对于key-value的RDD才会有Partitioner，非key-value的RDD的Partitioner的值是None。Partitioner函数不但决定了RDD本身的分片数量，也决定了parent RDD Shuffle输出时的分片数量。</p>
+</li>
+<li><p>可选：移动计算，存储存取每个Partition的优先位置。对于一个HDFS文件来说，这个列表保存的就是每个Partition所在块的位置。</p>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Spark/" rel="tag"># Spark</a>
+              <a href="/tags/Spark-RDD/" rel="tag"># Spark RDD</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/" rel="prev" title="Spark 核心概念RDD">
+                  <i class="fa fa-chevron-left"></i> Spark 核心概念RDD
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2018/09/16/Spark%20Transformations%E3%80%81Action/" rel="next" title="Spark Transformations、Action">
+                  Spark Transformations、Action <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

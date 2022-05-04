@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="转载来源:http:&#x2F;&#x2F;sharkdtu.com&#x2F;posts&#x2F;spark-rdd.html RDD全称叫做弹性分布式数据集(Resilient Distributed Datasets)，它是一种分布式的内存抽象，表示一个只读的记录分区的集合，它只能通过其他RDD转换而创建，为此，RDD支持丰富的转换操作(如map, join, filter, groupBy等)，通过这种转换操作，新的RDD则包">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spark 核心概念RDD">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="转载来源:http:&#x2F;&#x2F;sharkdtu.com&#x2F;posts&#x2F;spark-rdd.html RDD全称叫做弹性分布式数据集(Resilient Distributed Datasets)，它是一种分布式的内存抽象，表示一个只读的记录分区的集合，它只能通过其他RDD转换而创建，为此，RDD支持丰富的转换操作(如map, join, filter, groupBy等)，通过这种转换操作，新的RDD则包">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-readonly.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transform.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transformations-actions.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dependency.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dag.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-cache.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-runtime.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-wordcount.png">
+<meta property="article:published_time" content="2018-09-04T11:00:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:22:07.011Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Spark">
+<meta property="article:tag" content="Spark RDD">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Spark 核心概念RDD | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#RDD特点"><span class="nav-number">1.</span> <span class="nav-text">RDD特点</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#分区"><span class="nav-number">1.1.</span> <span class="nav-text">分区</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#只读"><span class="nav-number">1.2.</span> <span class="nav-text">只读</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#依赖"><span class="nav-number">1.3.</span> <span class="nav-text">依赖</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#缓存"><span class="nav-number">1.4.</span> <span class="nav-text">缓存</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#checkpoint"><span class="nav-number">1.5.</span> <span class="nav-text">checkpoint</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#小结"><span class="nav-number">1.6.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#编程模型"><span class="nav-number">2.</span> <span class="nav-text">编程模型</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#应用举例"><span class="nav-number">2.1.</span> <span class="nav-text">应用举例</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#小结-1"><span class="nav-number">2.2.</span> <span class="nav-text">小结</span></a></li></ol></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Spark 核心概念RDD
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2018-09-04 19:00:00" itemprop="dateCreated datePublished" datetime="2018-09-04T19:00:00+08:00">2018-09-04</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Spark/" itemprop="url" rel="index"><span itemprop="name">Spark</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>转载来源:<br><a href="http://sharkdtu.com/posts/spark-rdd.html" target="_blank" rel="noopener">http://sharkdtu.com/posts/spark-rdd.html</a></p>
+<p>RDD全称叫做弹性分布式数据集(Resilient Distributed Datasets)，它是一种分布式的内存抽象，表示一个只读的记录分区的集合，它只能通过其他RDD转换而创建，为此，RDD支持丰富的转换操作(如map, join, filter, groupBy等)，通过这种转换操作，新的RDD则包含了如何从其他RDDs衍生所必需的信息，所以说RDDs之间是有依赖关系的。<br>基于RDDs之间的依赖，RDDs会形成一个有向无环图DAG，该DAG描述了整个流式计算的流程，实际执行的时候，RDD是通过血缘关系(Lineage)一气呵成的，即使出现数据分区丢失，也可以通过血缘关系重建分区，总结起来，基于RDD的流式计算任务可描述为：从稳定的物理存储(如分布式文件系统)中加载记录，记录被传入由一组确定性操作构成的DAG，然后写回稳定存储。<br>另外RDD还可以将数据集缓存到内存中，使得在多个操作之间可以重用数据集，基于这个特点可以很方便地构建迭代型应用(图计算、机器学习等)或者交互式数据分析应用。可以说Spark最初也就是实现RDD的一个分布式系统，后面通过不断发展壮大成为现在较为完善的大数据生态系统，简单来讲，Spark-RDD的关系类似于Hadoop-MapReduce关系。</p>
+<a id="more"></a>
+<hr>
+<h4 id="RDD特点"><a href="#RDD特点" class="headerlink" title="RDD特点"></a>RDD特点</h4><p>RDD表示只读的分区的数据集，对RDD进行改动，只能通过RDD的转换操作，由一个RDD得到一个新的RDD，新的RDD包含了从其他RDD衍生所必需的信息。<br>RDDs之间存在依赖，RDD的执行是按照血缘关系延时计算的。如果血缘关系较长，可以通过持久化RDD来切断血缘关系。</p>
+<h5 id="分区"><a href="#分区" class="headerlink" title="分区"></a>分区</h5><p>如下图所示，RDD逻辑上是分区的，每个分区的数据是抽象存在的，计算的时候会通过一个compute函数得到每个分区的数据。<br>如果RDD是通过已有的文件系统构建，则compute函数是读取指定文件系统中的数据，如果RDD是通过其他RDD转换而来，则compute函数是执行转换逻辑将其他RDD的数据进行转换。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-partition.png" alt="rdd partition"></p>
+<h5 id="只读"><a href="#只读" class="headerlink" title="只读"></a>只读</h5><p>如下图所示，RDD是只读的，要想改变RDD中的数据，只能在现有的RDD基础上创建新的RDD。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-readonly.png" alt="rdd readonly"></p>
+<p>由一个RDD转换到另一个RDD，可以通过丰富的操作算子实现，不再像MapReduce那样只能写map和reduce了，如下图所示。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transform.png" alt="rdd transform"></p>
+<p>RDD的操作算子包括两类，一类叫做transformations，它是用来将RDD进行转化，构建RDD的血缘关系；另一类叫做actions，它是用来触发RDD的计算，得到RDD的相关计算结果或者将RDD保存的文件系统中。下图是RDD所支持的操作算子列表。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-transformations-actions.png" alt="rdd transformations actions"></p>
+<h5 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h5><p>RDDs通过操作算子进行转换，转换得到的新RDD包含了从其他RDDs衍生所必需的信息，RDDs之间维护着这种血缘关系，也称之为依赖。<br>如下图所示，依赖包括两种，一种是窄依赖，RDDs之间分区是一一对应的，另一种是宽依赖，下游RDD的每个分区与上游RDD(也称之为父RDD)的每个分区都有关，是多对多的关系。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dependency.png" alt="rdd dependency"></p>
+<p>通过RDDs之间的这种依赖关系，一个任务流可以描述为DAG(有向无环图)，如下图所示，在实际执行过程中宽依赖对应于Shuffle(图中的reduceByKey和join)，窄依赖中的所有转换操作可以通过类似于管道的方式一气呵成执行(图中map和union可以一起执行)。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-dag.png" alt="rdd dag"></p>
+<h5 id="缓存"><a href="#缓存" class="headerlink" title="缓存"></a>缓存</h5><p>如果在应用程序中多次使用同一个RDD，可以将该RDD缓存起来，该RDD只有在第一次计算的时候会根据血缘关系得到分区的数据，在后续其他地方用到该RDD的时候，会直接从缓存处取而不用再根据血缘关系计算，这样就加速后期的重用。<br>如下图所示，RDD-1经过一系列的转换后得到RDD-n并保存到hdfs，RDD-1在这一过程中会有个中间结果，如果将其缓存到内存，那么在随后的RDD-1转换到RDD-m这一过程中，就不会计算其之前的RDD-0了。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/rdd-cache.png" alt="rdd cache"></p>
+<h5 id="checkpoint"><a href="#checkpoint" class="headerlink" title="checkpoint"></a>checkpoint</h5><p>虽然RDD的血缘关系天然地可以实现容错，当RDD的某个分区数据失败或丢失，可以通过血缘关系重建。<br>但是对于长时间迭代型应用来说，随着迭代的进行，RDDs之间的血缘关系会越来越长，一旦在后续迭代过程中出错，则需要通过非常长的血缘关系去重建，势必影响性能。<br>为此，RDD支持checkpoint将数据保存到持久化的存储中，这样就可以切断之前的血缘关系，因为checkpoint后的RDD不需要知道它的父RDDs了，它可以从checkpoint处拿到数据。</p>
+<h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p>总结起来，给定一个RDD我们至少可以知道如下几点信息：<br>1、分区数以及分区方式；<br>2、由父RDDs衍生而来的相关依赖信息；<br>3、计算每个分区的数据，计算步骤为：<br>    1）如果被缓存，则从缓存中取的分区的数据；<br>    2）如果被checkpoint，则从checkpoint处恢复数据；<br>    3）根据血缘关系计算分区的数据。</p>
+<h4 id="编程模型"><a href="#编程模型" class="headerlink" title="编程模型"></a>编程模型</h4><p>在Spark中，RDD被表示为对象，通过对象上的方法调用来对RDD进行转换。<br>经过一系列的transformations定义RDD之后，就可以调用actions触发RDD的计算，action可以是向应用程序返回结果(count, collect等)，或者是向存储系统保存数据(saveAsTextFile等)。<br>在Spark中，只有遇到action，才会执行RDD的计算(即延迟计算)，这样在运行时可以通过管道的方式传输多个转换。</p>
+<p>要使用Spark，开发者需要编写一个Driver程序，它被提交到集群以调度运行Worker，如下图所示。<br>Driver中定义了一个或多个RDD，并调用RDD上的action，Worker则执行RDD分区计算任务。<br><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-runtime.png" alt="spark runtime"></p>
+<h5 id="应用举例"><a href="#应用举例" class="headerlink" title="应用举例"></a>应用举例</h5><p>下面介绍一个简单的spark应用程序实例WordCount，统计一个数据集中每个单词出现的次数，首先将从hdfs中加载数据得到原始RDD-0，其中每条记录为数据中的一行句子，经过一个flatMap操作，将一行句子切分为多个独立的词，得到RDD-1，再通过map操作将每个词映射为key-value形式，其中key为词本身，value为初始计数值1，得到RDD-2，将RDD-2中的所有记录归并，统计每个词的计数，得到RDD-3，最后将其保存到hdfs。</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.apache.spark._</span><br><span class="line"><span class="keyword">import</span> <span class="type">SparkContext</span>._</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">WordCount</span> </span>&#123;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]) &#123;</span><br><span class="line">    <span class="keyword">if</span> (args.length &lt; <span class="number">2</span>) &#123;</span><br><span class="line">      <span class="type">System</span>.err.println(<span class="string">"Usage: WordCount &lt;inputfile&gt; &lt;outputfile&gt;"</span>);</span><br><span class="line">      <span class="type">System</span>.exit(<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>().setAppName(<span class="string">"WordCount"</span>)</span><br><span class="line">    <span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br><span class="line">    <span class="keyword">val</span> result = sc.textFile(args(<span class="number">0</span>))</span><br><span class="line">                   .flatMap(line =&gt; line.split(<span class="string">" "</span>))</span><br><span class="line">                   .map(word =&gt; (word, <span class="number">1</span>))</span><br><span class="line">                   .reduceByKey(_ + _)</span><br><span class="line">    result.saveAsTextFile(args(<span class="number">1</span>))</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/09/04/Spark%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5RDD/spark-wordcount.png" alt="spark wordcount"></p>
+<h5 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h5><p>基于RDD实现的Spark相比于传统的Hadoop MapReduce有什么优势呢？<br>总结起来应该至少有三点：<br>    1）RDD提供了丰富的操作算子，不再是只有map和reduce两个操作了，对于描述应用程序来说更加方便；<br>    2）通过RDDs之间的转换构建DAG，中间结果不用落地；<br>    3）RDD支持缓存，可以在内存中快速完成计算。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Spark/" rel="tag"># Spark</a>
+              <a href="/tags/Spark-RDD/" rel="tag"># Spark RDD</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2018/08/17/Flume%E6%A1%88%E4%BE%8B/" rel="prev" title="Flume案例">
+                  <i class="fa fa-chevron-left"></i> Flume案例
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2018/09/06/SparkRDD%E6%B5%85%E8%B0%88/" rel="next" title="Spark RDD浅谈">
+                  Spark RDD浅谈 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

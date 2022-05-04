@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="Kafka工作流程的相关内容">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kafka工作流程">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="Kafka工作流程的相关内容">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/anatomy-of-a-topic.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/partition-producer-consumer.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/consumer-pull.png">
+<meta property="article:published_time" content="2019-04-13T13:42:51.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:22:01.143Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Kafka">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/anatomy-of-a-topic.png">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Kafka工作流程 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Kafka生产过程"><span class="nav-number">1.</span> <span class="nav-text">Kafka生产过程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#写入方式"><span class="nav-number">1.1.</span> <span class="nav-text">写入方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#分区（Partition）"><span class="nav-number">1.2.</span> <span class="nav-text">分区（Partition）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#副本（Replication）"><span class="nav-number">1.3.</span> <span class="nav-text">副本（Replication）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#写入流程"><span class="nav-number">1.4.</span> <span class="nav-text">写入流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Broker保存信息"><span class="nav-number">1.5.</span> <span class="nav-text">Broker保存信息</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#存储方式"><span class="nav-number">1.5.1.</span> <span class="nav-text">存储方式</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#存储策略"><span class="nav-number">1.5.2.</span> <span class="nav-text">存储策略</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Kafka消费过程"><span class="nav-number">1.6.</span> <span class="nav-text">Kafka消费过程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#消费模型"><span class="nav-number">1.6.1.</span> <span class="nav-text">消费模型</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#高级API"><span class="nav-number">1.6.2.</span> <span class="nav-text">高级API</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#低级API"><span class="nav-number">1.6.3.</span> <span class="nav-text">低级API</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#消费者组"><span class="nav-number">1.6.4.</span> <span class="nav-text">消费者组</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#消费方式"><span class="nav-number">1.6.5.</span> <span class="nav-text">消费方式</span></a></li></ol></li></ol></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Kafka工作流程
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2019-04-13 21:42:51" itemprop="dateCreated datePublished" datetime="2019-04-13T21:42:51+08:00">2019-04-13</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Kafka/" itemprop="url" rel="index"><span itemprop="name">Kafka</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>Kafka工作流程的相关内容</p>
+<a id="more"></a>
+<hr>
+<h3 id="Kafka生产过程"><a href="#Kafka生产过程" class="headerlink" title="Kafka生产过程"></a>Kafka生产过程</h3><h4 id="写入方式"><a href="#写入方式" class="headerlink" title="写入方式"></a>写入方式</h4><p>producer采用推（push）模式将消息发布到broker，每条消息都被追加（append）到分区（patition）中，属于顺序写磁盘（顺序写磁盘效率比随机写内存要高，保障kafka吞吐率）。</p>
+<h4 id="分区（Partition）"><a href="#分区（Partition）" class="headerlink" title="分区（Partition）"></a>分区（Partition）</h4><p>Kafka集群有多个消息代理服务器（broker-server）组成，发布到Kafka集群的每条消息都有一个类别，用主题（topic）来表示。通常，不同应用产生不同类型的数据，可以设置不同的主题。一个主题一般会有多个消息的订阅者，当生产者发布消息到某个主题时，订阅了这个主题的消费者都可以接收到生成者写入的新消息。</p>
+<p>Kafka集群为每个主题维护了分布式的分区（partition）日志文件，物理意义上可以把主题（topic）看作进行了分区的日志文件（partition log）。主题的每个分区都是一个有序的、不可变的记录序列，新的消息会不断追加到日志中。分区中的每条消息都会按照时间顺序分配到一个单调递增的顺序编号，叫做偏移量（offset），这个偏移量能够唯一地定位当前分区中的每一条消息。</p>
+<p>消息发送时都被发送到一个topic，其本质就是一个目录，而topic是由一些Partition Logs(分区日志)组成，其组织结构如下图所示：<br><img src="/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/anatomy-of-a-topic.png" alt="Topic的结构"><br>上图中的topic有3个分区，每个分区的偏移量都从0开始，不同分区之间的偏移量都是独立的，不会相互影响。<br><img src="/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/partition-producer-consumer.png" alt="Partition的消息是有序的"><br>我们可以看到，每个Partition中的消息都是有序的，生产的消息被不断追加到Partition log上，其中的每一个消息都被赋予了一个唯一的offset值。</p>
+<p>发布到Kafka主题的每条消息包括键值和时间戳。消息到达服务器端的指定分区后，都会分配到一个自增的偏移量。原始的消息内容和分配的偏移量以及其他一些元数据信息最后都会存储到分区日志文件中。消息的键也可以不用设置，这种情况下消息会均衡地分布到不同的分区。</p>
+<ol>
+<li>分区的原因<ol>
+<li>方便在集群中扩展，每个Partition可以通过调整以适应它所在的机器，而一个topic又可以有多个Partition组成，因此整个集群就可以适应任意大小的数据了；</li>
+<li>可以提高并发，因为可以以Partition为单位读写了。传统消息系统在服务端保持消息的顺序，如果有多个消费者消费同一个消息队列，服务端会以消费存储的顺序依次发送给消费者。但由于消息是异步发送给消费者的，消息到达消费者的顺序可能是无序的，这就意味着在并行消费时，传统消息系统无法很好地保证消息被顺序处理。虽然我们可以设置一个专用的消费者只消费一个队列，以此来解决消息顺序的问题，但是这就使得消费处理无法真正执行。<br>Kafka比传统消息系统有更强的顺序性保证，它使用主题的分区作为消息处理的并行单元。Kafka以分区作为最小的粒度，将每个分区分配给消费者组中不同的而且是唯一的消费者，并确保一个分区只属于一个消费者，即这个消费者就是这个分区的唯一读取线程。那么，只要分区的消息是有序的，消费者处理的消息顺序就有保证。每个主题有多个分区，不同的消费者处理不同的分区，所以Kafka不仅保证了消息的有序性，也做到了消费者的负载均衡。</li>
+</ol>
+</li>
+<li>分区的原则<ol>
+<li>指定了partition，则直接使用；</li>
+<li>未指定partition但指定key，通过对key的value进行hash出一个partition；</li>
+<li>partition和key都未指定，使用轮询选出一个partition。<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// DefaultPartitioner类</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">partition</span><span class="params">(String topic, Object key, <span class="keyword">byte</span>[] keyBytes, Object value, <span class="keyword">byte</span>[] valueBytes, Cluster cluster)</span> </span>&#123;</span><br><span class="line">        List&lt;PartitionInfo&gt; partitions = cluster.partitionsForTopic(topic);</span><br><span class="line">        <span class="keyword">int</span> numPartitions = partitions.size();</span><br><span class="line">        <span class="keyword">if</span> (keyBytes == <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">int</span> nextValue = nextValue(topic);</span><br><span class="line">            List&lt;PartitionInfo&gt; availablePartitions = cluster.availablePartitionsForTopic(topic);</span><br><span class="line">            <span class="keyword">if</span> (availablePartitions.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">int</span> part = Utils.toPositive(nextValue) % availablePartitions.size();</span><br><span class="line">                <span class="keyword">return</span> availablePartitions.get(part).partition();</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// no partitions are available, give a non-available partition</span></span><br><span class="line">                <span class="keyword">return</span> Utils.toPositive(nextValue) % numPartitions;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// hash the keyBytes to choose a partition</span></span><br><span class="line">            <span class="keyword">return</span> Utils.toPositive(Utils.murmur2(keyBytes)) % numPartitions;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+</li>
+</ol>
+<h4 id="副本（Replication）"><a href="#副本（Replication）" class="headerlink" title="副本（Replication）"></a>副本（Replication）</h4><p>同一个partition可能会有多个replication（对应 server.properties 配置中的 default.replication.factor=N）。没有replication的情况下，一旦broker 宕机，其上所有 patition 的数据都不可被消费，同时producer也不能再将数据存于其上的patition。引入replication之后，同一个partition可能会有多个replication，而这时需要在这些replication之间选出一个leader，producer和consumer只与这个leader交互，其它replication作为follower从leader 中复制数据。</p>
+<h4 id="写入流程"><a href="#写入流程" class="headerlink" title="写入流程"></a>写入流程</h4><p>producer写入消息流程如下：</p>
+<ol>
+<li>producer先从zookeeper的 “/brokers/…/state”节点找到该partition的leader</li>
+<li>producer将消息发送给该leader</li>
+<li>leader将消息写入本地log</li>
+<li>followers从leader pull消息，写入本地log后向leader发送ACK</li>
+<li>leader收到所有ISR（In Sync Replicas）中的replication的ACK后，增加HW（high watermark，最后commit 的offset）并向producer发送ACK</li>
+</ol>
+<h4 id="Broker保存信息"><a href="#Broker保存信息" class="headerlink" title="Broker保存信息"></a>Broker保存信息</h4><h5 id="存储方式"><a href="#存储方式" class="headerlink" title="存储方式"></a>存储方式</h5><p>物理上把topic分成一个或多个patition（对应 server.properties 中的num.partitions=3配置），每个patition物理上对应一个文件夹（该文件夹存储该patition的所有消息和索引文件），如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[emerk@hadoop001 logs]$ ll</span><br><span class="line">drwxrwxr-x. 2 emerk emerk  4096 3月   6 14:37 first-0</span><br><span class="line">drwxrwxr-x. 2 emerk emerk  4096 3月   6 14:35 first-1</span><br><span class="line">drwxrwxr-x. 2 emerk emerk  4096 3月   6 14:37 first-2</span><br><span class="line">[emerk@hadoop001 logs]$ cd first-0</span><br><span class="line">[emerk@hadoop001 first-0]$ ll</span><br><span class="line">-rw-rw-r--. 1 emerk emerk 10485760 3月   6 14:33 00000000000000000000.index</span><br><span class="line">-rw-rw-r--. 1 emerk emerk      219 3月   6 15:07 00000000000000000000.log</span><br><span class="line">-rw-rw-r--. 1 emerk emerk 10485756 3月   6 14:33 00000000000000000000.timeindex</span><br><span class="line">-rw-rw-r--. 1 emerk emerk        8 3月   6 14:37 leader-epoch-checkpoint</span><br></pre></td></tr></table></figure>
+<h5 id="存储策略"><a href="#存储策略" class="headerlink" title="存储策略"></a>存储策略</h5><p>无论消息是否被消费，kafka都会保留所有消息。有两种策略可以删除旧数据：</p>
+<ol>
+<li>基于时间：log.retention.hours=168</li>
+<li>基于大小：log.retention.bytes=1073741824<br>需要注意的是，因为Kafka读取特定消息的时间复杂度为O(1)，即与文件大小无关，所以这里删除过期文件与提高 Kafka 性能无关。</li>
+</ol>
+<h4 id="Kafka消费过程"><a href="#Kafka消费过程" class="headerlink" title="Kafka消费过程"></a>Kafka消费过程</h4><p>kafka提供了两套consumer API：高级Consumer API和低级API。</p>
+<h5 id="消费模型"><a href="#消费模型" class="headerlink" title="消费模型"></a>消费模型</h5><p>消息由生产者发布到Kafka集群后，会被消费者消费。消息的消费模型有两种：推送模型（push）和拉取模型（pull）。</p>
+<p>基于推送模型（push）的消息系统，由消息代理记录消费者的消费状态。消息代理在将消息推送到消费者后，标记这条消息为已消费，但这种方式无法很好地保证消息被处理。比如，消息代理把消息发送出去后，当消费进程挂掉或者由于网络原因没有收到这条消息时，就有可能造成消息丢失（因为消息代理已经把这条消息标记为已消费了，但实际上这条消息并没有被实际处理）。如果要保证消息被处理，消息代理发送完消息后，要设置状态为“已发送”，只有收到消费者的确认请求后才更新为“已消费”，这就需要消息代理中记录所有的消费状态，这种做法显然是不可取的。</p>
+<p>Kafka采用拉取模型，由消费者自己记录消费状态，每个消费者互相独立地顺序读取每个分区的消息。如下图所示，有两个消费者（不同消费者组）拉取同一个主题的消息，消费者A的消费进度是3，消费者B的消费进度是6。消费者拉取的最大上限通过最高水位（watermark）控制，生产者最新写入的消息如果还没有达到备份数量，对消费者是不可见的。这种由消费者控制偏移量的优点是：消费者可以按照任意的顺序消费消息。比如，消费者可以重置到旧的偏移量，重新处理之前已经消费过的消息；或者直接跳到最近的位置，从当前的时刻开始消费。<br><img src="/2019/04/13/Kafka%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B/consumer-pull.png" alt="consumer的pull拉取模式"><br>在一些消息系统中，消息代理会在消息被消费之后立即删除消息。如果有不同类型的消费者订阅同一个主题，消息代理可能需要冗余地存储同一消息；或者等所有消费者都消费完才删除，这就需要消息代理跟踪每个消费者的消费状态，这种设计很大程度上限制了消息系统的整体吞吐量和处理延迟。Kafka的做法是生产者发布的所有消息会一致保存在Kafka集群中，不管消息有没有被消费。用户可以通过设置保留时间来清理过期的数据，比如，设置保留策略为两天。那么，在消息发布之后，它可以被不同的消费者消费，在两天之后，过期的消息就会自动清理掉。</p>
+<h5 id="高级API"><a href="#高级API" class="headerlink" title="高级API"></a>高级API</h5><p>高级API优点：</p>
+<ol>
+<li>写起来简单</li>
+<li>不需要自行去管理offset，系统通过zookeeper自行管理</li>
+<li>不需要管理分区、副本等情况，系统自动管理</li>
+<li>消费者断线会自动根据上一次记录在zookeeper中的offset去接着获取数据（默认设置1分钟更新一下zookeeper中存的offset）</li>
+<li>可以使用group来区分对同一个topic 的不同程序访问分离开来（不同的group记录不同的offset，这样不同程序读取同一个topic才不会因为offset互相影响）</li>
+</ol>
+<p>高级API缺点：</p>
+<ol>
+<li>不能自行控制offset（对于某些特殊需求来说）</li>
+<li>不能细化控制如分区、副本、zk等</li>
+</ol>
+<h5 id="低级API"><a href="#低级API" class="headerlink" title="低级API"></a>低级API</h5><p>低级API优点：</p>
+<ol>
+<li>能够让开发者自己控制offset，想从哪里读取就从哪里读取</li>
+<li>自行控制连接分区，对分区自定义进行负载均衡</li>
+<li>对zookeeper的依赖性降低（如：offset不一定非要靠zk存储，自行存储offset即可，比如存在文件或者内存中）</li>
+</ol>
+<p>低级API缺点：</p>
+<ol>
+<li>太过复杂，需要自行控制offset，连接哪个分区，找到分区leader 等</li>
+</ol>
+<h5 id="消费者组"><a href="#消费者组" class="headerlink" title="消费者组"></a>消费者组</h5><p>消费者是以consumer group消费者组的方式工作，由一个或者多个消费者组成一个组，共同消费一个topic。每个分区在同一时间只能由group中的一个消费者读取，但是多个group可以同时消费这个partition。在图中，有一个由三个消费者组成的group，有一个消费者读取主题中的两个分区，另外两个分别读取一个分区。某个消费者读取某个分区，也可以叫做某个消费者是某个分区的拥有者。</p>
+<p>在这种情况下，消费者可以通过水平扩展的方式同时读取大量的消息。另外，如果一个消费者失败了，那么其他的group成员会自动负载均衡读取之前失败的消费者读取的分区。</p>
+<h5 id="消费方式"><a href="#消费方式" class="headerlink" title="消费方式"></a>消费方式</h5><p>consumer采用pull（拉）模式从broker中读取数据。</p>
+<p>push（推）模式很难适应消费速率不同的消费者，因为消息发送速率是由broker决定的。它的目标是尽可能以最快速度传递消息，但是这样很容易造成consumer来不及处理消息，典型的表现就是拒绝服务以及网络拥塞。而pull模式则可以根据consumer的消费能力以适当的速率消费消息。</p>
+<p>对于Kafka而言，pull模式更合适，它可简化broker的设计，consumer可自主控制消费消息的速率，同时consumer可以自己控制消费方式——即可批量消费也可逐条消费，同时还能选择不同的提交方式从而实现不同的传输语义。</p>
+<p>pull模式不足之处是，如果kafka没有数据，消费者可能会陷入循环中，一直等待数据到达。为了避免这种情况，我们在我们的拉请求中有参数，允许消费者请求在等待数据到达的“长轮询”中进行阻塞（并且可选地等待到给定的字节数，以确保大的传输大小）。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2019/04/12/%E5%8D%95%E8%8A%82%E7%82%B9%E9%83%A8%E7%BD%B2%E4%B8%89%E5%8F%B0Kafka/" rel="prev" title="单节点部署三台Kafka">
+                  <i class="fa fa-chevron-left"></i> 单节点部署三台Kafka
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2019/04/14/Kafka%20Eagle%E5%AE%89%E8%A3%85%E9%83%A8%E7%BD%B2/" rel="next" title="KafkaEagle安装部署">
+                  KafkaEagle安装部署 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="实时消费 Kafka 某 Topic 数据到 Doris 表 Task 创建方法及案例。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Doris Kafka Load">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="实时消费 Kafka 某 Topic 数据到 Doris 表 Task 创建方法及案例。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-7-19.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-12-7.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-13-7.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-13-37.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-15-0.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-18-53.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-19-33.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-20-12.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-21-32.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-21-48.png">
+<meta property="article:published_time" content="2021-05-17T01:23:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:21:51.634Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Doris">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/image2021-4-13_18-7-19.png">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Doris Kafka Load | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Kafka-Topic创建"><span class="nav-number">1.</span> <span class="nav-text">Kafka Topic创建</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#创建Kafka-Topic"><span class="nav-number">1.1.</span> <span class="nav-text">创建Kafka Topic</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看Kafka-Topic"><span class="nav-number">1.2.</span> <span class="nav-text">查看Kafka Topic</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建Doris导入任务"><span class="nav-number">2.</span> <span class="nav-text">创建Doris导入任务</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#语法"><span class="nav-number">2.1.</span> <span class="nav-text">语法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#sql案例"><span class="nav-number">2.2.</span> <span class="nav-text">sql案例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看任务状态"><span class="nav-number">2.3.</span> <span class="nav-text">查看任务状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#手动向Kafka生产数据"><span class="nav-number">2.4.</span> <span class="nav-text">手动向Kafka生产数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Doris-ROUTINE-LOAD-操作"><span class="nav-number">3.</span> <span class="nav-text">Doris ROUTINE LOAD 操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#暂停导入任务"><span class="nav-number">3.1.</span> <span class="nav-text">暂停导入任务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#恢复导入任务"><span class="nav-number">3.2.</span> <span class="nav-text">恢复导入任务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#停止导入任务"><span class="nav-number">3.3.</span> <span class="nav-text">停止导入任务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Doris-Routine-Load-Task-DEMO-案例"><span class="nav-number">4.</span> <span class="nav-text">Doris Routine Load Task DEMO 案例</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#DEMO1：Json字段和Doris-Table字段需要顺序一致的情况"><span class="nav-number">4.1.</span> <span class="nav-text">DEMO1：Json字段和Doris Table字段需要顺序一致的情况</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DEMO2：Json字段和Doris-Table字段顺序不一致的情况"><span class="nav-number">4.2.</span> <span class="nav-text">DEMO2：Json字段和Doris Table字段顺序不一致的情况</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DEMO3：从Json字段取部分字段并做筛选后到Doris"><span class="nav-number">4.3.</span> <span class="nav-text">DEMO3：从Json字段取部分字段并做筛选后到Doris</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Doris-Routine-Load-官方帮助文档"><span class="nav-number">5.</span> <span class="nav-text">Doris Routine Load 官方帮助文档</span></a></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2021/05/17/DorisKafkaLoad/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Doris Kafka Load
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2021-05-17 09:23:00" itemprop="dateCreated datePublished" datetime="2021-05-17T09:23:00+08:00">2021-05-17</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Doris/" itemprop="url" rel="index"><span itemprop="name">Doris</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>实时消费 Kafka 某 Topic 数据到 Doris 表 Task 创建方法及案例。</p>
+<a id="more"></a>
+<hr>
+<h2 id="Kafka-Topic创建"><a href="#Kafka-Topic创建" class="headerlink" title="Kafka Topic创建"></a>Kafka Topic创建</h2><p>Kafka Topic : dorisDemo</p>
+<h3 id="创建Kafka-Topic"><a href="#创建Kafka-Topic" class="headerlink" title="创建Kafka Topic"></a>创建Kafka Topic</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kafka-topics --create --zookeeper cdh9:2181&#x2F;kafka --partitions 3 --replication-factor 2 --topic dorisDemo</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看Kafka-Topic"><a href="#查看Kafka-Topic" class="headerlink" title="查看Kafka Topic"></a>查看Kafka Topic</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kafka-topics --zookeeper cdh9:2181&#x2F;kafka --list</span><br></pre></td></tr></table></figure>
+
+<h2 id="创建Doris导入任务"><a href="#创建Doris导入任务" class="headerlink" title="创建Doris导入任务"></a>创建Doris导入任务</h2><h3 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">CREATE ROUTINE LOAD [database.][job_name] ON [table_name]</span><br><span class="line">[COLUMN TERMINATED BY &quot;column_separator&quot; ,]</span><br><span class="line">[COLUMN (col1, col2, ...) ,]</span><br><span class="line">[WHERE where_condition ,]</span><br><span class="line">[PARTITION (part1, part2, ...)]</span><br><span class="line">[PROPERTIES (&quot;key&quot; &#x3D; &quot;value&quot;, ...)]</span><br><span class="line">FROM [DATA_SOURCE]</span><br><span class="line">[(data_source_properties1 &#x3D; &#39;value1&#39;,</span><br><span class="line">  data_source_properties2 &#x3D; &#39;value2&#39;,</span><br><span class="line">  ...)]</span><br></pre></td></tr></table></figure>
+
+<h3 id="sql案例"><a href="#sql案例" class="headerlink" title="sql案例"></a>sql案例</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">CREATE ROUTINE LOAD routine_load_kafka ON demo_kafka_load_detail</span><br><span class="line">COLUMNS TERMINATED BY &quot;,&quot;,</span><br><span class="line">COLUMNS (a, b, c)</span><br><span class="line">PROPERTIES(</span><br><span class="line">    &quot;desired_concurrent_number&quot;&#x3D;&quot;1&quot;,</span><br><span class="line">    &quot;max_error_number&quot;&#x3D;&quot;1000&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA(</span><br><span class="line">    &quot;kafka_broker_list&quot;&#x3D;&quot;10.0.15.131:9092&quot;,</span><br><span class="line">    &quot;kafka_topic&quot;&#x3D;&quot;dorisDemo&quot;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-7-19.png" alt></p>
+<h3 id="查看任务状态"><a href="#查看任务状态" class="headerlink" title="查看任务状态"></a>查看任务状态</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW ALL ROUTINE LOAD \G</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-12-7.png" alt></p>
+<h3 id="手动向Kafka生产数据"><a href="#手动向Kafka生产数据" class="headerlink" title="手动向Kafka生产数据"></a>手动向Kafka生产数据</h3><p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-13-7.png" alt></p>
+<p>查询Doris load表数据</p>
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-13-37.png" alt></p>
+<p>查看任务状态</p>
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-15-0.png" alt></p>
+<h2 id="Doris-ROUTINE-LOAD-操作"><a href="#Doris-ROUTINE-LOAD-操作" class="headerlink" title="Doris ROUTINE LOAD 操作"></a>Doris ROUTINE LOAD 操作</h2><h3 id="暂停导入任务"><a href="#暂停导入任务" class="headerlink" title="暂停导入任务"></a>暂停导入任务</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PAUSE ROUTINE LOAD FOR [job_name];</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-18-53.png" alt></p>
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-19-33.png" alt></p>
+<h3 id="恢复导入任务"><a href="#恢复导入任务" class="headerlink" title="恢复导入任务"></a>恢复导入任务</h3><p>使用RESUME语句后，任务会短暂的进入 NEED_SCHEDULE 状态，表示任务正在重新调度，一段时间</p>
+<p>后会重新恢复至 RUNING 状态，继续导入数据。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RESUME ROUTINE LOAD FOR [job_name];</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-20-12.png" alt></p>
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-21-32.png" alt></p>
+<p><img src="/2021/05/17/DorisKafkaLoad/image2021-4-13_18-21-48.png" alt></p>
+<h3 id="停止导入任务"><a href="#停止导入任务" class="headerlink" title="停止导入任务"></a>停止导入任务</h3><p>使用STOP语句后，此时导入任务进入 STOP 状态，数据停止导入，任务消亡，无法恢复数据导入。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">STOP ROUTINE &#96;&#96;LOAD&#96; &#96;FOR&#96; &#96;[job_name];</span><br></pre></td></tr></table></figure>
+
+<h2 id="Doris-Routine-Load-Task-DEMO-案例"><a href="#Doris-Routine-Load-Task-DEMO-案例" class="headerlink" title="Doris Routine Load Task DEMO 案例"></a>Doris Routine Load Task DEMO 案例</h2><h3 id="DEMO1：Json字段和Doris-Table字段需要顺序一致的情况"><a href="#DEMO1：Json字段和Doris-Table字段需要顺序一致的情况" class="headerlink" title="DEMO1：Json字段和Doris Table字段需要顺序一致的情况"></a>DEMO1：Json字段和Doris Table字段需要顺序一致的情况</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">CREATE ROUTINE LOAD example_db.kafka_json_to_doris_2 ON demo_ubt_detail</span><br><span class="line">COLUMNS(xwhen,appid,xwho,xwhat,ds,$country,$province,$city,$browser_version,$os_version,$model,$os,$brand,$device_type,$browser,xwhat_id,isChangeXwho,distinct_id,offset,$web_crawler,$is_first_day,$screen_width,$is_first_time,$platform,$ip,$screen_height,$user_agent,$language,$lib,$debug,$is_login,$is_time_calibrated,$lib_version,platform_extra,$time_zone,$session_id)</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot; &#x3D; &quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot; &#x3D; &quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot; &#x3D; &quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot; &#x3D; &quot;false&quot;,</span><br><span class="line">&quot;format&quot; &#x3D; &quot;json&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;ubtDoris1&quot;,</span><br><span class="line">&quot;property.kafka_default_offsets&quot; &#x3D; &quot;OFFSET_BEGINNING&quot;,</span><br><span class="line">&quot;property.auto.offset.reset&quot; &#x3D; &quot;earliest&quot;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h3 id="DEMO2：Json字段和Doris-Table字段顺序不一致的情况"><a href="#DEMO2：Json字段和Doris-Table字段顺序不一致的情况" class="headerlink" title="DEMO2：Json字段和Doris Table字段顺序不一致的情况"></a>DEMO2：Json字段和Doris Table字段顺序不一致的情况</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">CREATE ROUTINE LOAD dwd_homedo_real.dwd_smb_account_info ON dwd_smb_account_info</span><br><span class="line">COLUMNS(user_id, createtime, agentId, login_type, accountName, mobile, login_account, accountId, roleIdAudit, modified_time, roleIds, login_password, accountRealName, disabled, otherPermissions, operatorId, email, fullFileName, memberId)</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot;&#x3D;&quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot;&#x3D;&quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot;&#x3D;&quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot;&#x3D;&quot;false&quot;,</span><br><span class="line">&quot;format&quot;&#x3D;&quot;json&quot;,</span><br><span class="line">&quot;jsonpaths&quot; &#x3D; &quot;[\&quot;$.user_id\&quot;,\&quot;$.createtime\&quot;,\&quot;$.agentId\&quot;,\&quot;$.login_type\&quot;,\&quot;$.accountName\&quot;,\&quot;$.mobile\&quot;,\&quot;$.login_account\&quot;,\&quot;$.accountId\&quot;,\&quot;$.roleIdAudit\&quot;,\&quot;$.modified_time\&quot;,\&quot;$.roleIds\&quot;,\&quot;$.login_password\&quot;,\&quot;$.accountRealName\&quot;,\&quot;$.disabled\&quot;,\&quot;$.otherPermissions\&quot;,\&quot;$.operatorId\&quot;,\&quot;$.email\&quot;,\&quot;$.fullFileName\&quot;,\&quot;$.memberId\&quot;]&quot;,</span><br><span class="line">&quot;strip_outer_array&quot; &#x3D; &quot;false&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;ods_homedo_shop_sysuser_account&quot;,</span><br><span class="line">&quot;property.kafka_default_offsets&quot; &#x3D; &quot;OFFSET_BEGINNING&quot;,</span><br><span class="line">&quot;property.auto.offset.reset&quot; &#x3D; &quot;earliest&quot;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h3 id="DEMO3：从Json字段取部分字段并做筛选后到Doris"><a href="#DEMO3：从Json字段取部分字段并做筛选后到Doris" class="headerlink" title="DEMO3：从Json字段取部分字段并做筛选后到Doris"></a>DEMO3：从Json字段取部分字段并做筛选后到Doris</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">-- Json 数据</span><br><span class="line">&#123;</span><br><span class="line">  &quot;id&quot;: 7247316,</span><br><span class="line">  &quot;tagGroupId&quot;: 30,</span><br><span class="line">  &quot;tagId&quot;: 5619893,</span><br><span class="line">  &quot;promotionId&quot;: 27039,</span><br><span class="line">  &quot;insertTime&quot;: &quot;2021-05-17 14:35:03.037&quot;,</span><br><span class="line">  &quot;updateTime&quot;: &quot;2021-05-17 14:35:03.037&quot;,</span><br><span class="line">  &quot;deleteTime&quot;: &quot;1900-01-01 00:00:00.0&quot;,</span><br><span class="line">  &quot;mark&quot;: 1,</span><br><span class="line">  &quot;version&quot;: 0,</span><br><span class="line">  &quot;sysModifyDate&quot;: 5634101229,</span><br><span class="line">  &quot;tagValue&quot;: &quot;明星品&quot;,</span><br><span class="line">  &quot;eventTime&quot;: &quot;2021-05-17 14:35:04.603&quot;</span><br><span class="line">&#125;</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">-- Doris Table DDL</span><br><span class="line">DROP TABLE IF EXISTS dwd_homedo_real.dwd_homedo_promotion_flag;</span><br><span class="line">CREATE TABLE IF NOT EXISTS dwd_homedo_real.dwd_homedo_promotion_flag(</span><br><span class="line">    promotionId   VARCHAR(1000) NULL,</span><br><span class="line">    tagGroupId    VARCHAR(1000) NULL,</span><br><span class="line">    tagId         VARCHAR(1000) NULL,</span><br><span class="line">    tagValue      VARCHAR(1000) NULL,</span><br><span class="line">    mark          VARCHAR(1000) NULL</span><br><span class="line">)</span><br><span class="line">DUPLICATE KEY(promotionId)</span><br><span class="line">DISTRIBUTED BY HASH(promotionId) BUCKETS 3;</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line">-- Routine Load SQL</span><br><span class="line">CREATE ROUTINE LOAD dwd_homedo_real.dwd_homedo_promotion_flag ON dwd_homedo_promotion_flag</span><br><span class="line">COLUMNS(promotionId, tagGroupId, tagId, tagValue, mark),</span><br><span class="line">WHERE mark &gt; 0</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot;&#x3D;&quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot;&#x3D;&quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot;&#x3D;&quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot;&#x3D;&quot;false&quot;,</span><br><span class="line">&quot;format&quot;&#x3D;&quot;json&quot;,</span><br><span class="line">&quot;jsonpaths&quot; &#x3D; &quot;[\&quot;$.promotionId\&quot;,\&quot;$.tagGroupId\&quot;,\&quot;$.tagId\&quot;,\&quot;$.tagValue\&quot;,\&quot;$.mark\&quot;]&quot;,</span><br><span class="line">&quot;strip_outer_array&quot; &#x3D; &quot;false&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot;&#x3D;&quot;10.0.15.130:9092,10.0.15.131:9092,10.0.15.132:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot;&#x3D;&quot;ods_Homedo_t_Tag_Promotion&quot;,</span><br><span class="line">&quot;property.kafka_default_offsets&quot; &#x3D; &quot;OFFSET_BEGINNING&quot;,</span><br><span class="line">&quot;property.auto.offset.reset&quot; &#x3D; &quot;earliest&quot;</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h2 id="Doris-Routine-Load-官方帮助文档"><a href="#Doris-Routine-Load-官方帮助文档" class="headerlink" title="Doris Routine Load 官方帮助文档"></a>Doris Routine Load 官方帮助文档</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br></pre></td><td class="code"><pre><span class="line">Name: &#39;ROUTINE LOAD&#39;</span><br><span class="line">Description:</span><br><span class="line">例行导入（Routine Load）功能，支持用户提交一个常驻的导入任务，通过不断的从指定的数据源读取数据，将数据导入到 Doris 中。</span><br><span class="line">目前仅支持通过无认证或者 SSL 认证方式，从 Kakfa 导入文本格式（CSV）的数据。</span><br><span class="line">语法：</span><br><span class="line">CREATE ROUTINE LOAD [db.]job_name ON tbl_name</span><br><span class="line">[load_properties]</span><br><span class="line">[job_properties]</span><br><span class="line">FROM data_source</span><br><span class="line">[data_source_properties]</span><br><span class="line">1. [db.]job_name</span><br><span class="line">导入作业的名称，在同一个 database 内，相同名称只能有一个 job 在运行。</span><br><span class="line">2. tbl_name</span><br><span class="line">指定需要导入的表的名称。</span><br><span class="line">3. load_properties</span><br><span class="line">用于描述导入数据。语法：</span><br><span class="line">[column_separator],</span><br><span class="line">[columns_mapping],</span><br><span class="line">[where_predicates],</span><br><span class="line">[partitions]</span><br><span class="line">1. column_separator:</span><br><span class="line">指定列分隔符，如：</span><br><span class="line">COLUMNS TERMINATED BY &quot;,&quot;</span><br><span class="line">默认为：\t</span><br><span class="line">2. columns_mapping:</span><br><span class="line">指定源数据中列的映射关系，以及定义衍生列的生成方式。</span><br><span class="line">1. 映射列：</span><br><span class="line">按顺序指定，源数据中各个列，对应目的表中的哪些列。对于希望跳过的列，可以指定一个不存在的列名。</span><br><span class="line">假设目的表有三列 k1, k2, v1。源数据有4列，其中第1、2、4列分别对应 k2, k1, v1。则书写如下：</span><br><span class="line">COLUMNS (k2, k1, xxx, v1)</span><br><span class="line">其中 xxx 为不存在的一列，用于跳过源数据中的第三列。</span><br><span class="line">2. 衍生列：</span><br><span class="line">以 col_name &#x3D; expr 的形式表示的列，我们称为衍生列。即支持通过 expr 计算得出目的表中对应列的值。</span><br><span class="line">衍生列通常排列在映射列之后，虽然这不是强制的规定，但是 Doris 总是先解析映射列，再解析衍生列。</span><br><span class="line">接上一个示例，假设目的表还有第4列 v2，v2 由 k1 和 k2 的和产生。则可以书写如下：</span><br><span class="line">COLUMNS (k2, k1, xxx, v1, v2 &#x3D; k1 + k2);</span><br><span class="line">3. where_predicates</span><br><span class="line">用于指定过滤条件，以过滤掉不需要的列。过滤列可以是映射列或衍生列。</span><br><span class="line">例如我们只希望导入 k1 大于 100 并且 k2 等于 1000 的列，则书写如下：</span><br><span class="line">WHERE k1 &gt; 100 and k2 &#x3D; 1000</span><br><span class="line">4. partitions</span><br><span class="line">指定导入目的表的哪些 partition 中。如果不指定，则会自动导入到对应的 partition 中。</span><br><span class="line">示例：</span><br><span class="line">PARTITION(p1, p2, p3)</span><br><span class="line">4. job_properties</span><br><span class="line">用于指定例行导入作业的通用参数。</span><br><span class="line">语法：</span><br><span class="line">PROPERTIES (</span><br><span class="line">&quot;key1&quot; &#x3D; &quot;val1&quot;,</span><br><span class="line">&quot;key2&quot; &#x3D; &quot;val2&quot;</span><br><span class="line">)</span><br><span class="line">目前我们支持以下参数：</span><br><span class="line">1. desired_concurrent_number</span><br><span class="line">期望的并发度。一个例行导入作业会被分成多个子任务执行。这个参数指定一个作业最多有多少任务可以同时执行。必须大于0。默认为3。</span><br><span class="line">这个并发度并不是实际的并发度，实际的并发度，会通过集群的节点数、负载情况，以及数据源的情况综合考虑。</span><br><span class="line">例：</span><br><span class="line">&quot;desired_concurrent_number&quot; &#x3D; &quot;3&quot;</span><br><span class="line">2. max_batch_interval&#x2F;max_batch_rows&#x2F;max_batch_size</span><br><span class="line">这三个参数分别表示：</span><br><span class="line">1）每个子任务最大执行时间，单位是秒。范围为 5 到 60。默认为10。</span><br><span class="line">2）每个子任务最多读取的行数。必须大于等于200000。默认是200000。</span><br><span class="line">3）每个子任务最多读取的字节数。单位是字节，范围是 100MB 到 1GB。默认是 100MB。</span><br><span class="line">这三个参数，用于控制一个子任务的执行时间和处理量。当任意一个达到阈值，则任务结束。</span><br><span class="line">例：</span><br><span class="line">&quot;max_batch_interval&quot; &#x3D; &quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot; &#x3D; &quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot; &#x3D; &quot;209715200&quot;</span><br><span class="line">3. max_error_number</span><br><span class="line">采样窗口内，允许的最大错误行数。必须大于等于0。默认是 0，即不允许有错误行。</span><br><span class="line">采样窗口为 max_batch_rows * 10。即如果在采样窗口内，错误行数大于 max_error_number，则会导致例行作业被暂停，需要人工介入检查数据质量问题。</span><br><span class="line">被 where 条件过滤掉的行不算错误行。</span><br><span class="line">4. strict_mode</span><br><span class="line">是否开启严格模式，默认为关闭。如果开启后，非空原始数据的列类型变换如果结果为 NULL，则会被过滤。指定方式为 &quot;strict_mode&quot; &#x3D; &quot;true&quot;</span><br><span class="line">5. timezone</span><br><span class="line">指定导入作业所使用的时区。默认为使用 Session 的 timezone 参数。该参数会影响所有导入涉及的和时区有关的函数结果。</span><br><span class="line">6. format</span><br><span class="line">指定导入数据格式，默认是csv，支持json格式。</span><br><span class="line">7. jsonpaths</span><br><span class="line">jsonpaths: 导入json方式分为：简单模式和匹配模式。如果设置了jsonpath则为匹配模式导入，否则为简单模式导入，具体可参考示例。</span><br><span class="line">8. strip_outer_array</span><br><span class="line">布尔类型，为true表示json数据以数组对象开始且将数组对象中进行展平，默认值是false。</span><br><span class="line">5. data_source</span><br><span class="line">数据源的类型。当前支持：</span><br><span class="line">KAFKA</span><br><span class="line">6. data_source_properties</span><br><span class="line">指定数据源相关的信息。</span><br><span class="line">语法：</span><br><span class="line">(</span><br><span class="line">&quot;key1&quot; &#x3D; &quot;val1&quot;,</span><br><span class="line">&quot;key2&quot; &#x3D; &quot;val2&quot;</span><br><span class="line">)</span><br><span class="line">1. KAFKA 数据源</span><br><span class="line">1. kafka_broker_list</span><br><span class="line">Kafka 的 broker 连接信息。格式为 ip:host。多个broker之间以逗号分隔。</span><br><span class="line">示例：</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;broker1:9092,broker2:9092&quot;</span><br><span class="line">2. kafka_topic</span><br><span class="line">指定要订阅的 Kafka 的 topic。</span><br><span class="line">示例：</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;my_topic&quot;</span><br><span class="line">3. kafka_partitions&#x2F;kafka_offsets</span><br><span class="line">指定需要订阅的 kafka partition，以及对应的每个 partition 的起始 offset。</span><br><span class="line">offset 可以指定从大于等于 0 的具体 offset，或者：</span><br><span class="line">1) OFFSET_BEGINNING: 从有数据的位置开始订阅。</span><br><span class="line">2) OFFSET_END: 从末尾开始订阅。</span><br><span class="line">如果没有指定，则默认从 OFFSET_END 开始订阅 topic 下的所有 partition。</span><br><span class="line">示例：</span><br><span class="line">&quot;kafka_partitions&quot; &#x3D; &quot;0,1,2,3&quot;,</span><br><span class="line">&quot;kafka_offsets&quot; &#x3D; &quot;101,0,OFFSET_BEGINNING,OFFSET_END&quot;</span><br><span class="line">4. property</span><br><span class="line">指定自定义kafka参数。</span><br><span class="line">功能等同于kafka shell中 &quot;--property&quot; 参数。</span><br><span class="line">当参数的 value 为一个文件时，需要在 value 前加上关键词：&quot;FILE:&quot;。</span><br><span class="line">关于如何创建文件，请参阅 &quot;HELP CREATE FILE;&quot;</span><br><span class="line">更多支持的自定义参数，请参阅 librdkafka 的官方 CONFIGURATION 文档中，client 端的配置项。</span><br><span class="line">示例:</span><br><span class="line">&quot;property.client.id&quot; &#x3D; &quot;12345&quot;,</span><br><span class="line">&quot;property.ssl.ca.location&quot; &#x3D; &quot;FILE:ca.pem&quot;</span><br><span class="line">1.使用 SSL 连接 Kafka 时，需要指定以下参数：</span><br><span class="line">&quot;property.security.protocol&quot; &#x3D; &quot;ssl&quot;,</span><br><span class="line">&quot;property.ssl.ca.location&quot; &#x3D; &quot;FILE:ca.pem&quot;,</span><br><span class="line">&quot;property.ssl.certificate.location&quot; &#x3D; &quot;FILE:client.pem&quot;,</span><br><span class="line">&quot;property.ssl.key.location&quot; &#x3D; &quot;FILE:client.key&quot;,</span><br><span class="line">&quot;property.ssl.key.password&quot; &#x3D; &quot;abcdefg&quot;</span><br><span class="line">其中：</span><br><span class="line">&quot;property.security.protocol&quot; 和 &quot;property.ssl.ca.location&quot; 为必须，用于指明连接方式为 SSL，以及 CA 证书的位置。</span><br><span class="line">如果 Kafka server 端开启了 client 认证，则还需设置：</span><br><span class="line">&quot;property.ssl.certificate.location&quot;</span><br><span class="line">&quot;property.ssl.key.location&quot;</span><br><span class="line">&quot;property.ssl.key.password&quot;</span><br><span class="line">分别用于指定 client 的 public key，private key 以及 private key 的密码。</span><br><span class="line"> </span><br><span class="line">2.指定kafka partition的默认起始offset</span><br><span class="line">如果没有指定kafka_partitions&#x2F;kafka_offsets,默认消费所有分区,此时可以指定kafka_default_offsets指定起始 offset。默认为 OFFSET_END，即从末尾开始订阅。</span><br><span class="line">值为</span><br><span class="line">1) OFFSET_BEGINNING: 从有数据的位置开始订阅。</span><br><span class="line">2) OFFSET_END: 从末尾开始订阅。</span><br><span class="line">示例：</span><br><span class="line">&quot;property.kafka_default_offsets&quot; &#x3D; &quot;OFFSET_BEGINNING&quot;</span><br><span class="line">7. 导入数据格式样例</span><br><span class="line">整型类（TINYINT&#x2F;SMALLINT&#x2F;INT&#x2F;BIGINT&#x2F;LARGEINT）：1, 1000, 1234</span><br><span class="line">浮点类（FLOAT&#x2F;DOUBLE&#x2F;DECIMAL）：1.1, 0.23, .356</span><br><span class="line">日期类（DATE&#x2F;DATETIME）：2017-10-03, 2017-06-13 12:34:03。</span><br><span class="line">字符串类（CHAR&#x2F;VARCHAR）（无引号）：I am a student, a</span><br><span class="line">NULL值：\N</span><br><span class="line">Examples:</span><br><span class="line">1. 为 example_db 的 example_tbl 创建一个名为 test1 的 Kafka 例行导入任务。指定列分隔符和 group.id 和 client.id，并且自动默认消费所有分区，且从有数据的位置（OFFSET_BEGINNING）开始订阅</span><br><span class="line">CREATE ROUTINE LOAD example_db.test1 ON example_tbl</span><br><span class="line">COLUMNS TERMINATED BY &quot;,&quot;,</span><br><span class="line">COLUMNS(k1, k2, k3, v1, v2, v3 &#x3D; k1 * 100)</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot; &#x3D; &quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot; &#x3D; &quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot; &#x3D; &quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot; &#x3D; &quot;false&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;broker1:9092,broker2:9092,broker3:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;my_topic&quot;,</span><br><span class="line">&quot;property.group.id&quot; &#x3D; &quot;xxx&quot;,</span><br><span class="line">&quot;property.client.id&quot; &#x3D; &quot;xxx&quot;,</span><br><span class="line">&quot;property.kafka_default_offsets&quot; &#x3D; &quot;OFFSET_BEGINNING&quot;</span><br><span class="line">);</span><br><span class="line">2. 为 example_db 的 example_tbl 创建一个名为 test1 的 Kafka 例行导入任务。导入任务为严格模式。</span><br><span class="line">CREATE ROUTINE LOAD example_db.test1 ON example_tbl</span><br><span class="line">COLUMNS(k1, k2, k3, v1, v2, v3 &#x3D; k1 * 100),</span><br><span class="line">WHERE k1 &gt; 100 and k2 like &quot;%doris%&quot;</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot; &#x3D; &quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot; &#x3D; &quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot; &#x3D; &quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot; &#x3D; &quot;false&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;broker1:9092,broker2:9092,broker3:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;my_topic&quot;,</span><br><span class="line">&quot;kafka_partitions&quot; &#x3D; &quot;0,1,2,3&quot;,</span><br><span class="line">&quot;kafka_offsets&quot; &#x3D; &quot;101,0,0,200&quot;</span><br><span class="line">);</span><br><span class="line">3. 通过 SSL 认证方式，从 Kafka 集群导入数据。同时设置 client.id 参数。导入任务为非严格模式，时区为 Africa&#x2F;Abidjan</span><br><span class="line">CREATE ROUTINE LOAD example_db.test1 ON example_tbl</span><br><span class="line">COLUMNS(k1, k2, k3, v1, v2, v3 &#x3D; k1 * 100),</span><br><span class="line">WHERE k1 &gt; 100 and k2 like &quot;%doris%&quot;</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot; &#x3D; &quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot; &#x3D; &quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot; &#x3D; &quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot; &#x3D; &quot;false&quot;,</span><br><span class="line">&quot;timezone&quot; &#x3D; &quot;Africa&#x2F;Abidjan&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;broker1:9092,broker2:9092,broker3:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;my_topic&quot;,</span><br><span class="line">&quot;property.security.protocol&quot; &#x3D; &quot;ssl&quot;,</span><br><span class="line">&quot;property.ssl.ca.location&quot; &#x3D; &quot;FILE:ca.pem&quot;,</span><br><span class="line">&quot;property.ssl.certificate.location&quot; &#x3D; &quot;FILE:client.pem&quot;,</span><br><span class="line">&quot;property.ssl.key.location&quot; &#x3D; &quot;FILE:client.key&quot;,</span><br><span class="line">&quot;property.ssl.key.password&quot; &#x3D; &quot;abcdefg&quot;,</span><br><span class="line">&quot;property.client.id&quot; &#x3D; &quot;my_client_id&quot;</span><br><span class="line">);</span><br><span class="line">4. 简单模式导入json</span><br><span class="line">CREATE ROUTINE LOAD example_db.test_json_label_1 ON table1</span><br><span class="line">COLUMNS(category,price,author)</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot; &#x3D; &quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot; &#x3D; &quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot; &#x3D; &quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot; &#x3D; &quot;false&quot;,</span><br><span class="line">&quot;format&quot; &#x3D; &quot;json&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;broker1:9092,broker2:9092,broker3:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;my_topic&quot;,</span><br><span class="line">&quot;kafka_partitions&quot; &#x3D; &quot;0,1,2&quot;,</span><br><span class="line">&quot;kafka_offsets&quot; &#x3D; &quot;0,0,0&quot;</span><br><span class="line">);</span><br><span class="line">支持两种json数据格式：</span><br><span class="line">1）&#123;&quot;category&quot;:&quot;a9jadhx&quot;,&quot;author&quot;:&quot;test&quot;,&quot;price&quot;:895&#125;</span><br><span class="line">2）[</span><br><span class="line">&#123;&quot;category&quot;:&quot;a9jadhx&quot;,&quot;author&quot;:&quot;test&quot;,&quot;price&quot;:895&#125;,</span><br><span class="line">&#123;&quot;category&quot;:&quot;axdfa1&quot;,&quot;author&quot;:&quot;EvelynWaugh&quot;,&quot;price&quot;:1299&#125;</span><br><span class="line">]</span><br><span class="line">5. 精准导入json数据格式</span><br><span class="line">CREATE TABLE &#96;example_tbl&#96; (</span><br><span class="line">&#96;category&#96; varchar(24) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;author&#96; varchar(24) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;timestamp&#96; bigint(20) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;dt&#96; int(11) NULL COMMENT &quot;&quot;,</span><br><span class="line">&#96;price&#96; double REPLACE</span><br><span class="line">) ENGINE&#x3D;OLAP</span><br><span class="line">AGGREGATE KEY(&#96;category&#96;,&#96;author&#96;,&#96;timestamp&#96;,&#96;dt&#96;)</span><br><span class="line">COMMENT &quot;OLAP&quot;</span><br><span class="line">PARTITION BY RANGE(&#96;dt&#96;)</span><br><span class="line">(PARTITION p0 VALUES [(&quot;-2147483648&quot;), (&quot;20200509&quot;)),</span><br><span class="line">PARTITION p20200509 VALUES [(&quot;20200509&quot;), (&quot;20200510&quot;)),</span><br><span class="line">PARTITION p20200510 VALUES [(&quot;20200510&quot;), (&quot;20200511&quot;)),</span><br><span class="line">PARTITION p20200511 VALUES [(&quot;20200511&quot;), (&quot;20200512&quot;)))</span><br><span class="line">DISTRIBUTED BY HASH(&#96;category&#96;,&#96;author&#96;,&#96;timestamp&#96;) BUCKETS 4</span><br><span class="line">PROPERTIES (</span><br><span class="line">&quot;storage_type&quot; &#x3D; &quot;COLUMN&quot;,</span><br><span class="line">&quot;replication_num&quot; &#x3D; &quot;1&quot;</span><br><span class="line">);</span><br><span class="line">CREATE ROUTINE LOAD example_db.test1 ON example_tbl</span><br><span class="line">COLUMNS(category, author, price, timestamp, dt&#x3D;from_unixtime(timestamp, &#39;%Y%m%d&#39;))</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">&quot;desired_concurrent_number&quot;&#x3D;&quot;3&quot;,</span><br><span class="line">&quot;max_batch_interval&quot; &#x3D; &quot;20&quot;,</span><br><span class="line">&quot;max_batch_rows&quot; &#x3D; &quot;300000&quot;,</span><br><span class="line">&quot;max_batch_size&quot; &#x3D; &quot;209715200&quot;,</span><br><span class="line">&quot;strict_mode&quot; &#x3D; &quot;false&quot;,</span><br><span class="line">&quot;format&quot; &#x3D; &quot;json&quot;,</span><br><span class="line">&quot;jsonpaths&quot; &#x3D; &quot;[\&quot;$.category\&quot;,\&quot;$.author\&quot;,\&quot;$.price\&quot;,\&quot;$.timestamp\&quot;]&quot;,</span><br><span class="line">&quot;strip_outer_array&quot; &#x3D; &quot;true&quot;</span><br><span class="line">)</span><br><span class="line">FROM KAFKA</span><br><span class="line">(</span><br><span class="line">&quot;kafka_broker_list&quot; &#x3D; &quot;broker1:9092,broker2:9092,broker3:9092&quot;,</span><br><span class="line">&quot;kafka_topic&quot; &#x3D; &quot;my_topic&quot;,</span><br><span class="line">&quot;kafka_partitions&quot; &#x3D; &quot;0,1,2&quot;,</span><br><span class="line">&quot;kafka_offsets&quot; &#x3D; &quot;0,0,0&quot;</span><br><span class="line">);</span><br><span class="line">json数据格式:</span><br><span class="line">[</span><br><span class="line">&#123;&quot;category&quot;:&quot;11&quot;,&quot;title&quot;:&quot;SayingsoftheCentury&quot;,&quot;price&quot;:895,&quot;timestamp&quot;:1589191587&#125;,</span><br><span class="line">&#123;&quot;category&quot;:&quot;22&quot;,&quot;author&quot;:&quot;2avc&quot;,&quot;price&quot;:895,&quot;timestamp&quot;:1589191487&#125;,</span><br><span class="line">&#123;&quot;category&quot;:&quot;33&quot;,&quot;author&quot;:&quot;3avc&quot;,&quot;title&quot;:&quot;SayingsoftheCentury&quot;,&quot;timestamp&quot;:1589191387&#125;</span><br><span class="line">]</span><br><span class="line">说明：</span><br><span class="line">1）如果json数据是以数组开始，并且数组中每个对象是一条记录，则需要将strip_outer_array设置成true，表示展平数组。</span><br><span class="line">2）如果json数据是以数组开始，并且数组中每个对象是一条记录，在设置jsonpath时，我们的ROOT节点实际上是数组中对象。</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Doris/" rel="tag"># Doris</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/05/16/Doris%E5%8A%A8%E6%80%81%E5%88%86%E5%8C%BA%E8%A1%A8/" rel="prev" title="Doris 动态分区表">
+                  <i class="fa fa-chevron-left"></i> Doris 动态分区表
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/05/21/Doris%E5%AE%9E%E6%97%B6%E8%A1%A8%E4%BD%BF%E7%94%A8Hive%E6%95%B0%E6%8D%AE%E5%88%9D%E5%A7%8B%E5%8C%96/" rel="next" title="Doris 实时表使用Hive 数据初始化">
+                  Doris 实时表使用Hive 数据初始化 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

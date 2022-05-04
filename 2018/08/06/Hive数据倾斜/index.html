@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="Hive数据倾斜问题   大表Join大表   大表Join小表   group By">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Hive 数据倾斜">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="Hive数据倾斜问题   大表Join大表   大表Join小表   group By">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-08-06T04:00:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:21:59.843Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Hive">
+<meta property="article:tag" content="数据倾斜">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Hive 数据倾斜 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#大表Join大表"><span class="nav-number">1.</span> <span class="nav-text">大表Join大表</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#思路一：SMB-Join"><span class="nav-number">1.1.</span> <span class="nav-text">思路一：SMB Join</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#思路二：一分为二"><span class="nav-number">1.2.</span> <span class="nav-text">思路二：一分为二</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#大表Join小表"><span class="nav-number">2.</span> <span class="nav-text">大表Join小表</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#思路：MapJoin"><span class="nav-number">2.1.</span> <span class="nav-text">思路：MapJoin</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#group-By解决"><span class="nav-number">3.</span> <span class="nav-text">group By解决</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#思路：加盐去盐"><span class="nav-number">3.1.</span> <span class="nav-text">思路：加盐去盐</span></a></li></ol></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2018/08/06/Hive%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Hive 数据倾斜
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2018-08-06 12:00:00" itemprop="dateCreated datePublished" datetime="2018-08-06T12:00:00+08:00">2018-08-06</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Hive/" itemprop="url" rel="index"><span itemprop="name">Hive</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>Hive数据倾斜问题   大表Join大表   大表Join小表   group By</p>
+<a id="more"></a>
+
+<h4 id="大表Join大表"><a href="#大表Join大表" class="headerlink" title="大表Join大表"></a>大表Join大表</h4><h5 id="思路一：SMB-Join"><a href="#思路一：SMB-Join" class="headerlink" title="思路一：SMB Join"></a>思路一：SMB Join</h5><p>smb是sort merge bucket操作，首先进行排序，继而合并，然后放到所对应的bucket中去，bucket是hive中和分区表类似的技术，就是按照key进行hash，相同的hash值都放到相同的buck中去。在进行两个表联合的时候。我们首先进行分桶，在join会大幅度的对性能进行优化。也就是说，在进行联合的时候，是bukect中的一小部分和bukect中的一小部分进行联合，table联合都是等值连接，相同的key都放到了同一个bucket中去了，那么在联合的时候就会大幅度的减小无关项的扫描。</p>
+<ol>
+<li>设置参数<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join=<span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.optimize.bucketmapjoin.sortedmerge = <span class="literal">true</span>;</span><br><span class="line"><span class="keyword">set</span> hive.auto.convert.sortmerge.join.noconditionaltask=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>两个表的bucket数量相等</li>
+<li>Bucket列、Join列、Sort列、Skewed列为相同的字段</li>
+<li>必须是应用在bucket mapjoin 的场景中</li>
+<li>注意点<br>hive并不检查两个join的表是否已经做好bucket且sorted，需要用户自己去保证join的表，否则可能数据不正确。有两个办法<ul>
+<li>hive.enforce.sorting 设置为true</li>
+<li>手动生成符合条件的数据，通过在sql中用distributed c1 sort by c1 或者 cluster by c1，表创建时必须是CLUSTERED且SORTED，如下</li>
+<li>创建Skewed Table提高有一个或多个列有倾斜值的表的性能，例如：<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li>案例<ol>
+<li>设置先关参数<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test_smb_2(<span class="keyword">mid</span> <span class="keyword">string</span>,age_id <span class="keyword">string</span>)</span><br><span class="line">CLUSTERED <span class="keyword">BY</span>(<span class="keyword">mid</span>) SORTED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">INTO</span> <span class="number">500</span> BUCKETS</span><br><span class="line">SKEWED <span class="keyword">BY</span>(<span class="keyword">mid</span>) <span class="keyword">on</span> (<span class="number">001</span>)</span><br></pre></td></tr></table></figure></li>
+<li>创建桶表<br>user表<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> user_info_bucket(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span>(userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure>
+domain表<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> domain_info_bucket(userid <span class="keyword">string</span>,domainid <span class="keyword">string</span>,<span class="keyword">domain</span> <span class="keyword">string</span>)</span><br><span class="line">clustered <span class="keyword">by</span> (userid) <span class="keyword">into</span> <span class="number">4</span> buckets</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>分别倒入数据<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> user_info_bucket <span class="keyword">select</span> userid ,uname <span class="keyword">from</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> domain_info_bucket <span class="keyword">select</span> userid ,domainid,<span class="keyword">domain</span> <span class="keyword">from</span> doamin</span><br></pre></td></tr></table></figure></li>
+<li>查询<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> user_info_bucket u  <span class="keyword">join</span> domain_info_bucket d <span class="keyword">on</span>(u.userid==d.userid)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+</li>
+</ol>
+<h5 id="思路二：一分为二"><a href="#思路二：一分为二" class="headerlink" title="思路二：一分为二"></a>思路二：一分为二</h5><p>选择临时表的方式，将数据一分为二，把倾斜的key，和不倾斜的key分开处理，不倾斜的正常join，倾斜的根据情况选择mapjoin或加盐处理，最后结果union all结果</p>
+<p>user表为用户基本表，domain为用户访问域名的宽表</p>
+<p>注意：我们其实隐含使用到了mapjoin，hive中的参数为set hive.auto.convert.join=true;，自动开启，默认25M，不能超过1G。</p>
+<ol>
+<li>创建中间表<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> tmp_table(userid <span class="keyword">string</span>,uname <span class="keyword">string</span>)</span><br><span class="line">SKEWED <span class="keyword">BY</span>(userid) <span class="keyword">on</span> (<span class="number">001</span>)</span><br><span class="line"><span class="keyword">row</span> <span class="keyword">format</span> <span class="keyword">delimited</span> <span class="keyword">fields</span> <span class="keyword">terminated</span> <span class="keyword">by</span> <span class="string">"\t"</span>;</span><br><span class="line">STORED AS DIRECTORIES</span><br></pre></td></tr></table></figure></li>
+<li>count(*)出符合倾斜条件的数据存入中间表<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">insert</span> overwrite <span class="keyword">table</span> tmp_table</span><br><span class="line"><span class="keyword">select</span></span><br><span class="line">	d.userid,u.uname</span><br><span class="line"><span class="keyword">from</span></span><br><span class="line">	(<span class="keyword">select</span> userid</span><br><span class="line">	<span class="keyword">from</span> </span><br><span class="line">		(<span class="keyword">select</span> </span><br><span class="line">			userid,</span><br><span class="line">			<span class="keyword">count</span>(userid) u_cunt</span><br><span class="line">			</span><br><span class="line">		<span class="keyword">from</span> </span><br><span class="line">			<span class="keyword">domain</span></span><br><span class="line">		<span class="keyword">group</span> <span class="keyword">by</span> </span><br><span class="line">			userid) t</span><br><span class="line">	<span class="keyword">where</span> u_cunt&gt;<span class="number">100</span>) d</span><br><span class="line"><span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u</span><br><span class="line"><span class="keyword">on</span> d.userid = u.userid;</span><br></pre></td></tr></table></figure></li>
+<li>一分为二，分别查询中出结果，再union all<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u1.userid,u1.uname,d1.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u1</span><br><span class="line"><span class="keyword">join</span></span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">domain</span> d</span><br><span class="line">	<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">		tmp_table t</span><br><span class="line">	<span class="keyword">on</span> </span><br><span class="line">		d.userid = t.userid</span><br><span class="line">	<span class="keyword">where</span> </span><br><span class="line">		t.userid <span class="keyword">is</span> <span class="literal">null</span>) d1</span><br><span class="line"><span class="keyword">on</span> u1.userid = d1.userid</span><br><span class="line"></span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">	u2.userid,u2.uname,d2.domain</span><br><span class="line"><span class="keyword">from</span> </span><br><span class="line">	(<span class="keyword">select</span> 	</span><br><span class="line">		userid,uname</span><br><span class="line">	<span class="keyword">from</span></span><br><span class="line">		<span class="keyword">user</span>) u2</span><br><span class="line"><span class="keyword">join</span> </span><br><span class="line">	(<span class="keyword">select</span> </span><br><span class="line">		d.userid,d.domain</span><br><span class="line">		<span class="keyword">from</span></span><br><span class="line">			<span class="keyword">domain</span> d</span><br><span class="line">		<span class="keyword">left</span> <span class="keyword">outer</span> <span class="keyword">join</span></span><br><span class="line">			tmp_table t</span><br><span class="line">		<span class="keyword">on</span> </span><br><span class="line">			d.userid = t.userid</span><br><span class="line">		<span class="keyword">where</span> </span><br><span class="line">			t.userid <span class="keyword">is</span> <span class="keyword">not</span> <span class="literal">null</span>) d2</span><br><span class="line"><span class="keyword">on</span> u2.userid = d2.userid;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="大表Join小表"><a href="#大表Join小表" class="headerlink" title="大表Join小表"></a>大表Join小表</h4><h5 id="思路：MapJoin"><a href="#思路：MapJoin" class="headerlink" title="思路：MapJoin"></a>思路：MapJoin</h5><p>大表Join小表很好解决，把小表放进内存，大表再去匹配即可。</p>
+<ol>
+<li>开启MapJoin<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.auto.convert.join=<span class="literal">true</span>;</span><br></pre></td></tr></table></figure></li>
+<li>调整MapJoin小表大小，默认25M(调整为可以容忍的大小)<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.mapjoin.smalltable.filesize</span><br></pre></td></tr></table></figure></li>
+<li>如果是MR，小表放进Map，大表进入Mapper匹配Map(使用对象存储结果)</li>
+</ol>
+<h4 id="group-By解决"><a href="#group-By解决" class="headerlink" title="group By解决"></a>group By解决</h4><h5 id="思路：加盐去盐"><a href="#思路：加盐去盐" class="headerlink" title="思路：加盐去盐"></a>思路：加盐去盐</h5><ol>
+<li>开启数据倾斜时的负载均衡<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span> hive.groupby.skewindata=<span class="literal">true</span></span><br></pre></td></tr></table></figure></li>
+<li>对groupby的key加盐去盐<br>开启上面这个参数，hive会自动拆解成两个MR，加盐去盐，最终输出结果<br>MR需要写两个MR，一个对key加盐，一个对key去盐</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Hive/" rel="tag"># Hive</a>
+              <a href="/tags/%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C/" rel="tag"># 数据倾斜</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2018/07/16/Hive%E8%A1%8C%E5%88%97%E8%BD%AC%E6%8D%A2/" rel="prev" title="Hive 行列转换">
+                  <i class="fa fa-chevron-left"></i> Hive 行列转换
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2018/08/14/Flume%E6%9E%B6%E6%9E%84%E5%9F%BA%E7%A1%80/" rel="next" title="Flume架构基础">
+                  Flume架构基础 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

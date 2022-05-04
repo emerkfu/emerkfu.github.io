@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="HBase简介HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。 HBase是基于列的而不是基于行的模式。 面向列：面向列（族）的存储和权限控制，列（族）独立检索。 稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HBase 基本概念和使用">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="HBase简介HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。 HBase是基于列的而不是基于行的模式。 面向列：面向列（族）的存储和权限控制，列（族）独立检索。 稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png">
+<meta property="article:published_time" content="2020-06-28T15:00:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:21:58.611Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="基本概念">
+<meta property="article:tag" content="HBase">
+<meta property="article:tag" content="常用命令">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>HBase 基本概念和使用 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#HBase简介"><span class="nav-number">1.</span> <span class="nav-text">HBase简介</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HBase的角色"><span class="nav-number">2.</span> <span class="nav-text">HBase的角色</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#HMaster"><span class="nav-number">2.1.</span> <span class="nav-text">HMaster</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#HRegionServer"><span class="nav-number">2.2.</span> <span class="nav-text">HRegionServer</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Write-Ahead-Logs"><span class="nav-number">2.3.</span> <span class="nav-text">Write-Ahead Logs</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#HFile"><span class="nav-number">2.4.</span> <span class="nav-text">HFile</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Store"><span class="nav-number">2.5.</span> <span class="nav-text">Store</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#MemStore"><span class="nav-number">2.6.</span> <span class="nav-text">MemStore</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Region"><span class="nav-number">2.7.</span> <span class="nav-text">Region</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HBase的架构"><span class="nav-number">3.</span> <span class="nav-text">HBase的架构</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HBase数据模型"><span class="nav-number">4.</span> <span class="nav-text">HBase数据模型</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#RowKey"><span class="nav-number">4.1.</span> <span class="nav-text">RowKey</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Timestamp"><span class="nav-number">4.2.</span> <span class="nav-text">Timestamp</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Column-Family"><span class="nav-number">4.3.</span> <span class="nav-text">Column Family</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Table-amp-Region"><span class="nav-number">4.4.</span> <span class="nav-text">Table&amp;Region</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#HMaster-1"><span class="nav-number">4.5.</span> <span class="nav-text">HMaster</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#HRegionServer-1"><span class="nav-number">4.6.</span> <span class="nav-text">HRegionServer</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#MemStore-amp-StoreFiles"><span class="nav-number">4.7.</span> <span class="nav-text">MemStore&amp;StoreFiles</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#HLog"><span class="nav-number">4.8.</span> <span class="nav-text">HLog</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#文件类型"><span class="nav-number">4.9.</span> <span class="nav-text">文件类型</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HBase的使用"><span class="nav-number">5.</span> <span class="nav-text">HBase的使用</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#HBase服务的启动"><span class="nav-number">5.1.</span> <span class="nav-text">HBase服务的启动</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#查看HBase页面"><span class="nav-number">5.2.</span> <span class="nav-text">查看HBase页面</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#基本操作"><span class="nav-number">5.3.</span> <span class="nav-text">基本操作</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#表的操作"><span class="nav-number">5.4.</span> <span class="nav-text">表的操作</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#常用shell操作"><span class="nav-number">5.5.</span> <span class="nav-text">常用shell操作</span></a></li></ol></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          HBase 基本概念和使用
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2020-06-28 23:00:00" itemprop="dateCreated datePublished" datetime="2020-06-28T23:00:00+08:00">2020-06-28</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/HBase/" itemprop="url" rel="index"><span itemprop="name">HBase</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h4 id="HBase简介"><a href="#HBase简介" class="headerlink" title="HBase简介"></a>HBase简介</h4><p>HBase是一个分布式的、面向列的开源数据库，它是一个适合于非结构化数据存储的数据库。</p>
+<p>HBase是基于列的而不是基于行的模式。</p>
+<p>面向列：面向列（族）的存储和权限控制，列（族）独立检索。</p>
+<p>稀疏：对于为空（null）的列，并不占用存储空间，因此，表的设计非常的稀疏。</p>
+<a id="more"></a>
+
+<hr>
+<h4 id="HBase的角色"><a href="#HBase的角色" class="headerlink" title="HBase的角色"></a>HBase的角色</h4><h5 id="HMaster"><a href="#HMaster" class="headerlink" title="HMaster"></a>HMaster</h5><ol>
+<li>监控RegionServer</li>
+<li>处理RegionServer故障转移</li>
+<li>处理元数据的变更</li>
+<li>处理region的分配或移除</li>
+<li>在空闲时间进行数据的负载均衡</li>
+<li>通过zookeeper发布自己的位置给客户端</li>
+</ol>
+<h5 id="HRegionServer"><a href="#HRegionServer" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><ol>
+<li>负责存储HBase的实际数据</li>
+<li>处理分配给它的Region</li>
+<li>刷新缓存到HDFS</li>
+<li>维护HLog</li>
+<li>执行压缩</li>
+<li>负责处理Region分片</li>
+</ol>
+<h5 id="Write-Ahead-Logs"><a href="#Write-Ahead-Logs" class="headerlink" title="Write-Ahead Logs"></a>Write-Ahead Logs</h5><ul>
+<li>HBase的修改记录，当对HBase读写数据的时候，数据不是直接写进磁盘，它会在内存中保留一段时间（时间以及数据量阈值可以设定）。</li>
+<li>但把数据保存在内存中可能有更高的概率引起数据丢失，为了解决这个问题，数据会先写在一个叫做Write-Ahead logfile的文件中，然后再写入内存中。所以在系统出现故障的时候，数据可以通过这个日志文件重建。</li>
+</ul>
+<h5 id="HFile"><a href="#HFile" class="headerlink" title="HFile"></a>HFile</h5><p>这是在磁盘上保存原始数据的实际的物理文件，是实际的存储文件。</p>
+<h5 id="Store"><a href="#Store" class="headerlink" title="Store"></a>Store</h5><p>HFile存储在Store中，一个Store对应HBase表中的一个列族。</p>
+<h5 id="MemStore"><a href="#MemStore" class="headerlink" title="MemStore"></a>MemStore</h5><p>内存存储，位于内存中，用来保存当前的数据操作，所以当数据保存在WAL中之后，RegionServer会在内存中存储键值对。</p>
+<h5 id="Region"><a href="#Region" class="headerlink" title="Region"></a>Region</h5><p>HBase表的分片，HBase表会根据rowkey值被切分成不同的region存储在RegionServer中，在一个RegionServer中可以有多个不同的region。</p>
+<h4 id="HBase的架构"><a href="#HBase的架构" class="headerlink" title="HBase的架构"></a>HBase的架构</h4><p>一个RegionServer可以包含多个HRegion，每个RegionServer维护一个HLog，和多个HFiles以及其对应的MemStore。RegionServer运行于DataNode上，数量可以与DatNode数量一致，请参考如下架构图：</p>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-architecture.png" alt="HBase的架构"></p>
+<h4 id="HBase数据模型"><a href="#HBase数据模型" class="headerlink" title="HBase数据模型"></a>HBase数据模型</h4><p>确定一个单元格（cell）的位置，需要如下四个：</p>
+<p>rowkey + column family + column + timestamp(version版本)，数据有版本的概念，即一个单元格可能有多个值，但是只有最新的一个对外显示。</p>
+<ul>
+<li>HBase中有两张特殊的Table，-ROOT-和.META.</li>
+<li>.META.：记录了用户表的Region信息，.META.可以有多个region</li>
+<li>-ROOT-：记录了.META.表的Region信息，-ROOT-只有一个region</li>
+<li>Zookeeper中记录了-ROOT-表的location</li>
+<li>Client访问用户数据之前需要首先访问zookeeper，然后访问-ROOT-表，接着访问.META.表，最后才能找到用户数据的位置去访问，中间需要多次网络操作，不过client端会做cache缓存（在0.96版本后，Hbase移除了-ROOT-表）。</li>
+</ul>
+<p><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-read-data.png" alt="访问数据流程"></p>
+<h5 id="RowKey"><a href="#RowKey" class="headerlink" title="RowKey"></a>RowKey</h5><p>行键，Table的主键，Table中的记录默认按照rowkey升序排序。</p>
+<h5 id="Timestamp"><a href="#Timestamp" class="headerlink" title="Timestamp"></a>Timestamp</h5><p>时间戳，每次数据操作对应的时间戳，可以看作是数据的version number。</p>
+<h5 id="Column-Family"><a href="#Column-Family" class="headerlink" title="Column Family"></a>Column Family</h5><p>列族，Table在水平方向有一个或者多个Column Family组成，一个Column Family中可以由多个Column组成，即Column Family支持动态扩展，无需预先定义Column的数量以及类型，所有Column均以二进制格式存储，用户需要自行进行类型转换。</p>
+<h5 id="Table-amp-Region"><a href="#Table-amp-Region" class="headerlink" title="Table&amp;Region"></a>Table&amp;Region</h5><p>当Table随着记录数不断增加而变大后，会逐渐分裂成多份splits，成为regions，一个region由[startkey,endkey)表示，不同的region会被Master分配给相应的RegionServer进行管理。</p>
+<h5 id="HMaster-1"><a href="#HMaster-1" class="headerlink" title="HMaster"></a>HMaster</h5><p>HMaster没有单点问题，HBase中可以启动多个HMaster，通过Zookeeper的Master Election机制保证总有一个Master运行，HMaster在功能上主要负责Table和Region的管理工作：</p>
+<ol>
+<li>管理用户对Table的增、删、改、查操作</li>
+<li>管理HRegionServer的负载均衡，调整Region分布</li>
+<li>在Region Split后，负责新Region的分配</li>
+<li>在HRegionServer停机后，负责失效HRegionServer上的Regions迁移</li>
+</ol>
+<h5 id="HRegionServer-1"><a href="#HRegionServer-1" class="headerlink" title="HRegionServer"></a>HRegionServer</h5><p>HRegionServer内部管理了一系列HRegion对象，每个HRegion对应了Table中的一个Region，HRegion中由多个HStore组成。</p>
+<p>每个HStore对应了Table中的一个Column Family的存储，可以看出每个Column Family其实就是一个集中的存储单元，因此最好将具备共同IO特性的column放在一个Column Family中，这样最高效。</p>
+<h5 id="MemStore-amp-StoreFiles"><a href="#MemStore-amp-StoreFiles" class="headerlink" title="MemStore&amp;StoreFiles"></a>MemStore&amp;StoreFiles</h5><p>HStore存储是HBase存储的核心了，其中由两部分组成，一部分是MemStore，一部分是StoreFiles。</p>
+<p>MemStore是Sorted Memory Buffer，用户写入的数据首先会放入MemStore，当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile），当StoreFile文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除，因此可以看出HBase其实只有增加数据，所有的更新和删除操作都是在后续的compact过程中进行的，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
+<p>当StoreFiles Compact后，会逐步形成越来越大的StoreFile，当单个StoreFile大小超过一定阈值后，会触发Split操作，同时把当前Region Split成2个Region，父Region会下线，新Split出的2个孩子Region会被HMaster分配到相应的HRegionServer上，使得原先1个Region的压力得以分流到2个Region上。</p>
+<h5 id="HLog"><a href="#HLog" class="headerlink" title="HLog"></a>HLog</h5><p>每个HRegionServer中都有一个HLog对象，HLog是一个实现Write Ahead Log的类，在每次用户操作写入MemStore的同时，也会写一份数据到HLog文件中，HLog文件定期会滚动出新的，并删除旧的文件（已持久化到StoreFile中的数据）。</p>
+<p>当HRegionServer意外终止后，HMaster会通过Zookeeper感知到，HMaster首先会处理遗留的 HLog文件，将其中不同Region的Log数据进行拆分，分别放到相应region的目录下，然后再将失效的region重新分配，领取 到这些region的HRegionServer在Load Region的过程中，会发现有历史HLog需要处理，因此会Replay HLog中的数据到MemStore中，然后flush到StoreFiles，完成数据恢复。</p>
+<h5 id="文件类型"><a href="#文件类型" class="headerlink" title="文件类型"></a>文件类型</h5><p>HBase中的所有数据文件都存储在Hadoop HDFS文件系统上，主要包括上述提出的两种文件类型：</p>
+<ol>
+<li>HFile， HBase中KeyValue数据的存储格式，HFile是Hadoop的二进制格式文件，实际上StoreFile就是对HFile做了轻量级包装，即StoreFile底层就是HFile。</li>
+<li>HLog File，HBase中WAL（Write Ahead Log） 的存储格式，物理上是Hadoop的Sequence File。</li>
+</ol>
+<p>Zookeeper中hbase的节点的存储信息：</p>
+<ul>
+<li>rs：regionserver节点信息</li>
+<li>table-lock：hbase的除meta以外的所有表</li>
+<li>Table：hbase的所有的表</li>
+</ul>
+<h4 id="HBase的使用"><a href="#HBase的使用" class="headerlink" title="HBase的使用"></a>HBase的使用</h4><h5 id="HBase服务的启动"><a href="#HBase服务的启动" class="headerlink" title="HBase服务的启动"></a>HBase服务的启动</h5><ul>
+<li>启动方式1：<br>bin/hbase-daemon.sh start master<br>bin/hbase-daemon.sh start regionserver<br>提示：如果集群之间的节点时间不同步，会导致regionserver无法启动，抛出ClockOutOfSyncException异常。</li>
+<li>启动方式2：<br>bin/start-hbase.sh<br>对应的停止服务：<br>bin/stop-hbase.sh</li>
+</ul>
+<h5 id="查看HBase页面"><a href="#查看HBase页面" class="headerlink" title="查看HBase页面"></a>查看HBase页面</h5><p>启动成功后，可以通过“host:port”的方式来访问HBase管理页面，例如：<br><a href="http://hadoop001:16010" target="_blank" rel="noopener">http://hadoop001:16010</a></p>
+<h5 id="基本操作"><a href="#基本操作" class="headerlink" title="基本操作"></a>基本操作</h5><ul>
+<li>进入HBase客户端命令行<br>bin/hbase shell</li>
+<li>查看帮助命令<br>hbase(main)&gt; help</li>
+<li>查看当前数据库中有哪些表<br>hbase(main)&gt; list</li>
+<li>查看当前数据库中有哪些命名空间<br>hbase(main)&gt; list_namespace</li>
+</ul>
+<h5 id="表的操作"><a href="#表的操作" class="headerlink" title="表的操作"></a>表的操作</h5><ul>
+<li><p>创建表<br>hbase(main)&gt; create ‘student’,’info’<br>hbase(main)&gt; create ‘iparkmerchant_order’,’smzf’<br>hbase(main)&gt; create ‘staff’,’info’</p>
+</li>
+<li><p>插入数据到表<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Thomas’<br>hbase(main) &gt; put ‘student’,’1001’,’info:sex’,’male’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’18’<br>hbase(main) &gt; put ‘student’,’1002’,’info:name’,’Janna’<br>hbase(main) &gt; put ‘student’,’1002’,’info:sex’,’female’<br>hbase(main) &gt; put ‘student’,’1002’,’info:age’,’20’<br>数据插入后的数据模型：<br><img src="/2020/06/28/HBase%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/hbase-student-data-model.png" alt="student表的数据模型"></p>
+</li>
+<li><p>扫描查看表数据<br>hbase(main) &gt; scan ‘student’<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’, STOPROW =&gt; ‘1001’}<br>hbase(main) &gt; scan ‘student’,{STARTROW =&gt; ‘1001’} 从哪一个rowkey开始扫描</p>
+</li>
+<li><p>查看表结构<br>hbase(main):&gt; desc ‘student’</p>
+</li>
+<li><p>更新指定字段的数据<br>hbase(main) &gt; put ‘student’,’1001’,’info:name’,’Nick’<br>hbase(main) &gt; put ‘student’,’1001’,’info:age’,’100’<br>hbase(main) &gt; put ‘student’,’1001’,’info:isNull’,’’（仅测试空值问题）</p>
+</li>
+<li><p>查看指定行或指定列族:列的数据<br>hbase(main) &gt; get ‘student’,’1001’<br>hbase(main) &gt; get ‘student’,’1001’,’info:name’</p>
+</li>
+<li><p>删除数据<br>删除某rowkey的全部数据：<br>hbase(main) &gt; deleteall ‘student’,’1001’</p>
+</li>
+<li><p>清空表数据<br>hbase(main) &gt; truncate ‘student’<br>提示：清空表的操作顺序为先disable，然后再truncate。</p>
+</li>
+<li><p>删除表<br>首先需要先让该表为disable状态：<br>hbase(main) &gt; disable ‘student’<br>检查这个表是否被禁用：<br>hbase(main) &gt; is_enabled ‘hbase_book’<br>hbase(main) &gt; is_disabled ‘hbase_book’<br>然后才能drop这个表：<br>hbase(main) &gt; drop ‘student’<br>提示：如果直接drop表，会报错：Drop the named table. Table must first be disabled<br>ERROR: Table student is enabled. Disable it first.<br>恢复被禁用的表：<br>enable ‘student’</p>
+</li>
+<li><p>统计表数据行数<br>hbase(main) &gt; count ‘student’</p>
+</li>
+<li><p>变更表信息<br>将info列族中的数据存放3个版本：<br>hbase(main) &gt; alter ‘student’,{NAME=&gt;’info’,VERSIONS=&gt;3}<br>查看student的最新版本的数据：<br>hbase(main) &gt; get ‘student’,’1001’<br>查看HBase中的多版本：<br>hbase(main) &gt; get ‘student’,’1001’,{COLUMN=&gt;’info:name’,VERSIONS=&gt;10}</p>
+</li>
+</ul>
+<h5 id="常用shell操作"><a href="#常用shell操作" class="headerlink" title="常用shell操作"></a>常用shell操作</h5><ul>
+<li><p>status：显示服务器状态<br>hbase&gt; status ‘hadoop001’</p>
+</li>
+<li><p>exists：检查表是否存在，适用于表量特别多的情况<br>hbase&gt; exists ‘hbase_book’</p>
+</li>
+<li><p>is_enabled/is_disabled：检查表是否启用或禁用<br>hbase&gt; is_enabled ‘hbase_book’<br>hbase&gt; is_disabled ‘hbase_book’</p>
+</li>
+<li><p>alter：该命令可以改变表和列族的模式<br>为当前表增加列族：<br>hbase&gt; alter ‘hbase_book’, NAME =&gt; ‘CF2’, VERSIONS =&gt; 2<br>为当前表删除列族：<br>hbase&gt; alter ‘hbase_book’, ‘delete’ =&gt; ‘CF2’</p>
+</li>
+<li><p>drop：删除一张表<br>hbase&gt; disable ‘hbase_book’<br>hbase&gt; drop ‘hbase_book’</p>
+</li>
+<li><p>delete：删除一行中一个单元格的值<br>hbase&gt; delete ‘hbase_book’, ‘rowKey’, ‘CF:C’</p>
+</li>
+<li><p>truncate：清空表数据，即禁用表 =&gt; 删除表 =&gt; 创建表<br>hbase&gt; truncate ‘hbase_book’</p>
+</li>
+<li><p>create：创建多个列族<br>hbase&gt; create ‘t1’, {NAME =&gt; ‘f1’}, {NAME =&gt; ‘f2’}, {NAME =&gt; ‘f3’}</p>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5/" rel="tag"># 基本概念</a>
+              <a href="/tags/HBase/" rel="tag"># HBase</a>
+              <a href="/tags/%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag"># 常用命令</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2020/03/20/%E7%94%9F%E4%BA%A7%E7%9B%B8%E5%85%B3%E9%85%8D%E7%BD%AE/" rel="prev" title="生产相关配置">
+                  <i class="fa fa-chevron-left"></i> 生产相关配置
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2020/06/30/RowKey%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E3%80%81RowKey%E7%83%AD%E7%82%B9%E9%97%AE%E9%A2%98%E3%80%81RowKey%E8%AE%BE%E8%AE%A1%E5%AE%9E%E8%B7%B5/" rel="next" title="RowKey设计原则、热点问题、设计实践">
+                  RowKey设计原则、热点问题、设计实践 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

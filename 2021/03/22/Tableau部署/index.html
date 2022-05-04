@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="在一台机器上进行Tableau的部署，以下是部署Tableau的具体步骤。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Tableau 部署">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="在一台机器上进行Tableau的部署，以下是部署Tableau的具体步骤。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171708121.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171620100.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171442857.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171929820.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322181348023.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image2020-12-29_10-20-19.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322182122121.png">
+<meta property="article:published_time" content="2021-03-22T11:23:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:22:10.277Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Tableau">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171708121.png">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Tableau 部署 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#Tableau-部署"><span class="nav-number">1.</span> <span class="nav-text">Tableau 部署</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Tableau-安装"><span class="nav-number">1.1.</span> <span class="nav-text">Tableau 安装</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Tableau-初始化tsm"><span class="nav-number">1.2.</span> <span class="nav-text">Tableau 初始化tsm</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#修改防火墙配置"><span class="nav-number">1.3.</span> <span class="nav-text">修改防火墙配置</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#tsm-Web管理员配置"><span class="nav-number">1.4.</span> <span class="nav-text">tsm Web管理员配置</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#添加管理员账号"><span class="nav-number">1.5.</span> <span class="nav-text">添加管理员账号</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#缓存级别设置"><span class="nav-number">1.6.</span> <span class="nav-text">缓存级别设置</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#数据源安装"><span class="nav-number">2.</span> <span class="nav-text">数据源安装</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#安装MySQL数据源"><span class="nav-number">2.1.</span> <span class="nav-text">安装MySQL数据源</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#安装postgresql数据源"><span class="nav-number">2.2.</span> <span class="nav-text">安装postgresql数据源</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#安装Hive数据源"><span class="nav-number">2.3.</span> <span class="nav-text">安装Hive数据源</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#数据源安装完成后，确认odbcinst-ini-信息"><span class="nav-number">2.4.</span> <span class="nav-text">数据源安装完成后，确认odbcinst.ini 信息</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#中文乱码问题修复"><span class="nav-number">3.</span> <span class="nav-text">中文乱码问题修复</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#确认安装的字体，如果没有宋体黑体表示需要安装"><span class="nav-number">3.1.</span> <span class="nav-text">确认安装的字体，如果没有宋体黑体表示需要安装</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#安装字体管理工具"><span class="nav-number">3.2.</span> <span class="nav-text">安装字体管理工具</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#建立中文字体目录"><span class="nav-number">3.3.</span> <span class="nav-text">建立中文字体目录</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#将windows系统中字体上传到上一步建立的目录，windows字体目录在c-windows-fonts"><span class="nav-number">3.4.</span> <span class="nav-text">将windows系统中字体上传到上一步建立的目录，windows字体目录在c:\windows\fonts</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#建立缓存字体，生成字库索引信息"><span class="nav-number">3.5.</span> <span class="nav-text">建立缓存字体，生成字库索引信息</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#再次查看系统中已安装的中文字体，重启Tableau"><span class="nav-number">3.6.</span> <span class="nav-text">再次查看系统中已安装的中文字体，重启Tableau</span></a></li></ol></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Tableau 部署
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2021-03-22 19:23:00" itemprop="dateCreated datePublished" datetime="2021-03-22T19:23:00+08:00">2021-03-22</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Tableau/" itemprop="url" rel="index"><span itemprop="name">Tableau</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>在一台机器上进行Tableau的部署，以下是部署Tableau的具体步骤。</p>
+<a id="more"></a>
+<hr>
+<p><a href="https://www.tableau.com/zh-cn/support/releases/server" target="_blank" rel="noopener">Tableau 下载地址</a></p>
+<h4 id="Tableau-部署"><a href="#Tableau-部署" class="headerlink" title="Tableau 部署"></a>Tableau 部署</h4><h5 id="Tableau-安装"><a href="#Tableau-安装" class="headerlink" title="Tableau 安装"></a>Tableau 安装</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo yum update</span><br><span class="line">sudo yum install tableau-server-2020-3-3.x86_64.rpm</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171708121.png" alt="Tableau 安装完成"></p>
+<h5 id="Tableau-初始化tsm"><a href="#Tableau-初始化tsm" class="headerlink" title="Tableau 初始化tsm"></a>Tableau 初始化tsm</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">cd /opt/tableau/tableau_server/packages/scripts.20203.20.1110.1623/</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 增加新的用户</span></span><br><span class="line">useradd hmdadmin</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 给新增用户创建密码</span></span><br><span class="line">passwd hmdadmin</span><br><span class="line"><span class="meta">dmha#</span><span class="bash">dmin</span></span><br><span class="line"></span><br><span class="line">./initialize-tsm --accepteula -a hmdadmin</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span><span class="bash"> 更改用户</span></span><br><span class="line">source /etc/profile.d/tableau_server.sh</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171620100.png" alt="增加新的用户"></p>
+<h5 id="修改防火墙配置"><a href="#修改防火墙配置" class="headerlink" title="修改防火墙配置"></a>修改防火墙配置</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">systemctl start firewalld</span><br><span class="line">firewall-cmd --get-default-zone</span><br><span class="line">firewall-cmd --set-default-zone&#x3D;public</span><br><span class="line">firewall-cmd --permanent --add-port&#x3D;80&#x2F;tcp</span><br><span class="line">firewall-cmd --permanent --add-port&#x3D;8850&#x2F;tcp</span><br><span class="line">firewall-cmd --reload</span><br><span class="line">firewall-cmd --list-all</span><br><span class="line">grep tsmadmin &#x2F;etc&#x2F;group</span><br><span class="line">usermod -G tsmadmin -a hmdadmin</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="tsm-Web管理员配置"><a href="#tsm-Web管理员配置" class="headerlink" title="tsm Web管理员配置"></a>tsm Web管理员配置</h5><p><a href="https://host:8850/" target="_blank" rel="noopener">https://host:8850/</a></p>
+<p><img src="/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171442857.png" alt="Tableau Web 配置"></p>
+<p><img src="/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322171929820.png" alt="Tableau Web 配置完成"></p>
+<h5 id="添加管理员账号"><a href="#添加管理员账号" class="headerlink" title="添加管理员账号"></a>添加管理员账号</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tabcmd initialuser --server http:&#x2F;&#x2F;localhost --username &#39;hmdadmin&#39;</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="缓存级别设置"><a href="#缓存级别设置" class="headerlink" title="缓存级别设置"></a>缓存级别设置</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tsm data-access caching set -r 30</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="数据源安装"><a href="#数据源安装" class="headerlink" title="数据源安装"></a>数据源安装</h4><h5 id="安装MySQL数据源"><a href="#安装MySQL数据源" class="headerlink" title="安装MySQL数据源"></a>安装MySQL数据源</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo yum install mysql-connector-odbc-5.3.13-1.el7.x86_64.rpm</span><br><span class="line">sudo yum install mysql-connector-odbc-8.0.20-1.el7.x86_64.rpm</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="安装postgresql数据源"><a href="#安装postgresql数据源" class="headerlink" title="安装postgresql数据源"></a>安装postgresql数据源</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo yum install tableau-postgresql-odbc-09.06.0500-1.x86_64.rpm</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="安装Hive数据源"><a href="#安装Hive数据源" class="headerlink" title="安装Hive数据源"></a>安装Hive数据源</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">rpm -ivh ClouderaHiveODBC-2.6.9.1009-1.x86_64.rpm</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="数据源安装完成后，确认odbcinst-ini-信息"><a href="#数据源安装完成后，确认odbcinst-ini-信息" class="headerlink" title="数据源安装完成后，确认odbcinst.ini 信息"></a>数据源安装完成后，确认odbcinst.ini 信息</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">vi /etc/odbcinst.ini</span><br><span class="line"></span><br><span class="line">[ODBC Drivers]</span><br><span class="line">PostgreSQL Unicode=Installed</span><br><span class="line"></span><br><span class="line">[PostgreSQL]</span><br><span class="line">Description=ODBC for PostgreSQL</span><br><span class="line">Driver=/usr/lib/psqlodbcw.so</span><br><span class="line">Setup=/usr/lib/libodbcpsqlS.so</span><br><span class="line">Driver64=/usr/lib64/psqlodbcw.so</span><br><span class="line">Setup64=/usr/lib64/libodbcpsqlS.so</span><br><span class="line">FileUsage=1</span><br><span class="line"></span><br><span class="line">[MySQL]</span><br><span class="line">Description=ODBC for MySQL</span><br><span class="line">Driver=/usr/lib/libmyodbc5.so</span><br><span class="line">Setup=/usr/lib/libodbcmyS.so</span><br><span class="line">Driver64=/usr/lib64/libmyodbc5.so</span><br><span class="line">Setup64=/usr/lib64/libodbcmyS.so</span><br><span class="line">FileUsage=1</span><br><span class="line"></span><br><span class="line">[MySQL ODBC 8.0 Unicode Driver]</span><br><span class="line">Driver=/usr/lib64/libmyodbc8w.so</span><br><span class="line">UsageCount=1</span><br><span class="line"></span><br><span class="line">[MySQL ODBC 8.0 ANSI Driver]</span><br><span class="line">Driver=/usr/lib64/libmyodbc8a.so</span><br><span class="line">UsageCount=1</span><br><span class="line"></span><br><span class="line">[Cloudera ODBC Driver for Apache Hive 64-bit]</span><br><span class="line">Description=Cloudera ODBC Driver for Apache Hive (64-bit)</span><br><span class="line">Driver=/opt/cloudera/hiveodbc/lib/64/libclouderahiveodbc64.so</span><br><span class="line"></span><br><span class="line">[PostgreSQL Unicode]</span><br><span class="line">Description=ODBC for PostgreSQL</span><br><span class="line">Driver=/opt/tableau/tableau_driver/postgresql-odbc/psqlodbcw.so</span><br><span class="line">FileUsage=1</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="中文乱码问题修复"><a href="#中文乱码问题修复" class="headerlink" title="中文乱码问题修复"></a>中文乱码问题修复</h4><h5 id="确认安装的字体，如果没有宋体黑体表示需要安装"><a href="#确认安装的字体，如果没有宋体黑体表示需要安装" class="headerlink" title="确认安装的字体，如果没有宋体黑体表示需要安装"></a>确认安装的字体，如果没有宋体黑体表示需要安装</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fc-list</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322181348023.png" alt="当前已有字体确认"></p>
+<h5 id="安装字体管理工具"><a href="#安装字体管理工具" class="headerlink" title="安装字体管理工具"></a>安装字体管理工具</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo yum install fontconfig mkfontscale -y</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="建立中文字体目录"><a href="#建立中文字体目录" class="headerlink" title="建立中文字体目录"></a>建立中文字体目录</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /usr/share/fonts/chinese</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="将windows系统中字体上传到上一步建立的目录，windows字体目录在c-windows-fonts"><a href="#将windows系统中字体上传到上一步建立的目录，windows字体目录在c-windows-fonts" class="headerlink" title="将windows系统中字体上传到上一步建立的目录，windows字体目录在c:\windows\fonts"></a>将windows系统中字体上传到上一步建立的目录，windows字体目录在c:\windows\fonts</h5><p><img src="/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image2020-12-29_10-20-19.png" alt="windows系统字体"></p>
+<h5 id="建立缓存字体，生成字库索引信息"><a href="#建立缓存字体，生成字库索引信息" class="headerlink" title="建立缓存字体，生成字库索引信息"></a>建立缓存字体，生成字库索引信息</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cd /usr/share/fonts/chinese/</span><br><span class="line">sudo mkfontscale</span><br><span class="line">sudo mkfontdir</span><br><span class="line">sudo fc-cache</span><br></pre></td></tr></table></figure>
+
+
+
+<h5 id="再次查看系统中已安装的中文字体，重启Tableau"><a href="#再次查看系统中已安装的中文字体，重启Tableau" class="headerlink" title="再次查看系统中已安装的中文字体，重启Tableau"></a>再次查看系统中已安装的中文字体，重启Tableau</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">fc-list</span><br><span class="line">tsm restart</span><br></pre></td></tr></table></figure>
+
+<p><img src="/2021/03/22/Tableau%E9%83%A8%E7%BD%B2/image-20210322182122121.png" alt="确认字体、重启Tableau"></p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Tableau/" rel="tag"># Tableau</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/03/17/%E5%BE%AE%E4%BC%97%E5%B9%B3%E5%8F%B0%E9%83%A8%E7%BD%B2/" rel="prev" title="微众平台部署">
+                  <i class="fa fa-chevron-left"></i> 微众平台部署
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/03/23/Tableau%E5%A4%87%E4%BB%BD%E8%BF%98%E5%8E%9F/" rel="next" title="Tableau 备份还原">
+                  Tableau 备份还原 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

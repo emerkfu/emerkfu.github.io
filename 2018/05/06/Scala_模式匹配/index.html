@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="Scala 模式匹配类似于java的switch case可以匹配内容、集合、类型…">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Scala 模式匹配">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2018/05/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="Scala 模式匹配类似于java的switch case可以匹配内容、集合、类型…">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-05-06T06:00:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:22:04.441Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Scala">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2018/05/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Scala 模式匹配 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Scala-模式匹配"><span class="nav-number">1.</span> <span class="nav-text">Scala 模式匹配</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#语法"><span class="nav-number">1.1.</span> <span class="nav-text">语法</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#根据集合匹配："><span class="nav-number">1.1.1.</span> <span class="nav-text">根据集合匹配：</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#结果："><span class="nav-number">1.1.1.1.</span> <span class="nav-text">结果：</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#结果：-1"><span class="nav-number">1.1.1.2.</span> <span class="nav-text">结果：</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#根据类型匹配："><span class="nav-number">1.1.2.</span> <span class="nav-text">根据类型匹配：</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#结果：-2"><span class="nav-number">1.1.2.1.</span> <span class="nav-text">结果：</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#结果：-3"><span class="nav-number">1.1.2.2.</span> <span class="nav-text">结果：</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#模式匹配在工作中主要用于异常处理："><span class="nav-number">1.1.3.</span> <span class="nav-text">模式匹配在工作中主要用于异常处理：</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#结果：-4"><span class="nav-number">1.1.3.1.</span> <span class="nav-text">结果：</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#结果：-5"><span class="nav-number">1.1.3.2.</span> <span class="nav-text">结果：</span></a></li></ol></li></ol></li></ol></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2018/05/06/Scala_%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Scala 模式匹配
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2018-05-06 14:00:00" itemprop="dateCreated datePublished" datetime="2018-05-06T14:00:00+08:00">2018-05-06</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Scala/" itemprop="url" rel="index"><span itemprop="name">Scala</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h3 id="Scala-模式匹配"><a href="#Scala-模式匹配" class="headerlink" title="Scala 模式匹配"></a>Scala 模式匹配</h3><p>类似于java的switch case<br>可以匹配内容、集合、类型…</p>
+<a id="more"></a>
+<hr>
+<h4 id="语法"><a href="#语法" class="headerlink" title="语法"></a>语法</h4><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">变量 <span class="keyword">match</span>&#123;</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">1</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">2</span> =&gt; ...</span><br><span class="line">	<span class="keyword">case</span> 值<span class="number">3</span> =&gt; ...</span><br><span class="line">	_ =&gt; ...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//*scala不需要break</span></span><br></pre></td></tr></table></figure>
+<h5 id="根据集合匹配："><a href="#根据集合匹配：" class="headerlink" title="根据集合匹配："></a>根据集合匹配：</h5><p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> a1 = <span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>,<span class="string">"d"</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">val</span> a11 = a1(<span class="type">Random</span>.nextInt(a1.length))</span><br><span class="line"></span><br><span class="line">a11 <span class="keyword">match</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"a"</span> =&gt; print(<span class="string">"这是a"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"b"</span> =&gt; print(<span class="string">"这是b"</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="string">"c"</span> =&gt; print(<span class="string">"这是c"</span>)</span><br><span class="line">  <span class="keyword">case</span> _ =&gt; print(<span class="string">"这是哪个？"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting</span></span>(array: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>) =&gt; println(<span class="string">"这是只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(x,y) =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Array</span>(<span class="string">"a"</span>,_*) =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting(<span class="type">Array</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
+<h6 id="结果："><a href="#结果：" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
+
+<p>例3：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">greeting1</span></span>(array: <span class="type">List</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">  array <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>:: <span class="type">Nil</span> =&gt; println(<span class="string">"有且只有一个a"</span>)</span><br><span class="line">	<span class="keyword">case</span> x::y::<span class="type">Nil</span> =&gt; println(<span class="string">"这是"</span> + x + <span class="string">", "</span> + y)</span><br><span class="line">	<span class="keyword">case</span> <span class="string">"a"</span>::tail =&gt; println(<span class="string">"这是a开头的多个"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"都没有匹配上"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"a"</span>,<span class="string">"b"</span>,<span class="string">"c"</span>))</span><br><span class="line">greeting1(<span class="type">List</span>(<span class="string">"c"</span>))</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-1"><a href="#结果：-1" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">这是只有一个a</span><br><span class="line">这是a, b</span><br><span class="line">这是a开头的多个</span><br><span class="line">都没有匹配上</span><br></pre></td></tr></table></figure>
+<h5 id="根据类型匹配："><a href="#根据类型匹配：" class="headerlink" title="根据类型匹配："></a>根据类型匹配：</h5><p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchType</span></span>(obj: <span class="type">Any</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">  obj <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> i:<span class="type">Int</span> =&gt; println(<span class="string">"这是Int类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> s:<span class="type">String</span> =&gt; println(<span class="string">"这是String类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> m:<span class="type">Map</span>[_,_] =&gt; println(<span class="string">"这是Map类型"</span>)</span><br><span class="line">	<span class="keyword">case</span> _ =&gt; println(<span class="string">"未找到的类型"</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchType(<span class="number">1</span>)</span><br><span class="line">matchType(<span class="string">"a"</span>)</span><br><span class="line">matchType(<span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="number">1</span>))</span><br><span class="line">matchType(<span class="number">1</span>L)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-2"><a href="#结果：-2" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">这是<span class="type">Int</span>类型</span><br><span class="line">这是<span class="type">String</span>类型</span><br><span class="line">这是<span class="type">Map</span>类型</span><br><span class="line">未找到的类型</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> aas = <span class="type">Map</span>(<span class="string">"a"</span> -&gt; <span class="string">"a1"</span>, <span class="string">"b"</span> -&gt; <span class="string">"b1"</span>, <span class="string">"c"</span> -&gt; <span class="string">"c1"</span>)</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">matchaa</span></span>(key:<span class="type">String</span>): <span class="type">Unit</span> =&#123;</span><br><span class="line">  <span class="keyword">val</span> aa = aas.get(key)</span><br><span class="line">  aa <span class="keyword">match</span> &#123;</span><br><span class="line">	<span class="keyword">case</span> <span class="type">Some</span>(aa) =&gt; println(<span class="string">"key对应的value为"</span> + aa)</span><br><span class="line">	<span class="keyword">case</span> <span class="type">None</span> =&gt; println(<span class="string">"key没有匹配上..."</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">matchaa(<span class="string">"a"</span>)</span><br><span class="line">matchaa(<span class="string">"b"</span>)</span><br><span class="line">matchaa(<span class="string">"c"</span>)</span><br><span class="line">matchaa(<span class="string">"d"</span>)</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-3"><a href="#结果：-3" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">key对应的value为a1</span><br><span class="line">key对应的value为b1</span><br><span class="line">key对应的value为c1</span><br><span class="line">key没有匹配上...</span><br></pre></td></tr></table></figure>
+<h5 id="模式匹配在工作中主要用于异常处理："><a href="#模式匹配在工作中主要用于异常处理：" class="headerlink" title="模式匹配在工作中主要用于异常处理："></a>模式匹配在工作中主要用于异常处理：</h5><p>IO操作、数据库操作<br>1）open<br>2）todo…<br>3）release</p>
+<p>例1：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">ArithmeticException</span> =&gt; println(<span class="string">"除数不能为0..."</span>)</span><br><span class="line">  <span class="comment">//case e:Exception =&gt; println(e.getMessage)</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-4"><a href="#结果：-4" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">除数不能为<span class="number">0.</span>..</span><br></pre></td></tr></table></figure>
+
+<p>例2：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="keyword">val</span> i = <span class="number">1</span>/<span class="number">0</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="comment">//case e:ArithmeticException =&gt; println("除数不能为0...")</span></span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h6 id="结果：-5"><a href="#结果：-5" class="headerlink" title="结果："></a>结果：</h6><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/ by zero</span><br></pre></td></tr></table></figure>
+
+<p>例3：</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span>&#123;</span><br><span class="line">  <span class="comment">//open</span></span><br><span class="line">&#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">  <span class="keyword">case</span> e:<span class="type">Exception</span> =&gt; println(e.getMessage)</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">  <span class="comment">//关闭文件流或释放数据库连接</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Scala/" rel="tag"># Scala</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2018/05/05/Scala_%E9%9B%86%E5%90%88_Tuple/" rel="prev" title="Scala 集合 Tuple">
+                  <i class="fa fa-chevron-left"></i> Scala 集合 Tuple
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2018/05/13/Scala%20%E4%BD%BF%E7%94%A8ScalikeJDBC%E6%93%8D%E4%BD%9CMySQL/" rel="next" title="Scala 使用ScalikeJDBC操作MySQL">
+                  Scala 使用ScalikeJDBC操作MySQL <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>

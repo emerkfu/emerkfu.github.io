@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="目录 Spark自带监控 Spark接口监控 Spark自定义监控">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spark 监控模块">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2019/03/12/Spark%20%E7%9B%91%E6%8E%A7%E6%A8%A1%E5%9D%97/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="目录 Spark自带监控 Spark接口监控 Spark自定义监控">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-03-12T11:00:00.000Z">
+<meta property="article:modified_time" content="2022-05-04T06:22:04.402Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Spark">
+<meta property="article:tag" content="Spark监控">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2019/03/12/Spark%20%E7%9B%91%E6%8E%A7%E6%A8%A1%E5%9D%97/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Spark 监控模块 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">29</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">17</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">85</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#目录"><span class="nav-number">1.</span> <span class="nav-text">目录</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Spark自带监控"><span class="nav-number">2.</span> <span class="nav-text">Spark自带监控</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Spark接口监控"><span class="nav-number">3.</span> <span class="nav-text">Spark接口监控</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#SparkListerner"><span class="nav-number">4.</span> <span class="nav-text">SparkListerner</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Demo"><span class="nav-number">5.</span> <span class="nav-text">Demo</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Spark自定义监控案例"><span class="nav-number">6.</span> <span class="nav-text">Spark自定义监控案例</span></a></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">85</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">29</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2019/03/12/Spark%20%E7%9B%91%E6%8E%A7%E6%A8%A1%E5%9D%97/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Spark 监控模块
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2019-03-12 19:00:00" itemprop="dateCreated datePublished" datetime="2019-03-12T19:00:00+08:00">2019-03-12</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Spark/" itemprop="url" rel="index"><span itemprop="name">Spark</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h4 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h4><ol>
+<li>Spark自带监控</li>
+<li>Spark接口监控</li>
+<li>Spark自定义监控</li>
+</ol>
+<a id="more"></a>
+<hr>
+<h4 id="Spark自带监控"><a href="#Spark自带监控" class="headerlink" title="Spark自带监控"></a>Spark自带监控</h4><p><a href="http://spark.apache.org/docs/latest/monitoring.html#spark-history-server-configuration-options" target="_blank" rel="noopener">http://spark.apache.org/docs/latest/monitoring.html#spark-history-server-configuration-options</a></p>
+<p>第一种监控方式是Spark自带的，由于Spark Web UI界面只在sc的生命周期内有效，所以我们需要存储日志，在Spark sc 生命周期结束后重构UI界面。</p>
+<p>首先看官方文档配置，这里只是简单配置</p>
+<ol>
+<li><p>修改spark.default.xml</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#开启日志存储</span><br><span class="line">spark.eventLog.enabled <span class="literal">true</span></span><br><span class="line">#指定日志存储的<span class="type">HDFS</span>目录</span><br><span class="line">spark.eventLog.dir hdfs:<span class="comment">//fushuaidate:9000/spark-logs</span></span><br><span class="line">#开启日志存储<span class="number">7</span>天自动删除</span><br><span class="line">spark.history.fs.cleaner.enabled <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改spark.env.xml</p>
+</li>
+<li><p>在 sc 的生命周期外打开历史UI界面</p>
+</li>
+</ol>
+<h4 id="Spark接口监控"><a href="#Spark接口监控" class="headerlink" title="Spark接口监控"></a>Spark接口监控</h4><p><a href="http://spark.apache.org/docs/latest/monitoring.html#rest-api" target="_blank" rel="noopener">http://spark.apache.org/docs/latest/monitoring.html#rest-api</a></p>
+<p>metrics: 数据信息</p>
+<p>spark 提供了一系列整个任务生命周期中各个阶段变化的事件监听机制，通过这一机制可以在任务的各个阶段做一些自定义的各种动作。SparkListener便是这些阶段的事件监听接口类 通过实现这个类中的各种方法便可实现自定义的事件处理动作。</p>
+<p>自定义监听sparListener后的注册方式有两种：<br>方法1：conf 配置中指定</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>()</span><br><span class="line">setAppName(getClass.getSimpleName)</span><br><span class="line">setMaster(<span class="string">"local[2]"</span>)</span><br><span class="line"><span class="comment">//监听类注册</span></span><br><span class="line">set(<span class="string">"spark.extraListeners"</span>, <span class="string">"com.tunan.spark.listener.MySparkListener"</span>)</span><br><span class="line">getOrCreate()</span><br></pre></td></tr></table></figure>
+<p>方法2：sparkContext 类中指定</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sc.addSparkListener(<span class="keyword">new</span> <span class="type">MySparkAppListener</span>)</span><br></pre></td></tr></table></figure>
+
+<h4 id="SparkListerner"><a href="#SparkListerner" class="headerlink" title="SparkListerner"></a>SparkListerner</h4><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//SparkListener 下各个事件对应的函数名非常直白，即如字面所表达意思。</span></span><br><span class="line"><span class="comment">//想对哪个阶段的事件做一些自定义的动作，变继承SparkListener实现对应的函数即可</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">SparkListener</span> <span class="keyword">extends</span> <span class="title">SparkListenerInterface</span> </span>&#123;</span><br><span class="line">  <span class="comment">//阶段完成时触发的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onStageCompleted</span></span>(stageCompleted: <span class="type">SparkListenerStageCompleted</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//阶段提交时触发的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onStageSubmitted</span></span>(stageSubmitted: <span class="type">SparkListenerStageSubmitted</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//任务启动时触发的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onTaskStart</span></span>(taskStart: <span class="type">SparkListenerTaskStart</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//下载任务结果的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onTaskGettingResult</span></span>(taskGettingResult: <span class="type">SparkListenerTaskGettingResult</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//任务结束的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onTaskEnd</span></span>(taskEnd: <span class="type">SparkListenerTaskEnd</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//job启动的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onJobStart</span></span>(jobStart: <span class="type">SparkListenerJobStart</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//job结束的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onJobEnd</span></span>(jobEnd: <span class="type">SparkListenerJobEnd</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//环境变量被更新的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onEnvironmentUpdate</span></span>(environmentUpdate: <span class="type">SparkListenerEnvironmentUpdate</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//块管理被添加的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onBlockManagerAdded</span></span>(blockManagerAdded: <span class="type">SparkListenerBlockManagerAdded</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onBlockManagerRemoved</span></span>(</span><br><span class="line">      blockManagerRemoved: <span class="type">SparkListenerBlockManagerRemoved</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//取消rdd缓存的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onUnpersistRDD</span></span>(unpersistRDD: <span class="type">SparkListenerUnpersistRDD</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//app启动的事件</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onApplicationStart</span></span>(applicationStart: <span class="type">SparkListenerApplicationStart</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//app结束的事件 [以下各事件也如同函数名所表达各个阶段被触发的事件不在一一标注]</span></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onApplicationEnd</span></span>(applicationEnd: <span class="type">SparkListenerApplicationEnd</span>): <span class="type">Unit</span> = &#123; &#125; </span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onExecutorMetricsUpdate</span></span>(</span><br><span class="line">      executorMetricsUpdate: <span class="type">SparkListenerExecutorMetricsUpdate</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onExecutorAdded</span></span>(executorAdded: <span class="type">SparkListenerExecutorAdded</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onExecutorRemoved</span></span>(executorRemoved: <span class="type">SparkListenerExecutorRemoved</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onExecutorBlacklisted</span></span>(</span><br><span class="line">      executorBlacklisted: <span class="type">SparkListenerExecutorBlacklisted</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onExecutorUnblacklisted</span></span>(</span><br><span class="line">      executorUnblacklisted: <span class="type">SparkListenerExecutorUnblacklisted</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onNodeBlacklisted</span></span>(</span><br><span class="line">      nodeBlacklisted: <span class="type">SparkListenerNodeBlacklisted</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onNodeUnblacklisted</span></span>(</span><br><span class="line">      nodeUnblacklisted: <span class="type">SparkListenerNodeUnblacklisted</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onBlockUpdated</span></span>(blockUpdated: <span class="type">SparkListenerBlockUpdated</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onOtherEvent</span></span>(event: <span class="type">SparkListenerEvent</span>): <span class="type">Unit</span> = &#123; &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Demo"><a href="#Demo" class="headerlink" title="Demo"></a>Demo</h4><p>首先看官方文档配置，这里只是简单案例</p>
+<ol>
+<li>自定义监控类，继承SparkListener</li>
+<li>重写onTaskEnd方法，拿到taskMetrics</li>
+<li>从taskMetrics获取各种数据信息</li>
+<li>注册到被监听的类</li>
+</ol>
+<p>第1-3步代码</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MySparkListener</span>(<span class="params">conf:<span class="type">SparkConf</span></span>) <span class="keyword">extends</span> <span class="title">SparkListener</span> <span class="keyword">with</span> <span class="title">Logging</span></span>&#123;</span><br><span class="line">    <span class="comment">//监听每个Task结束</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onTaskEnd</span></span>(taskEnd: <span class="type">SparkListenerTaskEnd</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="comment">//获取应用程序名称</span></span><br><span class="line">        <span class="keyword">val</span> appName = conf.get(<span class="string">"spark.app.name"</span>)</span><br><span class="line">        <span class="comment">//获取作业的taskMetrics</span></span><br><span class="line">        <span class="keyword">val</span> metrics = taskEnd.taskMetrics</span><br><span class="line">        <span class="comment">//使用对象接收参数</span></span><br><span class="line">        <span class="keyword">val</span> metricsObject = <span class="type">Metrics</span>(appName,taskEnd.stageId, taskEnd.taskInfo.taskId, metrics.inputMetrics.bytesRead, metrics.shuffleReadMetrics.totalBytesRead, metrics.outputMetrics.bytesWritten, metrics.shuffleWriteMetrics.bytesWritten)</span><br><span class="line">        <span class="comment">//输出字符串类型的metricsObject</span></span><br><span class="line">        logError(metricsObject.toString)</span><br><span class="line">        <span class="comment">//输出Json类型的metricsObject</span></span><br><span class="line">        logError(<span class="type">Json</span>(<span class="type">DefaultFormats</span>).write(metricsObject))</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//定义case class对象</span></span><br><span class="line">    <span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Metrics</span>(<span class="params">appName:<span class="type">String</span>,stageId:<span class="type">Long</span>,taskId:<span class="type">Long</span>,bytesRead:<span class="type">Long</span>,bytesWritten:<span class="type">Long</span>,shuffleReadMetrics:<span class="type">Long</span>,shuffleWriteMetrics:<span class="type">Long</span></span>)</span>&#123;</span><br><span class="line">        <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">toString</span></span>: <span class="type">String</span> = <span class="string">s"appName:<span class="subst">$appName</span>,stageId:<span class="subst">$stageId</span>,taskId:<span class="subst">$taskId</span>,bytesRead:<span class="subst">$bytesRead</span>,bytesWritten:<span class="subst">$bytesWritten</span>,shuffleReadMetrics:<span class="subst">$shuffleReadMetrics</span>,shuffleWriteMetrics:<span class="subst">$shuffleWriteMetrics</span>"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>第4步代码</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">object</span> <span class="title">WordCount</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">main</span></span>(args: <span class="type">Array</span>[<span class="type">String</span>]): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="comment">//输入、输出路径</span></span><br><span class="line">        <span class="keyword">val</span> (in,out) = (args(<span class="number">0</span>),args(<span class="number">1</span>))</span><br><span class="line">        <span class="comment">//配置conf</span></span><br><span class="line">        <span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>()</span><br><span class="line">            .setAppName(getClass.getSimpleName)</span><br><span class="line">            .setMaster(<span class="string">"local[2]"</span>)</span><br><span class="line">            <span class="comment">//监听类注册</span></span><br><span class="line">            .set(<span class="string">"spark.extraListeners"</span>, <span class="string">"com.tunan.spark.listener.MySparkListener"</span>)</span><br><span class="line">        <span class="comment">//拿到sc</span></span><br><span class="line">        <span class="keyword">val</span> sc = <span class="keyword">new</span> <span class="type">SparkContext</span>(conf)</span><br><span class="line">        <span class="comment">//删除输出目录</span></span><br><span class="line">        <span class="type">CheckHDFSOutPath</span>.ifExistsDeletePath(<span class="keyword">new</span> <span class="type">Configuration</span>(),out)</span><br><span class="line">        <span class="comment">//操作算子</span></span><br><span class="line">        <span class="keyword">val</span> result = sc.textFile(in).flatMap(_.split(<span class="string">"\t"</span>)).map((_, <span class="number">1</span>)).reduceByKey(_ + _)</span><br><span class="line">        <span class="comment">//保存文件</span></span><br><span class="line">        result.saveAsTextFile(out)</span><br><span class="line">        <span class="comment">//关闭sc</span></span><br><span class="line">        sc.stop()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>taskEnd.taskInfo.status 该参数决定作业的成功或者失败</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">status</span></span>: <span class="type">String</span> = &#123;</span><br><span class="line">    <span class="keyword">if</span> (running) &#123;</span><br><span class="line">      <span class="keyword">if</span> (gettingResult) &#123;</span><br><span class="line">        <span class="string">"GET RESULT"</span></span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="string">"RUNNING"</span></span><br><span class="line">      &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (failed) &#123;</span><br><span class="line">      <span class="string">"FAILED"</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (killed) &#123;</span><br><span class="line">      <span class="string">"KILLED"</span></span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (successful) &#123;</span><br><span class="line">      <span class="string">"SUCCESS"</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="string">"UNKNOWN"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>小demo: </p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">val</span> status: <span class="type">String</span> = taskEnd.taskInfo.status</span><br><span class="line">    <span class="keyword">if</span>(<span class="string">"SUCCESS"</span>.equals(status))&#123;</span><br><span class="line">        println(<span class="string">"作业完成"</span>)</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>注意:<br>如果是大范围的实现某个abstract或者trait，最好加一层中间的代码过度达到解耦，我们实现的是中间的过度接口，与原来的接口隔绝来，这样如果升级版本的时候源码有所改动我们只需要改中间层的继承接口。</p>
+<h4 id="Spark自定义监控案例"><a href="#Spark自定义监控案例" class="headerlink" title="Spark自定义监控案例"></a>Spark自定义监控案例</h4><p>把监控参数写入到MySQL</p>
+<p>需求：应用程序名字、jobID号、stageID号、taskID号、读取数据量、写入数据量、shuffle读取数据量、shuffle写入数据量。</p>
+<ol>
+<li><p>建表</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">create table wc2mysql(</span><br><span class="line">	app_name varchar(<span class="number">32</span>),</span><br><span class="line">	job_id bigint,</span><br><span class="line">	stage_id bigInt,</span><br><span class="line">	task_id bigint,</span><br><span class="line">	file_read_byte bigint,</span><br><span class="line">	file_write_byte bigint,</span><br><span class="line">	shuffle_read_byte bigint,</span><br><span class="line">	shuffle_write_byte bigint</span><br><span class="line">);</span><br></pre></td></tr></table></figure></li>
+<li><p>实现监控类</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MySparkListenerV2</span>(<span class="params">conf: <span class="type">SparkConf</span></span>) <span class="keyword">extends</span> <span class="title">SparkListener</span> <span class="keyword">with</span> <span class="title">Logging</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//定义JobID</span></span><br><span class="line">    <span class="keyword">var</span> jobId:<span class="type">Long</span> = _</span><br><span class="line"></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onJobStart</span></span>(jobStart: <span class="type">SparkListenerJobStart</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="comment">//初始化</span></span><br><span class="line">        jobId = jobStart.jobId</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    println(<span class="string">"============准备插入数据============"</span>)</span><br><span class="line">    <span class="comment">//监听每个Task结束</span></span><br><span class="line">    <span class="keyword">override</span> <span class="function"><span class="keyword">def</span> <span class="title">onTaskEnd</span></span>(taskEnd: <span class="type">SparkListenerTaskEnd</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="comment">//获取应用程序名称</span></span><br><span class="line">        <span class="keyword">val</span> appName = conf.get(<span class="string">"spark.app.name"</span>)</span><br><span class="line"></span><br><span class="line">        <span class="comment">//获取作业的taskMetrics</span></span><br><span class="line">        <span class="keyword">val</span> metrics = taskEnd.taskMetrics</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用对象接收参数</span></span><br><span class="line">        <span class="keyword">val</span> listener = <span class="type">Listener</span>(appName, jobId, taskEnd.stageId, taskEnd.taskInfo.taskId, metrics.inputMetrics.bytesRead, metrics.outputMetrics.bytesWritten, metrics.shuffleReadMetrics.totalBytesRead, metrics.shuffleWriteMetrics.bytesWritten)</span><br><span class="line">		</span><br><span class="line">		<span class="comment">//结果插入到MySQL</span></span><br><span class="line">        <span class="type">ListenerCURD</span>.insert(listener)</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//发送监控邮件</span></span><br><span class="line">        <span class="keyword">if</span> (<span class="string">"true"</span> == conf.get(<span class="string">"spark.send.mail.enabled"</span>))&#123;</span><br><span class="line">            <span class="type">MsgUtils</span>.send(<span class="string">"971118017@qq.com"</span>, <span class="string">"ERROR：数据异常"</span>, <span class="string">s"jobID: <span class="subst">$jobId</span> 数据异常，请马上检查: <span class="subst">$&#123;listener.toString&#125;</span>"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    println(<span class="string">"============成功插入数据============"</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>实现监控数据写入MySQL<br>使用的是scalikejdbc框架实现的,<a href="https://emerkfu.github.io/2018/05/13/Scala%20使用ScalikeJDBC操作MySQL/">ScalikeJDBC操作MySQL</a></p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Listener</span>(<span class="params">app_name: <span class="type">String</span>, job_id: <span class="type">Long</span>, stage_id: <span class="type">Long</span>, task_id: <span class="type">Long</span>, file_read_byte: <span class="type">Long</span>, file_write_byte: <span class="type">Long</span>, shuffle_read_byte: <span class="type">Long</span>, shuffle_write_byte: <span class="type">Long</span></span>)</span></span><br><span class="line"><span class="class"></span></span><br><span class="line"><span class="class"><span class="title">object</span> <span class="title">ListenerCURD</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">Before</span></span>(): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="comment">//初始化配置</span></span><br><span class="line">        <span class="type">DBs</span>.setupAll()</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">insert</span></span>(listener: <span class="type">Listener</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="type">Before</span>()</span><br><span class="line">        <span class="comment">//事物插入</span></span><br><span class="line">        <span class="type">DB</span>.localTx &#123;</span><br><span class="line">            <span class="keyword">implicit</span> session =&gt; &#123;</span><br><span class="line">                <span class="type">SQL</span>(<span class="string">"insert into wc2mysql(app_name,job_id,stage_id,task_id,file_read_byte,file_write_byte,shuffle_read_byte,shuffle_write_byte) values(?,?,?,?,?,?,?,?)"</span>)</span><br><span class="line">                    .bind(listener.app_name,listener.job_id, listener.stage_id, listener.task_id, listener.file_read_byte, listener.file_write_byte, listener.shuffle_read_byte, listener.shuffle_write_byte)</span><br><span class="line">                    .update()</span><br><span class="line">                    .apply()</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="type">After</span>()</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">After</span></span>(): <span class="type">Unit</span> = &#123;</span><br><span class="line">        <span class="comment">//关闭资源</span></span><br><span class="line">        <span class="type">DBs</span>.closeAll()</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动被监控类<br>被监控的类还是我们上面的WordCount的类，关键在于在SparkConf()中注册</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//配置conf</span></span><br><span class="line"><span class="keyword">val</span> conf = <span class="keyword">new</span> <span class="type">SparkConf</span>()</span><br><span class="line">.setAppName(getClass.getSimpleName)</span><br><span class="line">.setMaster(<span class="string">"local[2]"</span>)</span><br><span class="line"><span class="comment">//监听类注册</span></span><br><span class="line">.set(<span class="string">"spark.extraListeners"</span>, <span class="string">"com.tunan.spark.listener.MySparkListenerV2"</span>)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在数据库中查询</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> wc2mysql;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Spark/" rel="tag"># Spark</a>
+              <a href="/tags/Spark%E7%9B%91%E6%8E%A7/" rel="tag"># Spark监控</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2019/03/09/Hue_%E9%83%A8%E7%BD%B2/" rel="prev" title="Hue 部署">
+                  <i class="fa fa-chevron-left"></i> Hue 部署
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2019/03/16/SparkStreaming%E5%9F%BA%E7%A1%80/" rel="next" title="SparkStreaming 基础">
+                  SparkStreaming 基础 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>
