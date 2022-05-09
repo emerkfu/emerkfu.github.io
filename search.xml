@@ -372,25 +372,6 @@
       </tags>
   </entry>
   <entry>
-    <title>Doris MySQL Load</title>
-    <url>/2021/04/15/DorisMySQLLoad/</url>
-    <content><![CDATA[<p>Doris MySQL Load 的操作说明。</p>
-<a id="more"></a>
-<hr>
-<p>Doris 支持创建 Mysql 引擎的表，操作此表相当于操作远程 Mysql 表。可以用来导入Mysql 数据使用或测试。</p>
-<p>Tips: Doris 中默认字段都是不能为空的，如果字段可能为空需要加上 null 标记。</p>
-<p>例如, <code>grade</code> int(11) NULL DEFAULT NULL</p>
-<h1 id="MySql-load-DEMO-案例"><a href="#MySql-load-DEMO-案例" class="headerlink" title="MySql load DEMO 案例"></a>MySql load DEMO 案例</h1><h3 id="创建-Mysql-测试用表及测试数据"><a href="#创建-Mysql-测试用表及测试数据" class="headerlink" title="创建 Mysql 测试用表及测试数据"></a>创建 Mysql 测试用表及测试数据</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># Mysql 测试库 test_udp, 测试表 test_score</span><br><span class="line">CREATE DATABASE IF NOT EXISTS test_udp;</span><br><span class="line">ROP TABLE IF EXISTS &#96;test_score&#96;;</span><br><span class="line">CREATE TABLE &#96;test_score&#96;  (</span><br><span class="line">  &#96;sno&#96; varchar(7) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT &#39;学号&#39;,</span><br><span class="line">  &#96;cno&#96; varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT &#39;课程号&#39;,</span><br><span class="line">  &#96;grade&#96; int(11) NULL DEFAULT NULL COMMENT &#39;成绩&#39;,</span><br><span class="line">  PRIMARY KEY (&#96;sno&#96;, &#96;cno&#96;) USING BTREE,</span><br><span class="line">  INDEX &#96;Cno&#96;(&#96;cno&#96;) USING BTREE</span><br><span class="line">)</span><br><span class="line">ENGINE &#x3D; InnoDB</span><br><span class="line">CHARACTER SET &#x3D; utf8</span><br><span class="line">COLLATE &#x3D; utf8_general_ci</span><br><span class="line">ROW_FORMAT &#x3D; Dynamic;</span><br><span class="line"> </span><br><span class="line"># 测试表 test_score 导入数据</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811101&#39;, &#39;C001&#39;, 96);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811101&#39;, &#39;C002&#39;, 80);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811102&#39;, &#39;C002&#39;, 90);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811102&#39;, &#39;C005&#39;, 73);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811102&#39;, &#39;C007&#39;, NULL);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811103&#39;, &#39;C001&#39;, 50);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811103&#39;, &#39;C004&#39;, 80);</span><br></pre></td></tr></table></figure>
-
-<h3 id="创建-Doris-表映射-Mysql-表"><a href="#创建-Doris-表映射-Mysql-表" class="headerlink" title="创建 Doris 表映射 Mysql 表"></a>创建 Doris 表映射 Mysql 表</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># 在 Doris test 库下创建映射 Mysql 的测试表 score</span><br><span class="line">USE test;</span><br><span class="line">CREATE TABLE &#96;score&#96;(</span><br><span class="line">  &#96;sno&#96; varchar(7) NOT NULL,</span><br><span class="line">  &#96;cno&#96; varchar(10) NOT NULL,</span><br><span class="line">  &#96;grade&#96; int(11) NULL DEFAULT NULL</span><br><span class="line">)</span><br><span class="line">ENGINE &#x3D; mysql</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">  &quot;host&quot; &#x3D; &quot;10.0.15.134&quot;,</span><br><span class="line">  &quot;port&quot; &#x3D; &quot;3306&quot;,</span><br><span class="line">  &quot;user&quot; &#x3D; &quot;root&quot;,</span><br><span class="line">  &quot;password&quot; &#x3D; &quot;hmd@_#admin&quot;,</span><br><span class="line">  &quot;database&quot; &#x3D; &quot;test_udp&quot;,</span><br><span class="line">  &quot;table&quot; &#x3D; &quot;test_score&quot;</span><br><span class="line">);</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"># 查询 Doris 测试表 score</span><br><span class="line">mysql&gt; select * from score;</span><br><span class="line">+---------+------+-------+</span><br><span class="line">| sno     | cno  | grade |</span><br><span class="line">+---------+------+-------+</span><br><span class="line">| 0811101 | C001 |    96 |</span><br><span class="line">| 0811101 | C002 |    80 |</span><br><span class="line">| 0811102 | C002 |    90 |</span><br><span class="line">| 0811102 | C005 |    73 |</span><br><span class="line">| 0811102 | C007 |  NULL |</span><br><span class="line">| 0811103 | C001 |    50 |</span><br><span class="line">| 0811103 | C004 |    80 |</span><br><span class="line">+---------+------+-------+</span><br><span class="line">7 rows in set (0.03 sec)</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>Doris</category>
-      </categories>
-      <tags>
-        <tag>Doris</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Doris 使用 AGGREGATE 模型进行数据局部字段更新</title>
     <url>/2021/05/24/Doris%E4%BD%BF%E7%94%A8AGGREGATE%E6%A8%A1%E5%9E%8B%E8%BF%9B%E8%A1%8C%E6%95%B0%E6%8D%AE%E5%B1%80%E9%83%A8%E5%AD%97%E6%AE%B5%E6%9B%B4%E6%96%B0/</url>
     <content><![CDATA[<p>使用 AGGREGATE 模型进行数据局部字段更新DEMO。</p>
@@ -411,6 +392,25 @@
 
 <p>Kafka Routine Load Task 会自动识别Json数据中存在的字段，不存在的字段不会被更新。</p>
 ]]></content>
+      <categories>
+        <category>Doris</category>
+      </categories>
+      <tags>
+        <tag>Doris</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Doris MySQL Load</title>
+    <url>/2021/04/15/DorisMySQLLoad/</url>
+    <content><![CDATA[<p>Doris MySQL Load 的操作说明。</p>
+<a id="more"></a>
+<hr>
+<p>Doris 支持创建 Mysql 引擎的表，操作此表相当于操作远程 Mysql 表。可以用来导入Mysql 数据使用或测试。</p>
+<p>Tips: Doris 中默认字段都是不能为空的，如果字段可能为空需要加上 null 标记。</p>
+<p>例如, <code>grade</code> int(11) NULL DEFAULT NULL</p>
+<h1 id="MySql-load-DEMO-案例"><a href="#MySql-load-DEMO-案例" class="headerlink" title="MySql load DEMO 案例"></a>MySql load DEMO 案例</h1><h3 id="创建-Mysql-测试用表及测试数据"><a href="#创建-Mysql-测试用表及测试数据" class="headerlink" title="创建 Mysql 测试用表及测试数据"></a>创建 Mysql 测试用表及测试数据</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># Mysql 测试库 test_udp, 测试表 test_score</span><br><span class="line">CREATE DATABASE IF NOT EXISTS test_udp;</span><br><span class="line">ROP TABLE IF EXISTS &#96;test_score&#96;;</span><br><span class="line">CREATE TABLE &#96;test_score&#96;  (</span><br><span class="line">  &#96;sno&#96; varchar(7) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT &#39;学号&#39;,</span><br><span class="line">  &#96;cno&#96; varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT &#39;课程号&#39;,</span><br><span class="line">  &#96;grade&#96; int(11) NULL DEFAULT NULL COMMENT &#39;成绩&#39;,</span><br><span class="line">  PRIMARY KEY (&#96;sno&#96;, &#96;cno&#96;) USING BTREE,</span><br><span class="line">  INDEX &#96;Cno&#96;(&#96;cno&#96;) USING BTREE</span><br><span class="line">)</span><br><span class="line">ENGINE &#x3D; InnoDB</span><br><span class="line">CHARACTER SET &#x3D; utf8</span><br><span class="line">COLLATE &#x3D; utf8_general_ci</span><br><span class="line">ROW_FORMAT &#x3D; Dynamic;</span><br><span class="line"> </span><br><span class="line"># 测试表 test_score 导入数据</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811101&#39;, &#39;C001&#39;, 96);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811101&#39;, &#39;C002&#39;, 80);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811102&#39;, &#39;C002&#39;, 90);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811102&#39;, &#39;C005&#39;, 73);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811102&#39;, &#39;C007&#39;, NULL);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811103&#39;, &#39;C001&#39;, 50);</span><br><span class="line">INSERT INTO &#96;test_score&#96; VALUES (&#39;0811103&#39;, &#39;C004&#39;, 80);</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建-Doris-表映射-Mysql-表"><a href="#创建-Doris-表映射-Mysql-表" class="headerlink" title="创建 Doris 表映射 Mysql 表"></a>创建 Doris 表映射 Mysql 表</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"># 在 Doris test 库下创建映射 Mysql 的测试表 score</span><br><span class="line">USE test;</span><br><span class="line">CREATE TABLE &#96;score&#96;(</span><br><span class="line">  &#96;sno&#96; varchar(7) NOT NULL,</span><br><span class="line">  &#96;cno&#96; varchar(10) NOT NULL,</span><br><span class="line">  &#96;grade&#96; int(11) NULL DEFAULT NULL</span><br><span class="line">)</span><br><span class="line">ENGINE &#x3D; mysql</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">  &quot;host&quot; &#x3D; &quot;10.0.15.134&quot;,</span><br><span class="line">  &quot;port&quot; &#x3D; &quot;3306&quot;,</span><br><span class="line">  &quot;user&quot; &#x3D; &quot;root&quot;,</span><br><span class="line">  &quot;password&quot; &#x3D; &quot;hmd@_#admin&quot;,</span><br><span class="line">  &quot;database&quot; &#x3D; &quot;test_udp&quot;,</span><br><span class="line">  &quot;table&quot; &#x3D; &quot;test_score&quot;</span><br><span class="line">);</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"># 查询 Doris 测试表 score</span><br><span class="line">mysql&gt; select * from score;</span><br><span class="line">+---------+------+-------+</span><br><span class="line">| sno     | cno  | grade |</span><br><span class="line">+---------+------+-------+</span><br><span class="line">| 0811101 | C001 |    96 |</span><br><span class="line">| 0811101 | C002 |    80 |</span><br><span class="line">| 0811102 | C002 |    90 |</span><br><span class="line">| 0811102 | C005 |    73 |</span><br><span class="line">| 0811102 | C007 |  NULL |</span><br><span class="line">| 0811103 | C001 |    50 |</span><br><span class="line">| 0811103 | C004 |    80 |</span><br><span class="line">+---------+------+-------+</span><br><span class="line">7 rows in set (0.03 sec)</span><br></pre></td></tr></table></figure>]]></content>
       <categories>
         <category>Doris</category>
       </categories>
