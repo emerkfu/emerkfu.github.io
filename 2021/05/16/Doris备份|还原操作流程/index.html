@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.1/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css">
+
+<script class="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
+  </script>
+<meta name="description" content="Doris 备份 | 还原 操作流程说明。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Doris 备份 | 还原 操作流程">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2021/05/16/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="Emerk&#39;s blog">
+<meta property="og:description" content="Doris 备份 | 还原 操作流程说明。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/16/Doris%E5%A4%87%E4%BB%BD%7C%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW%20SNAPSHOT%20ON%20hdfs_repo.png">
+<meta property="article:published_time" content="2021-05-16T01:23:00.000Z">
+<meta property="article:modified_time" content="2022-05-09T06:18:27.335Z">
+<meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Doris">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2021/05/16/Doris%E5%A4%87%E4%BB%BD%7C%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW%20SNAPSHOT%20ON%20hdfs_repo.png">
+
+
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2021/05/16/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/">
+
+
+<script class="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+<title>Doris 备份 | 还原 操作流程 | Emerk's blog</title>
+  
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header {
+    visibility: visible;
+  }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+<link rel="stylesheet" href="/css/prism.css" type="text/css"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Emerk's blog</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">knowledge is power</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">30</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">18</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">90</span></a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#在备份-Doris-集群进行以下操作"><span class="nav-number">1.</span> <span class="nav-text">在备份 Doris 集群进行以下操作</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建远程仓库（需要-Doris-root-权限）"><span class="nav-number">1.1.</span> <span class="nav-text">创建远程仓库（需要 Doris root 权限）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#全量备份"><span class="nav-number">1.2.</span> <span class="nav-text">全量备份</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#备份-database-所有表"><span class="nav-number">1.2.1.</span> <span class="nav-text">备份 database 所有表</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#备份-database-部分表"><span class="nav-number">1.2.2.</span> <span class="nav-text">备份 database 部分表</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#在还原-Doris-集群进行以下操作"><span class="nav-number">2.</span> <span class="nav-text">在还原 Doris 集群进行以下操作</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建远程仓库（需要-Doris-root-权限）-1"><span class="nav-number">2.1.</span> <span class="nav-text">创建远程仓库（需要 Doris root 权限）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#手动创建需要还原的-database"><span class="nav-number">2.2.</span> <span class="nav-text">手动创建需要还原的 database</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#全量还原"><span class="nav-number">2.3.</span> <span class="nav-text">全量还原</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#还原-database-所有表"><span class="nav-number">2.3.1.</span> <span class="nav-text">还原 database 所有表</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#还原-database-部分表"><span class="nav-number">2.3.2.</span> <span class="nav-text">还原 database 部分表</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#备份还原常用命令"><span class="nav-number">3.</span> <span class="nav-text">备份还原常用命令</span></a></li></ol></div>
+        </section>
+        <!--/noindex-->
+
+        <section class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">EmerkFu</p>
+  <div class="site-description" itemprop="description">Stay Hungry. Stay Foolish.</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">90</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">18</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">30</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+        </section>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2021/05/16/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="EmerkFu">
+      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Emerk's blog">
+    </span>
+        <header class="post-header">
+
+        <h1 class="post-title" itemprop="name headline">
+          Doris 备份 | 还原 操作流程
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2021-05-16 09:23:00" itemprop="dateCreated datePublished" datetime="2021-05-16T09:23:00+08:00">2021-05-16</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Doris/" itemprop="url" rel="index"><span itemprop="name">Doris</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
+</div>
+
+
+		  
+        </div>
+
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>Doris 备份 | 还原 操作流程说明。</p>
+<a id="more"></a>
+<hr>
+<h3 id="在备份-Doris-集群进行以下操作"><a href="#在备份-Doris-集群进行以下操作" class="headerlink" title="在备份 Doris 集群进行以下操作"></a>在备份 Doris 集群进行以下操作</h3><h4 id="创建远程仓库（需要-Doris-root-权限）"><a href="#创建远程仓库（需要-Doris-root-权限）" class="headerlink" title="创建远程仓库（需要 Doris root 权限）"></a>创建远程仓库（需要 Doris root 权限）</h4><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> REPOSITORY hdfs_repo</span><br><span class="line"><span class="keyword">WITH</span> BROKER broker_name</span><br><span class="line"><span class="keyword">ON</span> LOCATION <span class="string">"hdfs://nameSpace/user/root/hdfs_broker"</span></span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">   <span class="string">"username"</span> = <span class="string">""</span>,</span><br><span class="line">   <span class="string">"password"</span> = <span class="string">""</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h4 id="全量备份"><a href="#全量备份" class="headerlink" title="全量备份"></a>全量备份</h4><h5 id="备份-database-所有表"><a href="#备份-database-所有表" class="headerlink" title="备份 database 所有表"></a>备份 database 所有表</h5><p>向 hdfs_repo 远程仓库全量备份 databaseName 库的所有表，HDFS 快照名为 snapshot_databaseName</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BACKUP</span> <span class="keyword">SNAPSHOT</span> databaseName.snapshot_databaseName</span><br><span class="line"><span class="keyword">TO</span> hdfs_repo</span><br><span class="line">PROPERTIES (<span class="string">"type"</span> = <span class="string">"full"</span>);</span><br></pre></td></tr></table></figure>
+
+<h5 id="备份-database-部分表"><a href="#备份-database-部分表" class="headerlink" title="备份 database 部分表"></a>备份 database 部分表</h5><p>向 hdfs_repo 远程仓库全量备份 databaseName 库的 table1,  table2, table3 表，HDFS 快照名为 snapshot_databaseName</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BACKUP</span> <span class="keyword">SNAPSHOT</span> databaseName.snapshot_databaseName</span><br><span class="line"><span class="keyword">TO</span> hdfs_repo</span><br><span class="line"><span class="keyword">ON</span> (</span><br><span class="line">    <span class="string">`table1`</span>,</span><br><span class="line">    <span class="string">`table2`</span>,</span><br><span class="line">    <span class="string">`table3`</span>)</span><br><span class="line">PROPERTIES (<span class="string">"type"</span> = <span class="string">"full"</span>);</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Tips</p>
+<ol>
+<li><p>只能对 OLAP 类型的表进行备份</p>
+</li>
+<li><p>备份的最大粒度是 database，最小粒度是 partition，所以有多少个 database 就需要备份多少个 snapshot</p>
+</li>
+<li><p>PROPERTIES 目前支持以下属性：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">"type" = "full"     表示这是一次全量更新（默认）。</span><br><span class="line">"timeout" = "3600"  任务超时时间，默认为一天，单位秒。</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>通过以下命令查看<strong>备份</strong>状态</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">BACKUP</span>;</span><br></pre></td></tr></table></figure>
+
+<p>![SHOW BACKUP](Doris备份|还原操作流程/SHOW BACKUP.png)</p>
+<p><strong>备份</strong>状态包括以下几种</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">PENDING：作业初始状态。</span><br><span class="line">SNAPSHOTING：正在进行快照操作。</span><br><span class="line">UPLOAD_SNAPSHOT：快照结束，准备上传。</span><br><span class="line">UPLOADING：正在上传快照。</span><br><span class="line">SAVE_META：正在本地生成元数据文件。</span><br><span class="line">UPLOAD_INFO：上传元数据文件和本次备份作业的信息。</span><br><span class="line">FINISHED：备份完成。</span><br><span class="line">CANCELLED：备份失败或被取消。</span><br></pre></td></tr></table></figure>
+
+
+
+</li>
+</ol>
+</blockquote>
+<h3 id="在还原-Doris-集群进行以下操作"><a href="#在还原-Doris-集群进行以下操作" class="headerlink" title="在还原 Doris 集群进行以下操作"></a>在还原 Doris 集群进行以下操作</h3><h4 id="创建远程仓库（需要-Doris-root-权限）-1"><a href="#创建远程仓库（需要-Doris-root-权限）-1" class="headerlink" title="创建远程仓库（需要 Doris root 权限）"></a>创建远程仓库（需要 Doris root 权限）</h4><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> REPOSITORY hdfs_repo</span><br><span class="line"><span class="keyword">WITH</span> BROKER broker_name</span><br><span class="line"><span class="keyword">ON</span> LOCATION <span class="string">"hdfs://nameSpace/user/root/hdfs_broker"</span></span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">   <span class="string">"username"</span> = <span class="string">""</span>,</span><br><span class="line">   <span class="string">"password"</span> = <span class="string">""</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h4 id="手动创建需要还原的-database"><a href="#手动创建需要还原的-database" class="headerlink" title="手动创建需要还原的 database"></a>手动创建需要还原的 database</h4><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">database</span> databaseName;</span><br></pre></td></tr></table></figure>
+
+<h4 id="全量还原"><a href="#全量还原" class="headerlink" title="全量还原"></a>全量还原</h4><h5 id="还原-database-所有表"><a href="#还原-database-所有表" class="headerlink" title="还原 database 所有表"></a>还原 database 所有表</h5><p>从 hdfs_repo 远程仓库全量还原 databaseName 库的所有表，HDFS 快照名为 snapshot_databaseName</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">RESTORE</span> <span class="keyword">SNAPSHOT</span> databaseName.snapshot_databaseName</span><br><span class="line"><span class="keyword">FROM</span> <span class="string">`hdfs_repo`</span></span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">    <span class="string">"backup_timestamp"</span>=<span class="string">"2022-04-03-13-18-39"</span>,</span><br><span class="line">    <span class="string">"replication_num"</span> = <span class="string">"1"</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<h5 id="还原-database-部分表"><a href="#还原-database-部分表" class="headerlink" title="还原 database 部分表"></a>还原 database 部分表</h5><p>从 hdfs_repo 远程仓库全量还原 databaseName 库的 table1,  table2, table3 表，HDFS 快照名为 snapshot_databaseName</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">RESTORE</span> <span class="keyword">SNAPSHOT</span> databaseName.snapshot_databaseName</span><br><span class="line"><span class="keyword">FROM</span> <span class="string">`hdfs_repo`</span></span><br><span class="line"><span class="keyword">ON</span> ( </span><br><span class="line">    <span class="string">`table1`</span>,</span><br><span class="line">    <span class="string">`table2`</span>,</span><br><span class="line">    <span class="string">`table3`</span> )</span><br><span class="line">PROPERTIES</span><br><span class="line">(</span><br><span class="line">    <span class="string">"backup_timestamp"</span>=<span class="string">"2022-04-03-12-54-57"</span>,</span><br><span class="line">    <span class="string">"replication_num"</span> = <span class="string">"1"</span></span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Tips</p>
+<ol>
+<li><p>“backup_timestamp”=”2022-04-03-12-54-57” 指定了恢复对应备份的哪个时间版本 &lt;<strong>必填</strong>&gt;</p>
+<p>可以通过以下命令查看确认：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW SNAPSHOT ON hdfs_repo;</span><br></pre></td></tr></table></figure>
+
+<img src="/2021/05/16/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW SNAPSHOT ON hdfs_repo.png" alt="SHOW SNAPSHOT ON hdfs_repo" style="zoom:50%;">    
+</li>
+<li><p>“replication_num” = “1” 指定恢复的表或分区的副本数。默认为 3</p>
+</li>
+<li><p>通过以下命令查看<strong>还原</strong>状态</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">RESTORE</span>;</span><br></pre></td></tr></table></figure>
+
+<p>![SHOW RESTORE](Doris备份|还原操作流程/SHOW RESTORE.png)</p>
+<p><strong>还原</strong>状态包括以下几种</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">State：恢复作业当前所在阶段：</span><br><span class="line">PENDING：作业初始状态。</span><br><span class="line">SNAPSHOTING：正在进行本地新建表的快照操作。</span><br><span class="line">DOWNLOAD：正在发送下载快照任务。</span><br><span class="line">DOWNLOADING：快照正在下载。</span><br><span class="line">COMMIT：准备生效已下载的快照。</span><br><span class="line">COMMITTING：正在生效已下载的快照。</span><br><span class="line">FINISHED：恢复完成。</span><br><span class="line">CANCELLED：恢复失败或被取消。</span><br></pre></td></tr></table></figure>
+
+
+</li>
+</ol>
+</blockquote>
+<h3 id="备份还原常用命令"><a href="#备份还原常用命令" class="headerlink" title="备份还原常用命令"></a>备份还原常用命令</h3><ol>
+<li><p>查看 BACKUP 作业的执行情况。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> databaseName;</span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">BACKUP</span>;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看 RESTORE 作业的执行情况。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">use databaseName;</span><br><span class="line">SHOW RESTORE;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>取消正在执行的备份作业。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> databaseName;</span><br><span class="line">CANCEL <span class="keyword">BACKUP</span>;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>取消正在执行的恢复作业。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> databaseName;</span><br><span class="line">CANCEL <span class="keyword">RESTORE</span>;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>删除已创建的远端仓库。删除仓库，只删除该仓库在 Doris 中的映射，不会删除实际 HDFS 仓库中的数据。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> databaseName;</span><br><span class="line"><span class="keyword">DROP</span> REPOSITORY;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看远程仓库上的快照信息。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">SNAPSHOT</span> <span class="keyword">ON</span> repositoryName;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Doris/" rel="tag"># Doris</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/04/22/Flume%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1KafkaSourceKafkaSink/" rel="prev" title="Flume 负载均衡 KafkaSource KafkaSink">
+                  <i class="fa fa-chevron-left"></i> Flume 负载均衡 KafkaSource KafkaSink
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/05/16/Doris%E5%8A%A8%E6%80%81%E5%88%86%E5%8C%BA%E8%A1%A8/" rel="next" title="Doris 动态分区表">
+                  Doris 动态分区表 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      const activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      const commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 2015 – 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">By Emerk</span>
+</div>
+<div class="busuanzi-count">
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="//cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/@fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+<script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+  
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+</body>
+</html>
