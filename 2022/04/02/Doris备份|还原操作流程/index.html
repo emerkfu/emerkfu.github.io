@@ -31,13 +31,15 @@
 <meta property="og:site_name" content="Emerk&#39;s blog">
 <meta property="og:description" content="Doris 备份 | 还原 操作流程说明。">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2022/04/02/Doris%E5%A4%87%E4%BB%BD%7C%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW%20BACKUP.png">
 <meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/2022/04/02/Doris%E5%A4%87%E4%BB%BD%7C%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW%20SNAPSHOT%20ON%20hdfs_repo.png">
+<meta property="og:image" content="https://emerkfu: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@emerkfu.github.io/Typora-%E5%9B%BE%E7%89%87/image-20220403142349083.png">
 <meta property="article:published_time" content="2022-04-02T01:23:00.000Z">
-<meta property="article:modified_time" content="2022-05-09T06:26:03.795Z">
+<meta property="article:modified_time" content="2022-05-09T06:38:18.161Z">
 <meta property="article:author" content="EmerkFu">
 <meta property="article:tag" content="Doris">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2022/04/02/Doris%E5%A4%87%E4%BB%BD%7C%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW%20SNAPSHOT%20ON%20hdfs_repo.png">
+<meta name="twitter:image" content="https://emerkfu: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@emerkfu.github.io/2022/04/02/Doris%E5%A4%87%E4%BB%BD%7C%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW%20BACKUP.png">
 
 
 <link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2022/04/02/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/">
@@ -357,7 +359,8 @@
 <li><p>通过以下命令查看<strong>备份</strong>状态</p>
 <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">BACKUP</span>;</span><br></pre></td></tr></table></figure>
 
-<p>![SHOW BACKUP](Doris备份|还原操作流程/SHOW BACKUP.png)</p>
+<img src="/2022/04/02/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW BACKUP.png" alt="SHOW BACKUP" style="zoom:33%;">    
+
 <p><strong>备份</strong>状态包括以下几种</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">PENDING：作业初始状态。</span><br><span class="line">SNAPSHOTING：正在进行快照操作。</span><br><span class="line">UPLOAD_SNAPSHOT：快照结束，准备上传。</span><br><span class="line">UPLOADING：正在上传快照。</span><br><span class="line">SAVE_META：正在本地生成元数据文件。</span><br><span class="line">UPLOAD_INFO：上传元数据文件和本次备份作业的信息。</span><br><span class="line">FINISHED：备份完成。</span><br><span class="line">CANCELLED：备份失败或被取消。</span><br></pre></td></tr></table></figure>
 
@@ -383,14 +386,15 @@
 <p>可以通过以下命令查看确认：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SHOW SNAPSHOT ON hdfs_repo;</span><br></pre></td></tr></table></figure>
 
-<img src="/2022/04/02/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW SNAPSHOT ON hdfs_repo.png" alt="SHOW SNAPSHOT ON hdfs_repo" style="zoom:50%;">    
+<img src="/2022/04/02/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/SHOW SNAPSHOT ON hdfs_repo.png" alt="SHOW SNAPSHOT ON hdfs_repo" style="zoom: 33%;">            
 </li>
 <li><p>“replication_num” = “1” 指定恢复的表或分区的副本数。默认为 3</p>
 </li>
 <li><p>通过以下命令查看<strong>还原</strong>状态</p>
 <figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="keyword">RESTORE</span>;</span><br></pre></td></tr></table></figure>
 
-<p>![SHOW RESTORE](Doris备份|还原操作流程/SHOW RESTORE.png)</p>
+<img src="/2022/04/02/Doris%E5%A4%87%E4%BB%BD|%E8%BF%98%E5%8E%9F%E6%93%8D%E4%BD%9C%E6%B5%81%E7%A8%8B/../../../../Typora-图片/image-20220403142349083.png" alt="SHOW RESTORE" style="zoom: 33%;">        
+
 <p><strong>还原</strong>状态包括以下几种</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">State：恢复作业当前所在阶段：</span><br><span class="line">PENDING：作业初始状态。</span><br><span class="line">SNAPSHOTING：正在进行本地新建表的快照操作。</span><br><span class="line">DOWNLOAD：正在发送下载快照任务。</span><br><span class="line">DOWNLOADING：快照正在下载。</span><br><span class="line">COMMIT：准备生效已下载的快照。</span><br><span class="line">COMMITTING：正在生效已下载的快照。</span><br><span class="line">FINISHED：恢复完成。</span><br><span class="line">CANCELLED：恢复失败或被取消。</span><br></pre></td></tr></table></figure>
 
