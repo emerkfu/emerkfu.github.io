@@ -24,30 +24,33 @@
     var NexT = window.NexT || {};
     var CONFIG = {"hostname":"emerkfu.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.1.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":"ture","bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false}};
   </script>
-<meta name="description" content="Stay Hungry. Stay Foolish.">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Emerk&#39;s blog">
-<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/index.html">
+<meta name="description" content="1.0.1 版本 window_funnel 测试DEMO 112345678910111213141516171819202122232425262728293031CREATE TABLE test.&#96;dev_windowfunnel_test2&#96; (&#96;xwho&#96; varchar(50) NULL COMMENT &#39;xwho&#39;,&#96;xwhen&#96; datetime COMMENT &#39;xwhen&#39;,">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Doris 有序窗口漏斗 window_funnel">
+<meta property="og:url" content="https://emerkfu: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@emerkfu.github.io/2022/05/07/Doris%E6%9C%89%E5%BA%8F%E7%AA%97%E5%8F%A3%E6%BC%8F%E6%96%97windowFunnel/index.html">
 <meta property="og:site_name" content="Emerk&#39;s blog">
-<meta property="og:description" content="Stay Hungry. Stay Foolish.">
+<meta property="og:description" content="1.0.1 版本 window_funnel 测试DEMO 112345678910111213141516171819202122232425262728293031CREATE TABLE test.&#96;dev_windowfunnel_test2&#96; (&#96;xwho&#96; varchar(50) NULL COMMENT &#39;xwho&#39;,&#96;xwhen&#96; datetime COMMENT &#39;xwhen&#39;,">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-05-07T13:23:00.000Z">
+<meta property="article:modified_time" content="2022-05-10T01:40:26.112Z">
 <meta property="article:author" content="EmerkFu">
+<meta property="article:tag" content="Doris">
 <meta name="twitter:card" content="summary">
 
 
-<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/">
+<link rel="canonical" href="https://emerkfu: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@emerkfu.github.io/2022/05/07/Doris%E6%9C%89%E5%BA%8F%E7%AA%97%E5%8F%A3%E6%BC%8F%E6%96%97windowFunnel/">
 
 
 <script class="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
-<title>Emerk's blog</title>
+<title>Doris 有序窗口漏斗 window_funnel | Emerk's blog</title>
   
 
 
@@ -192,7 +195,7 @@
 
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-overview-active">
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           文章目录
@@ -205,6 +208,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <section class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-0-1-版本-window-funnel-测试"><span class="nav-number">1.</span> <span class="nav-text">1.0.1 版本 window_funnel 测试</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#DEMO-1"><span class="nav-number">1.1.</span> <span class="nav-text">DEMO 1</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DEMO-2"><span class="nav-number">1.2.</span> <span class="nav-text">DEMO 2</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#0-15-3-增加-window-funnel"><span class="nav-number">2.</span> <span class="nav-text">0.15.3 增加 window_funnel</span></a></li></ol></div>
         </section>
         <!--/noindex-->
 
@@ -259,96 +263,10 @@
 </noscript>
 
 
-    <div class="main-inner index posts-expand">
+    <div class="main-inner post posts-expand">
 
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2021/05/24/Kafka%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="EmerkFu">
-      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Emerk's blog">
-    </span>
-        <header class="post-header">
-
-        <h2 class="post-title" itemprop="name headline">
-          
-              <span class="post-sticky-flag" title="置顶">
-                <i class="fa fa-thumbtack"></i>
-              </span><a href="/2021/05/24/Kafka%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" class="post-title-link" itemprop="url">Kafka 常用命令</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2021-05-24 09:23:00" itemprop="dateCreated datePublished" datetime="2021-05-24T09:23:00+08:00">2021-05-24</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/Kafka/" itemprop="url" rel="index"><span itemprop="name">Kafka</span></a>
-        </span>
-    </span>
 
   
-</div>
-
-
-		  
-        </div>
-
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>Kafka 的常用命令整理</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2021/05/24/Kafka%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
 
 
 <div class="post-block">
@@ -369,9 +287,9 @@
     </span>
         <header class="post-header">
 
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/05/07/Doris%E6%9C%89%E5%BA%8F%E7%AA%97%E5%8F%A3%E6%BC%8F%E6%96%97windowFunnel/" class="post-title-link" itemprop="url">Doris 有序窗口漏斗 window_funnel</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          Doris 有序窗口漏斗 window_funnel
+        </h1>
 
         <div class="post-meta-container">
           <div class="post-meta">
@@ -394,6 +312,13 @@
     </span>
 
   
+    <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="far fa-eye"></i>
+      </span>
+      <span class="post-meta-item-text">阅读次数：</span>
+      <span id="busuanzi_value_page_pv"></span>
+    </span>
 </div>
 
 
@@ -406,7 +331,7 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <h2 id="1-0-1-版本-window-funnel-测试"><a href="#1-0-1-版本-window-funnel-测试" class="headerlink" title="1.0.1 版本 window_funnel 测试"></a>1.0.1 版本 window_funnel 测试</h2><h3 id="DEMO-1"><a href="#DEMO-1" class="headerlink" title="DEMO 1"></a>DEMO 1</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> test.<span class="string">`dev_windowfunnel_test2`</span> (</span><br><span class="line"><span class="string">`xwho`</span> <span class="built_in">varchar</span>(<span class="number">50</span>) <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'xwho'</span>,</span><br><span class="line"><span class="string">`xwhen`</span> datetime <span class="keyword">COMMENT</span> <span class="string">'xwhen'</span>,</span><br><span class="line"><span class="string">`xwhat`</span> <span class="built_in">int</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'xwhat'</span></span><br><span class="line">)</span><br><span class="line"><span class="keyword">DUPLICATE</span> <span class="keyword">KEY</span>(xwho)</span><br><span class="line"><span class="keyword">DISTRIBUTED</span> <span class="keyword">BY</span> <span class="keyword">HASH</span>(xwho) BUCKETS <span class="number">3</span></span><br><span class="line">PROPERTIES (</span><br><span class="line"><span class="string">"replication_num"</span> = <span class="string">"1"</span></span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">truncate</span> <span class="keyword">table</span> test.<span class="string">`dev_windowfunnel_test2`</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">into</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 10:41:00'</span>, <span class="number">1</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 13:28:02'</span>, <span class="number">2</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 16:15:01'</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 19:05:04'</span>, <span class="number">4</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> test.dev_windowfunnel_test2;</span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">window_funnel(</span><br><span class="line">            <span class="number">86400</span>,</span><br><span class="line">            <span class="string">'default'</span>,</span><br><span class="line">            t.xwhen,</span><br><span class="line">            t.xwhat = <span class="number">1</span>,</span><br><span class="line">            t.xwhat = <span class="number">2</span>,</span><br><span class="line">            t.xwhat = <span class="number">3</span></span><br><span class="line">          ) <span class="keyword">AS</span> <span class="keyword">level</span>     </span><br><span class="line"><span class="keyword">from</span> test.<span class="string">`dev_windowfunnel_test2`</span> t</span><br><span class="line">;</span><br></pre></td></tr></table></figure>
+        <h2 id="1-0-1-版本-window-funnel-测试"><a href="#1-0-1-版本-window-funnel-测试" class="headerlink" title="1.0.1 版本 window_funnel 测试"></a>1.0.1 版本 window_funnel 测试</h2><h3 id="DEMO-1"><a href="#DEMO-1" class="headerlink" title="DEMO 1"></a>DEMO 1</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> test.<span class="string">`dev_windowfunnel_test2`</span> (</span><br><span class="line"><span class="string">`xwho`</span> <span class="built_in">varchar</span>(<span class="number">50</span>) <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'xwho'</span>,</span><br><span class="line"><span class="string">`xwhen`</span> datetime <span class="keyword">COMMENT</span> <span class="string">'xwhen'</span>,</span><br><span class="line"><span class="string">`xwhat`</span> <span class="built_in">int</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'xwhat'</span></span><br><span class="line">)</span><br><span class="line"><span class="keyword">DUPLICATE</span> <span class="keyword">KEY</span>(xwho)</span><br><span class="line"><span class="keyword">DISTRIBUTED</span> <span class="keyword">BY</span> <span class="keyword">HASH</span>(xwho) BUCKETS <span class="number">3</span></span><br><span class="line">PROPERTIES (</span><br><span class="line"><span class="string">"replication_num"</span> = <span class="string">"1"</span></span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">truncate</span> <span class="keyword">table</span> test.<span class="string">`dev_windowfunnel_test2`</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">into</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 10:41:00'</span>, <span class="number">1</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 13:28:02'</span>, <span class="number">2</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 16:15:01'</span>, <span class="number">3</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test2 (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 19:05:04'</span>, <span class="number">4</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> test.dev_windowfunnel_test2;</span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> </span><br><span class="line">window_funnel(</span><br><span class="line">            <span class="number">86400</span>,</span><br><span class="line">            <span class="string">'default'</span>,</span><br><span class="line">            t.xwhen,</span><br><span class="line">            t.xwhat = <span class="number">1</span>,</span><br><span class="line">            t.xwhat = <span class="number">2</span>,</span><br><span class="line">            t.xwhat = <span class="number">3</span></span><br><span class="line">          ) <span class="keyword">AS</span> <span class="keyword">level</span>     </span><br><span class="line"><span class="keyword">from</span> test.<span class="string">`dev_windowfunnel_test2`</span> t</span><br><span class="line">;</span><br></pre></td></tr></table></figure>
 
 <h3 id="DEMO-2"><a href="#DEMO-2" class="headerlink" title="DEMO 2"></a>DEMO 2</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">-- 建库、建表</span></span><br><span class="line"><span class="keyword">create</span> <span class="keyword">database</span> <span class="keyword">test</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> test.<span class="string">`dev_windowfunnel_test`</span> (</span><br><span class="line"><span class="string">`xwho`</span> <span class="built_in">varchar</span>(<span class="number">50</span>) <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'xwho'</span>,</span><br><span class="line"><span class="string">`xwhen`</span> datetime <span class="keyword">COMMENT</span> <span class="string">'xwhen'</span>,</span><br><span class="line"><span class="string">`xwhat`</span> <span class="built_in">varchar</span>(<span class="number">50</span>) <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'xwhat'</span></span><br><span class="line">)</span><br><span class="line"><span class="keyword">DUPLICATE</span> <span class="keyword">KEY</span>(xwho)</span><br><span class="line"><span class="keyword">DISTRIBUTED</span> <span class="keyword">BY</span> <span class="keyword">HASH</span>(xwho) BUCKETS <span class="number">3</span></span><br><span class="line">PROPERTIES (</span><br><span class="line"><span class="string">"replication_num"</span> = <span class="string">"1"</span></span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">truncate</span> <span class="keyword">table</span> test.<span class="string">`dev_windowfunnel_test`</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">-- Doris 造数</span></span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">into</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 10:41:00'</span>, <span class="string">'加入购物车'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 13:28:02'</span>, <span class="string">'下一步'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 16:15:01'</span>, <span class="string">'收货地址'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'1'</span>, <span class="string">'2022-03-12 19:05:04'</span>, <span class="string">'确认兑换'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'2'</span>, <span class="string">'2022-03-12 13:27:40'</span>, <span class="string">'加入购物车'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'2'</span>, <span class="string">'2022-03-12 13:28:02'</span>, <span class="string">'下一步'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'2'</span>, <span class="string">'2022-03-12 13:28:21'</span>, <span class="string">'收货地址'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'2'</span>, <span class="string">'2022-03-12 16:18:24'</span>, <span class="string">'确认兑换'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'3'</span>, <span class="string">'2022-03-12 16:14:20'</span>, <span class="string">'加入购物车'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'3'</span>, <span class="string">'2022-03-12 16:14:42'</span>, <span class="string">'下一步'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'3'</span>, <span class="string">'2022-03-12 16:15:01'</span>, <span class="string">'收货地址'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'3'</span>, <span class="string">'2022-03-12 16:35:04'</span>, <span class="string">'确认兑换'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'4'</span>, <span class="string">'2022-03-12 07:54:20'</span>, <span class="string">'加入购物车'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'4'</span>, <span class="string">'2022-03-12 07:54:42'</span>, <span class="string">'下一步'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'4'</span>, <span class="string">'2022-03-12 16:15:01'</span>, <span class="string">'收货地址'</span>);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> test.dev_windowfunnel_test (xwho, xwhen, xwhat) <span class="keyword">VALUES</span>(<span class="string">'4'</span>, <span class="string">'2022-03-12 22:08:24'</span>, <span class="string">'确认兑换'</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> test.dev_windowfunnel_test;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">-- 计算 （加入购物车 -&gt; 下一步 -&gt;收货地址 -&gt; 确认兑换） 完成这一系列动作所需要的平均时间</span></span><br><span class="line"><span class="keyword">with</span> t0 <span class="keyword">as</span> (</span><br><span class="line">		<span class="keyword">select</span> xwho, xwhat, xwhen</span><br><span class="line">		<span class="keyword">from</span> test.<span class="string">`dev_windowfunnel_test`</span></span><br><span class="line">		<span class="keyword">where</span>  <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &gt;= <span class="string">'2022-03-12'</span> <span class="keyword">and</span> <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &lt;= <span class="string">'2022-03-12'</span> <span class="keyword">and</span> </span><br><span class="line">		xwhat = <span class="string">'加入购物车'</span></span><br><span class="line">          ),</span><br><span class="line">    t1 <span class="keyword">as</span> (</span><br><span class="line">        <span class="keyword">select</span> xwho, xwhat, xwhen <span class="keyword">from</span></span><br><span class="line">            t0</span><br><span class="line">        <span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line">            (<span class="keyword">select</span> t2.xwho, t2.xwhat, t2.xwhen</span><br><span class="line">            <span class="keyword">from</span></span><br><span class="line">            t0</span><br><span class="line">            <span class="keyword">INNER</span> <span class="keyword">JOIN</span></span><br><span class="line">            (<span class="keyword">select</span> xwho, xwhat, xwhen</span><br><span class="line">            <span class="keyword">from</span> test.<span class="string">`dev_windowfunnel_test`</span></span><br><span class="line">            <span class="keyword">where</span> <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &gt;= <span class="string">'2022-03-12'</span> <span class="keyword">and</span> <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &lt;= <span class="string">'2022-03-13'</span> <span class="keyword">and</span> xwhat = <span class="string">'下一步'</span>) t2</span><br><span class="line">            <span class="keyword">on</span> t0.xwho = t2.xwho)</span><br><span class="line">        <span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line">            (<span class="keyword">select</span> t2.xwho, t2.xwhat, t2.xwhen</span><br><span class="line">            <span class="keyword">from</span></span><br><span class="line">            t0</span><br><span class="line">            <span class="keyword">INNER</span> <span class="keyword">JOIN</span></span><br><span class="line">            (<span class="keyword">select</span> xwho, xwhat, xwhen</span><br><span class="line">            <span class="keyword">from</span> test.<span class="string">`dev_windowfunnel_test`</span></span><br><span class="line">            <span class="keyword">where</span> <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &gt;= <span class="string">'2022-03-12'</span> <span class="keyword">and</span> <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &lt;= <span class="string">'2022-03-13'</span> <span class="keyword">and</span> xwhat = <span class="string">'收货地址'</span>) t2</span><br><span class="line">            <span class="keyword">on</span> t0.xwho = t2.xwho)</span><br><span class="line">        <span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line">            (<span class="keyword">select</span> t2.xwho, t2.xwhat, t2.xwhen</span><br><span class="line">            <span class="keyword">from</span></span><br><span class="line">            t0</span><br><span class="line">            <span class="keyword">INNER</span> <span class="keyword">JOIN</span></span><br><span class="line">            (<span class="keyword">select</span> xwho, xwhat, xwhen</span><br><span class="line">            <span class="keyword">from</span> test.<span class="string">`dev_windowfunnel_test`</span></span><br><span class="line">            <span class="keyword">where</span> <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &gt;= <span class="string">'2022-03-12'</span> <span class="keyword">and</span> <span class="keyword">DATE_FORMAT</span>(xwhen,<span class="string">'%Y-%m-%d'</span>) &lt;= <span class="string">'2022-03-13'</span> <span class="keyword">and</span> xwhat = <span class="string">'确认兑换'</span>) t2</span><br><span class="line">            <span class="keyword">on</span> t0.xwho = t2.xwho)</span><br><span class="line">          ),</span><br><span class="line">    t2 <span class="keyword">as</span> (</span><br><span class="line">        <span class="keyword">SELECT</span></span><br><span class="line">          t2.xwho,</span><br><span class="line">          <span class="keyword">min</span>(t2.xwhen) <span class="keyword">AS</span> start_time,</span><br><span class="line">          <span class="keyword">max</span>(t2.xwhen) <span class="keyword">AS</span> end_time,</span><br><span class="line">          <span class="keyword">max</span>(t2.xwhen)-<span class="keyword">min</span>(t2.xwhen) <span class="keyword">as</span> <span class="keyword">duration</span>,</span><br><span class="line">          window_funnel(</span><br><span class="line">            <span class="number">86400</span>, <span class="comment">-- 转化周期 1 天</span></span><br><span class="line">            <span class="string">'default'</span>,</span><br><span class="line">            xwhen,</span><br><span class="line">            t2.xwhat = <span class="string">'加入购物车'</span>,</span><br><span class="line">            t2.xwhat = <span class="string">'下一步'</span>,</span><br><span class="line">            t2.xwhat = <span class="string">'收货地址'</span>,</span><br><span class="line">            t2.xwhat = <span class="string">'确认兑换'</span></span><br><span class="line">          ) <span class="keyword">AS</span> <span class="keyword">level</span></span><br><span class="line">        <span class="keyword">FROM</span> (</span><br><span class="line">          <span class="keyword">SELECT</span></span><br><span class="line">          xwho, </span><br><span class="line">          xwhat, </span><br><span class="line">          xwhen</span><br><span class="line">          <span class="keyword">FROM</span> t1</span><br><span class="line">        ) t2 </span><br><span class="line">        <span class="keyword">GROUP</span> <span class="keyword">BY</span> xwho</span><br><span class="line">        )</span><br><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> t2</span><br><span class="line"><span class="keyword">union</span> <span class="keyword">all</span></span><br><span class="line"><span class="keyword">select</span> <span class="string">'平均'</span> <span class="keyword">as</span> xwho, <span class="literal">null</span> <span class="keyword">as</span> start_time ,<span class="literal">null</span> <span class="keyword">as</span> end_time,<span class="keyword">sum</span>(<span class="keyword">duration</span>)/<span class="keyword">COUNT</span>(<span class="number">1</span>) <span class="keyword">as</span> <span class="keyword">duration</span>,<span class="number">0</span> <span class="keyword">as</span> <span class="keyword">level</span> <span class="keyword">from</span> t2;</span><br></pre></td></tr></table></figure>
 
@@ -416,7 +341,6 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">be&#x2F;src&#x2F;exprs&#x2F;aggregate_functions.cpp</span><br><span class="line">be&#x2F;src&#x2F;exprs&#x2F;aggregate_functions.h</span><br><span class="line">be&#x2F;src&#x2F;vec&#x2F;CMakeLists.txt</span><br><span class="line">be&#x2F;src&#x2F;vec&#x2F;aggregate_functions&#x2F;aggregate_function_simple_factory.cpp</span><br><span class="line">be&#x2F;src&#x2F;vec&#x2F;aggregate_functions&#x2F;aggregate_function_window_funnel.cpp</span><br><span class="line">be&#x2F;src&#x2F;vec&#x2F;aggregate_functions&#x2F;aggregate_function_window_funnel.h</span><br><span class="line">be&#x2F;test&#x2F;exprs&#x2F;CMakeLists.txt</span><br><span class="line">be&#x2F;test&#x2F;exprs&#x2F;window_funnel_test.cpp</span><br><span class="line">be&#x2F;test&#x2F;vec&#x2F;aggregate_functions&#x2F;CMakeLists.txt</span><br><span class="line">be&#x2F;test&#x2F;vec&#x2F;aggregate_functions&#x2F;vec_window_funnel_test.cpp</span><br><span class="line"></span><br><span class="line">fe&#x2F;fe-core&#x2F;src&#x2F;main&#x2F;java&#x2F;org&#x2F;apache&#x2F;doris&#x2F;analysis&#x2F;Analyzer.java</span><br><span class="line">fe&#x2F;fe-core&#x2F;src&#x2F;main&#x2F;java&#x2F;org&#x2F;apache&#x2F;doris&#x2F;analysis&#x2F;FunctionCallExpr.java</span><br><span class="line">fe&#x2F;fe-core&#x2F;src&#x2F;main&#x2F;java&#x2F;org&#x2F;apache&#x2F;doris&#x2F;catalog&#x2F;AggregateFunction.java</span><br><span class="line">fe&#x2F;fe-core&#x2F;src&#x2F;main&#x2F;java&#x2F;org&#x2F;apache&#x2F;doris&#x2F;catalog&#x2F;FunctionSet.java</span><br><span class="line">fe&#x2F;fe-core&#x2F;src&#x2F;test&#x2F;java&#x2F;org&#x2F;apache&#x2F;doris&#x2F;analysis&#x2F;AggregateTest.java</span><br></pre></td></tr></table></figure>
 
 
-      
     </div>
 
     
@@ -424,260 +348,21 @@
     
 
     <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
+          <div class="post-tags">
+              <a href="/tags/Doris/" rel="tag"># Doris</a>
+          </div>
 
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2022/05/01/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_08-%E4%BA%A4%E4%BB%98%E9%80%9F%E5%BA%A6%E5%92%8C%E8%B4%A8%E9%87%8F%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3%E4%BA%86%EF%BC%8C%E8%80%81%E6%9D%BF%E8%AF%B4%E8%BF%98%E5%BE%97%E2%80%9C%E7%9C%81%E2%80%9D/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="EmerkFu">
-      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Emerk's blog">
-    </span>
-        <header class="post-header">
-
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/05/01/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_08-%E4%BA%A4%E4%BB%98%E9%80%9F%E5%BA%A6%E5%92%8C%E8%B4%A8%E9%87%8F%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3%E4%BA%86%EF%BC%8C%E8%80%81%E6%9D%BF%E8%AF%B4%E8%BF%98%E5%BE%97%E2%80%9C%E7%9C%81%E2%80%9D/" class="post-title-link" itemprop="url">数据中台_08-交付速度和质量问题解决了，老板说还得“省”</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2022-05-01 09:11:00" itemprop="dateCreated datePublished" datetime="2022-05-01T09:11:00+08:00">2022-05-01</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0/" itemprop="url" rel="index"><span itemprop="name">数据中台</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-
-		  
-        </div>
-
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          在上一篇中，讨论了如何保障数据中台的数据质量，让数据做到“准”。我认为，除了“快”和“准”，数据中台还离不开一个“省”字。尤其是随着数据规模越来越大，成本越来越高，如果不能合理控制成本，还没等你挖掘出数据的应用价值，企业利润就已经被消耗完了。
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/05/01/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_08-%E4%BA%A4%E4%BB%98%E9%80%9F%E5%BA%A6%E5%92%8C%E8%B4%A8%E9%87%8F%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3%E4%BA%86%EF%BC%8C%E8%80%81%E6%9D%BF%E8%AF%B4%E8%BF%98%E5%BE%97%E2%80%9C%E7%9C%81%E2%80%9D/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
-    </div>
 
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2022/04/22/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_07-%E5%90%8C%E4%BA%8B%E8%80%81%E6%89%93%E8%84%B8%E8%AF%B4%E6%95%B0%E6%8D%AE%E6%9C%89%E9%97%AE%E9%A2%98%EF%BC%8C%E8%AF%A5%E6%80%8E%E4%B9%88%E5%BD%BB%E5%BA%95%E8%A7%A3%E5%86%B3/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="EmerkFu">
-      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Emerk's blog">
-    </span>
-        <header class="post-header">
-
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/04/22/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_07-%E5%90%8C%E4%BA%8B%E8%80%81%E6%89%93%E8%84%B8%E8%AF%B4%E6%95%B0%E6%8D%AE%E6%9C%89%E9%97%AE%E9%A2%98%EF%BC%8C%E8%AF%A5%E6%80%8E%E4%B9%88%E5%BD%BB%E5%BA%95%E8%A7%A3%E5%86%B3/" class="post-title-link" itemprop="url">数据中台_07-同事老打脸说数据有问题，该怎么彻底解决</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2022-04-22 13:11:00" itemprop="dateCreated datePublished" datetime="2022-04-22T13:11:00+08:00">2022-04-22</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0/" itemprop="url" rel="index"><span itemprop="name">数据中台</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-
-		  
-        </div>
-
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          在上一篇中，从模型设计层面，逐步将分散、杂乱、烟囱式的小数仓整合成了可复用、可共享的数据中台，数据研发效能提升了一倍。那是不是交付数据足够快，使用数据的人就满意了？当然不是，来看一个例子。
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/04/22/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_07-%E5%90%8C%E4%BA%8B%E8%80%81%E6%89%93%E8%84%B8%E8%AF%B4%E6%95%B0%E6%8D%AE%E6%9C%89%E9%97%AE%E9%A2%98%EF%BC%8C%E8%AF%A5%E6%80%8E%E4%B9%88%E5%BD%BB%E5%BA%95%E8%A7%A3%E5%86%B3/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/05/01/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_08-%E4%BA%A4%E4%BB%98%E9%80%9F%E5%BA%A6%E5%92%8C%E8%B4%A8%E9%87%8F%E9%97%AE%E9%A2%98%E8%A7%A3%E5%86%B3%E4%BA%86%EF%BC%8C%E8%80%81%E6%9D%BF%E8%AF%B4%E8%BF%98%E5%BE%97%E2%80%9C%E7%9C%81%E2%80%9D/" rel="prev" title="数据中台_08-交付速度和质量问题解决了，老板说还得“省”">
+                  <i class="fa fa-chevron-left"></i> 数据中台_08-交付速度和质量问题解决了，老板说还得“省”
+                </a>
             </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://emerkfu: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@emerkfu.github.io/2022/04/21/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_06-%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E6%97%A0%E6%B3%95%E5%A4%8D%E7%94%A8%EF%BC%8C%E5%BD%92%E6%A0%B9%E7%BB%93%E5%BA%95%E8%BF%98%E6%98%AF%E8%AE%BE%E8%AE%A1%E9%97%AE%E9%A2%98/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="EmerkFu">
-      <meta itemprop="description" content="Stay Hungry. Stay Foolish.">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Emerk's blog">
-    </span>
-        <header class="post-header">
-
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/04/21/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_06-%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E6%97%A0%E6%B3%95%E5%A4%8D%E7%94%A8%EF%BC%8C%E5%BD%92%E6%A0%B9%E7%BB%93%E5%BA%95%E8%BF%98%E6%98%AF%E8%AE%BE%E8%AE%A1%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">数据中台_06-数据模型无法复用，归根结底还是设计问题</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2022-04-21 23:53:00" itemprop="dateCreated datePublished" datetime="2022-04-21T23:53:00+08:00">2022-04-21</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0/" itemprop="url" rel="index"><span itemprop="name">数据中台</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-
-		  
-        </div>
-
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          在上一篇中，我们了解了数据中台如何管理指标，如果我们把指标比喻成一棵树上的果实，那模型就是这棵大树的躯干，想让果实结得好，必须让树干变得粗壮。
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/04/21/%E6%95%B0%E6%8D%AE%E4%B8%AD%E5%8F%B0_06-%E6%95%B0%E6%8D%AE%E6%A8%A1%E5%9E%8B%E6%97%A0%E6%B3%95%E5%A4%8D%E7%94%A8%EF%BC%8C%E5%BD%92%E6%A0%B9%E7%BB%93%E5%BA%95%E8%BF%98%E6%98%AF%E8%AE%BE%E8%AE%A1%E9%97%AE%E9%A2%98/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
+            <div class="post-nav-item">
             </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
+          </div>
     </footer>
   </article>
 </div>
@@ -685,9 +370,7 @@
 
 
 
-  <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/19/">19</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
-  </nav>
+
 
 
 <script>
